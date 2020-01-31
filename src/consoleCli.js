@@ -14,7 +14,266 @@ function readInput(question) {
   });
 }
 
+const generatefundFunc = async function(cmd, words, wallet, walletMgr) {
+  let amount = 100000000;
+  if (words.length > 1) {
+    amount = parseInt(words[1]);
+  }
+  const ret = await wallet.generateFund(amount);
+  console.log('generateFund -> ', ret);
+};
+
+const generateFunc = async function(cmd, words, wallet, walletMgr) {
+  let count = 1;
+  let addr = '';
+  if (words.length > 1) {
+    count = parseInt(words[1]);
+  }
+  if (words.length > 2) {
+    addr = words[2];
+  }
+  const ret = await wallet.generate(count, addr);
+  console.log('generate -> ', ret);
+};
+
+const sendtoaddressFunc = async function(cmd, words, wallet, walletMgr) {
+  let feeAsset = '';
+  let targetConf = 6;
+  if (words.length > 3 && (words[3] != '\'\'') && (words[3] != '""')) {
+    feeAsset = words[3];
+  }
+  if (words.length > 4) {
+    targetConf = parseInt(words[4]);
+  }
+  const ret = await wallet.sendToAddress(
+      words[1], parseInt(words[2]), feeAsset, targetConf);
+  console.log('sendtoaddress -> ', ret);
+};
+
+const getnewaddressFunc = async function(cmd, words, wallet, walletMgr) {
+  let addrType = 'p2wpkh';
+  let label = '';
+  if (words.length > 1) {
+    addrType = words[1];
+  }
+  if (words.length > 2) {
+    label = words[2];
+  }
+  const ret = await wallet.getNewAddress(addrType, label);
+  console.log('getnewaddress -> ', ret);
+};
+
+const getscriptaddressFunc = async function(cmd, words, wallet, walletMgr) {
+  let addrType = 'p2wpkh';
+  let label = '';
+  if (words.length > 2) {
+    addrType = words[2];
+  }
+  if (words.length > 3) {
+    label = words[3];
+  }
+  const ret = await wallet.getScriptAddress(words[1], addrType, label);
+  console.log('getscriptaddress -> ', ret);
+};
+
+const dumpprivkeyFunc = async function(cmd, words, wallet, walletMgr) {
+  let address = '';
+  let pubkey = '';
+  if (words.length > 1 && (words[1] != '\'\'') && (words[1] != '""')) {
+    address = words[1];
+  }
+  if (words.length > 2 && (words[2] != '\'\'') && (words[2] != '""')) {
+    pubkey = words[2];
+  }
+  const ret = await wallet.dumpPrivkey(address, pubkey);
+  console.log('dumpprivkey -> ', ret);
+};
+
+const getaddressinfoFunc = async function(cmd, words, wallet, walletMgr) {
+  const ret = await wallet.getAddressInfo(words[1]);
+  console.log('getaddressinfo -> ', ret);
+};
+
+const dumpaddressesFunc = async function(cmd, words, wallet, walletMgr) {
+  const ret = await wallet.getAddresses();
+  console.log('dumpaddresses -> ', ret);
+};
+
+const dumpaddressesbylabelFunc = async function(cmd, words, wallet, walletMgr) {
+  const ret = await wallet.getAddressesByLabel(words[1]);
+  console.log('dumpaddresses -> ', ret);
+};
+
+const decoderawtransactionFunc = async function(cmd, words, wallet, walletMgr) {
+  const ret = await wallet.decodeRawTransaction(words[1]);
+  console.log('decoderawtransaction -> ',
+      JSON.stringify(ret, null, '  '));
+};
+
+const getbalanceFunc = async function(cmd, words, wallet, walletMgr) {
+  let minimumConf = 1;
+  if (words.length > 1) {
+    minimumConf = parseInt(words[1]);
+  }
+  const ret = await wallet.getBalance(minimumConf);
+  console.log('getbalance -> ', ret);
+};
+
+const listunspentFunc = async function(cmd, words, wallet, walletMgr) {
+  let address = '';
+  let asset = '';
+  let path = '';
+  let minimumConf = 1;
+  let maximumConf = 999999999999;
+  if (words.length > 1) {
+    minimumConf = parseInt(words[1]);
+  }
+  if (words.length > 2) {
+    maximumConf = parseInt(words[2]);
+  }
+  if (words.length > 3 && (words[3] != '\'\'') && (words[3] != '""')) {
+    address = words[3];
+  }
+  if (words.length > 4 && (words[4] != '\'\'') && (words[4] != '""')) {
+    path = words[4];
+  }
+  if (words.length > 5 && (words[5] != '\'\'') && (words[5] != '""')) {
+    asset = words[5];
+  }
+  const ret = await wallet.listUnspent(
+      minimumConf, maximumConf, address, path, asset);
+  console.log('listunspent -> ', ret);
+};
+
+const getblockcountFunc = async function(cmd, words, wallet, walletMgr) {
+  const ret = await walletMgr.getBlockCount(wallet.getTarget());
+  console.log('getblockcount -> ', ret);
+};
+
+const getmempoolutxocountFunc = async function(cmd, words, wallet, walletMgr) {
+  const ret = await wallet.getMempoolUtxoCount();
+  console.log('getmempoolutxocount -> ', ret);
+};
+
+const forceupdateutxoFunc = async function(cmd, words, wallet, walletMgr) {
+  const ret = await wallet.forceUpdateUtxoData();
+  console.log('forceupdateutxo -> ', ret);
+};
+
+const consoleFunctionList = {
+  'exit': {
+    finish: true,
+  },
+  'quit': {
+    finish: true,
+  },
+  'generatefund': {
+    execFunction: generatefundFunc,
+    parameter: '<amount>',
+  },
+  'generate': {
+    execFunction: generateFunc,
+    parameter: '<count> <address>',
+  },
+  'sendtoaddress': {
+    execFunction: sendtoaddressFunc,
+    parameter: '[<address> <amount> [<feeAsset> <targetConfirmation>]',
+  },
+  'getnewaddress': {
+    execFunction: getnewaddressFunc,
+    parameter: '[<addressType> <label>]',
+  },
+  'getscriptaddress': {
+    execFunction: getscriptaddressFunc,
+    parameter: 'scriptHex [<addressType> <label>]',
+  },
+  'dumpprivkey': {
+    execFunction: dumpprivkeyFunc,
+    parameter: '[<address> <pubkey>]',
+  },
+  'getaddressinfo': {
+    execFunction: getaddressinfoFunc,
+    parameter: '<address>',
+  },
+  'dumpaddresses': {
+    execFunction: dumpaddressesFunc,
+  },
+  'dumpaddressesbylabel': {
+    execFunction: dumpaddressesbylabelFunc,
+    parameter: '<label>',
+  },
+  'decoderawtransaction': {
+    execFunction: decoderawtransactionFunc,
+    parameter: '<txHex>',
+  },
+  'dectx': {
+    execFunction: decoderawtransactionFunc,
+    parameter: '<txHex>',
+  },
+  'getbalance': {
+    execFunction: getbalanceFunc,
+    parameter: '[<minimumConf>]',
+  },
+  'listunspent': {
+    execFunction: listunspentFunc,
+    parameter: '[<minimumConf> <maximumConf> <address> <hdPath> <asset>]',
+  },
+  'getblockcount': {
+    execFunction: getblockcountFunc,
+  },
+  'getmempoolutxocount': {
+    execFunction: getmempoolutxocountFunc,
+  },
+  'forceupdateutxo': {
+    execFunction: forceupdateutxoFunc,
+  },
+};
+
+const helpFunc = function(cmd, words, wallet, walletMgr) {
+  console.log(' command:');
+  Object.keys(consoleFunctionList).forEach((key) =>
+    console.log(`  - ${key} ` + (('parameter' in consoleFunctionList[key]) ? `: ${consoleFunctionList[key].parameter}` : '') ),
+  );
+};
+
+const callWalletConsole = async function(consoleName, wallet, walletMgr) {
+  console.log('');
+  let cmd = await readInput(`${consoleName}:> `);
+  cmd = cmd.trim();
+  const words = cmd.split(' ');
+  if (words[0] in consoleFunctionList) {
+    const cmdWord = words[0];
+    const data = consoleFunctionList[cmdWord];
+    if (('finish' in data) && (data.finish === true)) {
+      console.log(`${cmd}`);
+      walletMgr.shutdown();
+      return false;
+    }
+    await data.execFunction(cmd, words, wallet, walletMgr);
+    return true;
+  } else {
+    console.log(`Illegal command: ${cmd}`);
+    helpFunc();
+  }
+  return true;
+};
+
 // call node wallet-console.js createwallet -n regtest -c ./docker/bitcoin.conf -u User -i 1 -s '0e09fbdd00e575b654d480ae979f24da45ef4dee645c7dc2e3b30b2e093d38dda0202357754cc856f8920b8e31dd02e9d34f6a2b20dc825c6ba90f90009085e1' -d "./testdata/"
+
+const help = function() {
+  console.log(' Usage: node wallet-console createwallet -n <network> -n <network> -c <configFile> -i <userIndex> -s <seed> [-u <userPrefix>] [-d <dataDirPath>] [-t <targetName>]');
+  console.log('        node wallet-console help');
+  console.log('');
+  console.log(' option:');
+  console.log('  -n   network name. (mainnet, testnet, regtest, liquidv1, elementsregtest)');
+  console.log('       (ex. -n mainnet )');
+  console.log('  -c   bitcoin.conf or elements.conf file path.');
+  console.log('  -u   wallet usename prefix.');
+  console.log('  -i   wallet user index. (0 - )');
+  console.log('  -s   wallet seed.');
+  console.log('  -d   data directory path.');
+  console.log('  -t   target name. (bitcoin or elements)');
+};
 
 (async function main() {
   try {
@@ -25,12 +284,9 @@ function readInput(question) {
       }
       help();
     } else if ((process.argv[2] === 'createwallet') || (process.argv[2] === 'getwallet')) {
-      if (process.argv.length <= 10) {
-
-      }
       let network = '';
       let confFile = '';
-      let userPrefix = '';
+      let userPrefix = 'user';
       let userIndex = -1;
       let seed = '';
       let datadir = './data';
@@ -78,148 +334,20 @@ function readInput(question) {
         console.log('RPC connect failed.');
         throw Error('RPC connect failed.');
       }
-      while (true) { // split function
+      let isLoop = true;
+      while (isLoop) { // split function
         try {
-          console.log('');
-          let cmd = await readInput(`${consoleName}:> `);
-          cmd = cmd.trim();
-          const words = cmd.split(' ');
-          if ((cmd === 'exit') || (cmd === 'quit')) {
-            console.log(`${cmd}`);
-            walletMgr.shutdown();
-            break;
-          } else if (words[0] === 'generatefund') {
-            let amount = 100000000;
-            if (words.length > 1) {
-              amount = parseInt(words[1]);
-            }
-            const ret = await wallet.generateFund(amount);
-            console.log('generateFund -> ', ret);
-          } else if (words[0] === 'generate') {
-            let count = 1;
-            let addr = '';
-            if (words.length > 1) {
-              count = parseInt(words[1]);
-            }
-            if (words.length > 2) {
-              addr = words[2];
-            }
-            const ret = await wallet.generate(count, addr);
-            console.log('generate -> ', ret);
-          } else if (words[0] === 'sendtoaddress') {
-            let feeAsset = '';
-            let targetConf = 6;
-            if (words.length > 3 && (words[3] != '\'\'') && (words[3] != '""')) {
-              feeAsset = words[3];
-            }
-            if (words.length > 4) {
-              targetConf = parseInt(words[4]);
-            }
-            const ret = await wallet.sendToAddress(
-                words[1], parseInt(words[2]), feeAsset, targetConf);
-            console.log('sendtoaddress -> ', ret);
-          } else if (words[0] === 'getnewaddress') {
-            let addrType = 'p2wpkh';
-            let label = '';
-            if (words.length > 1) {
-              addrType = words[1];
-            }
-            if (words.length > 2) {
-              label = words[2];
-            }
-            const ret = await wallet.getNewAddress(addrType, label);
-            console.log('getnewaddress -> ', ret);
-          } else if (words[0] === 'getscriptaddress') {
-            let addrType = 'p2wpkh';
-            let label = '';
-            let script = '';
-            if (words.length > 1) {
-              addrType = words[1];
-            }
-            if (words.length > 2) {
-              label = words[2];
-            }
-            if (words.length > 3) {
-              script = words[3];
-            }
-            const ret = await wallet.getScriptAddress(script, addrType, label);
-            console.log('getscriptaddress -> ', ret);
-          } else if (words[0] === 'dumpprivkey') {
-            let address = '';
-            let pubkey = '';
-            if (words.length > 1 && (words[1] != '\'\'') && (words[1] != '""')) {
-              address = words[1];
-            }
-            if (words.length > 2 && (words[2] != '\'\'') && (words[2] != '""')) {
-              pubkey = words[2];
-            }
-            const ret = await wallet.dumpPrivkey(address, pubkey);
-            console.log('dumpprivkey -> ', ret);
-          } else if (words[0] === 'getaddressinfo') {
-            const ret = await wallet.getAddressInfo(words[1]);
-            console.log('getaddressinfo -> ', ret);
-          } else if (words[0] === 'dumpaddresses') {
-            const ret = await wallet.getAddresses();
-            console.log('dumpaddresses -> ', ret);
-          } else if (words[0] === 'dumpaddressesbylabel') {
-            const ret = await wallet.getAddressesByLabel(words[1]);
-            console.log('dumpaddresses -> ', ret);
-          } else if ((words[0] === 'decoderawtransaction') ||
-              (words[0] === 'dectx')) {
-            const ret = await wallet.decodeRawTransaction(words[1]);
-            console.log('decoderawtransaction -> ',
-                JSON.stringify(ret, null, '  '));
-          } else if (words[0] === 'getbalance') {
-            let minimumConf = 1;
-            if (words.length > 1) {
-              minimumConf = parseInt(words[1]);
-            }
-            const ret = await wallet.getBalance(minimumConf);
-            console.log('getbalance -> ', ret);
-          } else if (words[0] === 'listunspent') {
-            let address = '';
-            let asset = '';
-            let path = '';
-            let minimumConf = 1;
-            let maximumConf = 999999999999;
-            if (words.length > 1) {
-              minimumConf = parseInt(words[1]);
-            }
-            if (words.length > 2) {
-              maximumConf = parseInt(words[2]);
-            }
-            if (words.length > 3 && (words[3] != '\'\'') && (words[3] != '""')) {
-              address = words[3];
-            }
-            if (words.length > 4 && (words[4] != '\'\'') && (words[4] != '""')) {
-              path = words[4];
-            }
-            if (words.length > 5 && (words[5] != '\'\'') && (words[5] != '""')) {
-              asset = words[5];
-            }
-            const ret = await wallet.listUnspent(
-                minimumConf, maximumConf, address, path, asset);
-            console.log('listunspent -> ', ret);
-          } else if (words[0] === 'getmempoolutxocount') {
-            const ret = await wallet.getMempoolUtxoCount();
-            console.log('getmempoolutxocount -> ', ret);
-          } else if (words[0] === 'forceupdateutxo') {
-            const ret = await wallet.forceUpdateUtxoData();
-            console.log('forceupdateutxo -> ', ret);
-          } else if (words[0] === 'getblockcount') {
-            const ret = await walletMgr.getBlockCount(target);
-            console.log('getblockcount -> ', ret);
-          } else {
-            console.log(`Illegal command: ${cmd}`);
-            // FIXME command list
-          }
+          isLoop = await callWalletConsole(consoleName, wallet, walletMgr);
         } catch (walletError) {
           console.log('error: ', walletError);
           // console.log('  wallet -> ', wallet);
         }
       }
+    } else if (process.argv[2] === 'help') {
+      help();
     } else {
       console.log('parameter error.');
+      help();
     }
 
     // cleanup console

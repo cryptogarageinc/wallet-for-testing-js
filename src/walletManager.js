@@ -349,11 +349,18 @@ module.exports = class WalletManager {
   };
 
   async stop(targetNodeType) {
-    // TODO priority is low.
     if (targetNodeType === 'bitcoin') {
       return await this.btcClient.stop();
     } else {
       return await this.elmClient.stop();
+    }
+  };
+
+  async callRpcDirect(targetNodeType, command, parameters = []) {
+    if (targetNodeType === 'bitcoin') {
+      return await this.btcClient.directExecute(command, parameters);
+    } else {
+      return await this.elmClient.directExecute(command, parameters);
     }
   };
 };

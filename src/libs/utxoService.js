@@ -49,7 +49,8 @@ module.exports = class UtxoService {
                   txid, j, satoshi, address, descriptor, lockingScript,
                   true, blockHash, blockHeight, coinbase);
               if (ret === false) {
-                throw Error('generate: addUtxo fail.');
+                console.log('addUtxo: addUtxo fail.');
+                // throw Error('addUtxo: addUtxo fail.');
               }
             }
           }
@@ -79,8 +80,8 @@ module.exports = class UtxoService {
                 continue;
               }
               const lockingScript = vout[j].scriptPubKey.hex;
-              const addr = await this.addressService.getAddressInfoByLockingScript(
-                  lockingScript);
+              const addr = await this.addressService
+                  .getAddressInfoByLockingScript(lockingScript);
               // console.log('addr = ', addr);
               if (addr) {
                 const solvable = (!addr.script && addr.path !== '') ? true : false;
@@ -203,8 +204,8 @@ module.exports = class UtxoService {
               continue;
             }
             const lockingScript = vout[j].scriptPubKey.hex;
-            const addr = await this.addressService.getAddressInfoByLockingScript(
-                lockingScript);
+            const addr = await this.addressService
+                .getAddressInfoByLockingScript(lockingScript);
             // console.log('addr = ', addr);
             if (addr) {
               const solvable = (!addr.script && addr.path !== '') ? true : false;
@@ -213,7 +214,8 @@ module.exports = class UtxoService {
                   satoshi, addr.address,
                   addr.descriptor, lockingScript, solvable);
               if (ret === false) {
-                throw Error('addUtxo: addUtxo fail.');
+                console.log('addUtxo: addUtxo fail.');
+                // throw Error('addUtxo: addUtxo fail.');
               }
             }
           }

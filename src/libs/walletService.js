@@ -89,6 +89,10 @@ module.exports = class Wallet {
     return true;
   };
 
+  getTarget() {
+    return (!this.isElements) ? 'bitcoin' : 'elements';
+  };
+
   async checkConnection() {
     let result = '';
     try {
@@ -794,7 +798,7 @@ module.exports = class Wallet {
 
   // prevtxs: {txid: '', vout: 0}
   async getSignatures(tx, ignoreError = true, prevtxs = [], sighashtype = 'all') {
-    let transaction = tx;
+    const transaction = tx;
     const decTx = this.decodeRawTransaction(tx);
     const outpoints = [];
     for (let i = 0; i < decTx.vin.length; ++i) {
@@ -819,8 +823,8 @@ module.exports = class Wallet {
       }
     }
 
-    let errors = [];
-    let signatures = [];
+    const errors = [];
+    const signatures = [];
     let signedCount = 0;
     for (let i = 0; i < outpoints.length; ++i) {
       const txid = outpoints[i].txid;
@@ -833,7 +837,7 @@ module.exports = class Wallet {
         }
         // get privkey list
         const addrInfo = await this.addrService.getAddressInfo(utxo.address);
-        let pubkeys = [];
+        const pubkeys = [];
         let addrType = addrInfo.type;
         if (addrInfo.pubkey) {
           pubkeys.push(addrInfo.pubkey);
@@ -869,11 +873,12 @@ module.exports = class Wallet {
           if (this.isElements) {
             // TODO priority is low.
           } else {
-            let hashtype = (addrType === 'p2sh-p2wpkh') ?
+            const hashtype = (addrType === 'p2sh-p2wpkh') ?
                 'p2wpkh' : addrType;
             addrType = (addrType === 'p2sh-p2wsh') ? 'p2wsh' : addrType;
             // calc sighash
-            const hexData = (addrInfo.pubkey) ? addrInfo.pubkey : addrInfo.script;
+            const hexData =
+                (addrInfo.pubkey) ? addrInfo.pubkey : addrInfo.script;
             const keyDataType = (addrInfo.pubkey) ? 'pubkey' : 'redeem_script';
             const sighashRet = cfd.CreateSignatureHash({
               tx: transaction,
@@ -902,7 +907,7 @@ module.exports = class Wallet {
             console.log('signatures add = ', pubkey, signatureRet.signature);
             signatures.push({
               txid: txid,
-              vout: vout, 
+              vout: vout,
               pubkey: pubkey,
               signature: signatureRet.signature,
               sighashtype: sighashtype,

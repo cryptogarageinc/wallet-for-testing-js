@@ -139,6 +139,7 @@ describe('wallet test', () => {
         [addr1.pubkey, addr2.pubkey], 2, 'p2wsh', 'label-m1');
     const multisigAddr2 = await btcWallet2.addMultisigAddress(
         [addr1.pubkey, addr2.pubkey], 2, 'p2wsh', 'label-m1');
+    expect(multisigAddr1.address).toBe(multisigAddr2.address);
 
     // multisigに送信
     const amount1 = 100000000;
@@ -149,6 +150,7 @@ describe('wallet test', () => {
     const txid1 = await btcWallet1.sendRawTransaction(tx1.hex);
     const decTx1 = btcWallet1.decodeRawTransaction(tx1.hex);
     console.log('[multi] sendRawTransaction1 -> ', {txid: txid1, hex: tx1.hex});
+    expect(decTx1.vout[0].value).toBe(amount1);
 
     await btcWallet2.generate(1); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
@@ -164,7 +166,7 @@ describe('wallet test', () => {
     let tx2 = btcWallet1.createRawTransaction(2, 0, [txin2], [txout2]);
     tx2 = await btcWallet1.fundRawTransaction(tx2.hex);
     const decTx = btcWallet1.decodeRawTransaction(tx2.hex);
-    let prevtxs = [];
+    const prevtxs = [];
     for (let i = 0; i < decTx.vin.length; ++i) {
       if (decTx.vin[i]) {
         const tempTxid = decTx.vin[i].txid;
@@ -175,11 +177,12 @@ describe('wallet test', () => {
         prevtxs.push({txid: tempTxid, vout: tempVout});
       }
     }
-    tx2 = await btcWallet1.signRawTransactionWithWallet(tx2.hex, false, prevtxs);
+    tx2 = await btcWallet1.signRawTransactionWithWallet(
+        tx2.hex, false, prevtxs);
     const sigs1 = await btcWallet1.getSignatures(
-      tx2.hex, false, [{txid: txid1, vout: 0}]);
+        tx2.hex, false, [{txid: txid1, vout: 0}]);
     const sigs2 = await btcWallet2.getSignatures(
-      tx2.hex, false, [{txid: txid1, vout: 0}]);
+        tx2.hex, false, [{txid: txid1, vout: 0}]);
     // console.log('[multi] sigs1 -> ', sigs1);
     // console.log('[multi] sigs2 -> ', sigs2);
 

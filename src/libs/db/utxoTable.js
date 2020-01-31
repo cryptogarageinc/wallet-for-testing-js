@@ -166,12 +166,13 @@ module.exports = class UtxoTable {
     }}, page, perPage);
   };
 
-  async getUtxosBlockHeightSolvedUnspentable(bestBlockHeight = 9223372036854775807,
+  async getUtxosBlockHeightSolvedUnspentable(
+      bestBlockHeight = 9223372036854775807,
       minimumConf = 6, maximumConf = 9223372036854775807,
       page = 1, perPage = 10000) {
     return await this.database.findSorted({$where: function() {
       const height = bestBlockHeight - this.blockHeight + 1;
-      if (!this.solvable) return false;  // script utxo
+      if (!this.solvable) return false; // script utxo
       if (this.coinbase && (height < 100)) {
         return false;
       }

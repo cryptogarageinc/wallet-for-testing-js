@@ -120,8 +120,8 @@ module.exports = class AddressService {
       if (multisigRet.pubkeys) {
         isMultisig = true;
         pubkeyMap[''] = multisigRet.pubkeys;
-        const pubkeys = (relatedPubkey.length !== multisigRet.pubkeys.length)
-          ? multisigRet.pubkeys : relatedPubkey;
+        const pubkeys = (relatedPubkey.length !== multisigRet.pubkeys.length) ?
+          multisigRet.pubkeys : relatedPubkey;
 
         descriptor = this.getMultisigDescriptor(
             addrType, pubkeys, multisigRet.requireNum);

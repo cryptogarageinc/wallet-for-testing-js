@@ -6,7 +6,7 @@ const cfd = require('cfd-js');
 
 module.exports = class Wallet {
   constructor(userNamePrefix, userIndex, dirPath, network,
-      masterXprivkey, nodeConfig, manager) {
+      masterXprivkey, nodeConfig, manager, inMemoryDatabase = true) {
     if (isNaN(userIndex)) {
       throw new Error('Wallet userIndex is number only.');
     }
@@ -48,7 +48,7 @@ module.exports = class Wallet {
     });
     this.masterXprivkey = childExtkey.extkey;
 
-    this.dbService = new DbService(this.dbName, dirPath, network);
+    this.dbService = new DbService(this.dbName, dirPath, inMemoryDatabase);
     this.addrService = new AddressService(this.dbService);
     this.utxoService = new UtxoService(
         this.dbService, this.addrService, this.client, this);
@@ -856,7 +856,7 @@ module.exports = class Wallet {
             if (!userAddr) {
               // do nothing
             } else {
-              console.log('pubkey addr = ', relatedPubkeys[j], userAddr);
+              // console.log('pubkey addr = ', relatedPubkeys[j], userAddr);
               pubkeys.push(userAddr.pubkey);
             }
           }
@@ -904,7 +904,7 @@ module.exports = class Wallet {
                 isCompressed: true,
               },
             });
-            console.log('signatures add = ', pubkey, signatureRet.signature);
+            // console.log('signatures add = ', pubkey, signatureRet.signature);
             signatures.push({
               txid: txid,
               vout: vout,

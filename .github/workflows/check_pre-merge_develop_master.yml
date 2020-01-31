@@ -1,0 +1,39 @@
+name: master and develop check
+
+on: 
+  push:
+    branches:
+    - master
+    - develop
+  pull_request:
+    branches:
+    - master
+    - develop
+
+jobs:
+  e2e-test:
+    name: e2e-test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+    - name: init directory
+      run: |
+        mkdir node_modules
+        chmod 777 node_modules
+    - name: cache node modules
+      id: cache-node-modules
+      uses: actions/cache@v1
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+    - name: npm install
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
+      run: npm install
+    - name: integration test
+      uses: docker://cryptogarageinc/elements-testing:v0.18.1.3
+      with:
+        entrypoint: /github/workspace/.github/workflows/docker/test_entrypoint.sh
+    - name: after cleanup
+      run: sudo rm -rf bitcoind_datadir

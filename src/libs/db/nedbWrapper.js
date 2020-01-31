@@ -2,9 +2,14 @@ const Datastore = require('nedb-promises');
 
 // https://hajipy.net/2018/08/nedb-basic/
 module.exports = class NedbWrapper {
-  constructor(name = 'db', dirPath = './') {
+  constructor(name = 'db', dirPath = './', inMemoryOnly = true) {
     this.dbName = name;
-    this.datastore = Datastore.create(dirPath + `/${name}.db`);
+    const filepath = dirPath + `/${name}.db`;
+    this.datastore = Datastore.create({
+      filename: filepath,
+      inMemoryOnly: inMemoryOnly,
+      timestampData: (inMemoryOnly) ? false : true,
+    });
   };
 
   async createIndex(keyName, unique = true) {

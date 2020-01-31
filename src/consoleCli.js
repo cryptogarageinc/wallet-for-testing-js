@@ -326,8 +326,9 @@ const help = function() {
         configFile = __dirname + '/../' + configFile.substr(1);
       }
       const walletMgr = new WalletManager(configFile, dir, network, seed);
+      const inMemoryDB = false;
       const wallet = await walletMgr.createWallet(
-          userIndex, userPrefix, target);
+          userIndex, userPrefix, target, inMemoryDB);
       const consoleName = userPrefix + userIndex;
       const isConnect = await walletMgr.initialize(target);
       if (isConnect === false) {

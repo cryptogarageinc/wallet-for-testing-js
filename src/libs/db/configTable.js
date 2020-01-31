@@ -6,8 +6,8 @@ const KeyBlindCount = 'blindCount';
 const KeyTipBlockHeight = 'tipBlockHeight';
 
 module.exports = class ConfigTable {
-  constructor(name = 'db', dirPath = './') {
-    this.database = new NedbWrapper(`${name}_config`, dirPath);
+  constructor(name = 'db', dirPath = './', inMemoryOnly = true) {
+    this.database = new NedbWrapper(`${name}_config`, dirPath, inMemoryOnly);
   }
 
   async initialize(networkType = 'regtest') {

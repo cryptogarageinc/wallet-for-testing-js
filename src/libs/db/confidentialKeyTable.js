@@ -1,8 +1,8 @@
 const NedbWrapper = require('./nedbWrapper.js');
 
 module.exports = class ConfidentialKeyTable {
-  constructor(name = 'db', dirPath = './') {
-    this.database = new NedbWrapper(`${name}_cfdkey`, dirPath);
+  constructor(name = 'db', dirPath = './', inMemoryOnly = true) {
+    this.database = new NedbWrapper(`${name}_cfdkey`, dirPath, inMemoryOnly);
   };
 
   async initialize() {

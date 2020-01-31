@@ -1,11 +1,11 @@
-# wallet-for-testing
+# wallet-for-testing-js
 
 ## build
 npm install
 
 ## use library
 ```
-const WalletManager = require('wallet-for-testing');
+const WalletManager = require('wallet-for-testing-js');
 ```
 
 ## use console app

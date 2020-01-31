@@ -1,8 +1,8 @@
 const NedbWrapper = require('./nedbWrapper.js');
 
 module.exports = class UtxoTable {
-  constructor(name = 'db', dirPath = './') {
-    this.database = new NedbWrapper(`${name}_utxo`, dirPath);
+  constructor(name = 'db', dirPath = './', inMemoryOnly = true) {
+    this.database = new NedbWrapper(`${name}_utxo`, dirPath, inMemoryOnly);
   };
 
   async initialize() {

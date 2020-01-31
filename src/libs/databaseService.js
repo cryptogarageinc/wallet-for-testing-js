@@ -4,8 +4,8 @@ const ConfidentialKeyTable = require('./db/confidentialKeyTable.js');
 const UtxoTable = require('./db/utxoTable.js');
 const fs = require('fs');
 
-module.exports = class DatabaseAccessor {
-  constructor(name = 'db', dirPath = './') {
+module.exports = class DatabaseService {
+  constructor(name = 'db', dirPath = './', inMemoryOnly = true) {
     // initialize db dir
     try {
       fs.statSync(dirPath);
@@ -13,10 +13,10 @@ module.exports = class DatabaseAccessor {
       if (err.code !== 'ENOENT') throw err;
       fs.mkdirSync(dirPath);
     }
-    this.cfgTbl = new ConfigTable(name, dirPath);
-    this.addrTbl = new AddressTable(name, dirPath);
-    this.cfdKeyTbl = new ConfidentialKeyTable(name, dirPath);
-    this.utxoTbl = new UtxoTable(name, dirPath);
+    this.cfgTbl = new ConfigTable(name, dirPath, inMemoryOnly);
+    this.addrTbl = new AddressTable(name, dirPath, inMemoryOnly);
+    this.cfdKeyTbl = new ConfidentialKeyTable(name, dirPath, inMemoryOnly);
+    this.utxoTbl = new UtxoTable(name, dirPath, inMemoryOnly);
   };
 
   async initialize(network) {

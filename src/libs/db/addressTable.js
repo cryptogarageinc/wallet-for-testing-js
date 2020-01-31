@@ -1,8 +1,8 @@
 const NedbWrapper = require('./nedbWrapper.js');
 
 module.exports = class AddressTable {
-  constructor(name = 'db', dirPath = './') {
-    this.database = new NedbWrapper(`${name}_addr`, dirPath);
+  constructor(name = 'db', dirPath = './', inMemoryOnly = true) {
+    this.database = new NedbWrapper(`${name}_addr`, dirPath, inMemoryOnly);
   };
 
   async initialize() {

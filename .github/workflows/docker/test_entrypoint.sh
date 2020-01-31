@@ -1,8 +1,8 @@
 #!/bin/bash -u
 
 # while :; do sleep 10; done
-export WORKDIR_ROOT=root
-export WORK_DIR=wallet-test
+export WORKDIR_ROOT=github
+export WORK_DIR=workspace
 export WORKDIR_PATH=/${WORKDIR_ROOT}/${WORK_DIR}
 
 cd /${WORKDIR_ROOT}

@@ -73,9 +73,13 @@ const analyzeElementsConfigureFile = function(file, network) {
   return data;
 };
 
+// --------------------------------------------------------------------------------------
+// public
+// --------------------------------------------------------------------------------------
 module.exports = class WalletManager {
   constructor(nodeConfigFile, dirPath = './', network = 'regtest',
-      seed = '', masterXprivkey = '', englishMnemonic = '', passphrase = '', domainIndex = -1) {
+      seed = '', masterXprivkey = '', englishMnemonic = '', passphrase = '',
+      domainIndex = -1) {
     this.dirName = dirPath;
     this.walletList = {};
     this.masterXprivkey = masterXprivkey;
@@ -177,7 +181,8 @@ module.exports = class WalletManager {
     this.isShutdown = true;
   };
 
-  async createWallet(userIndex, userNamePrefix = 'user', targetNodeType = 'bitcoin') {
+  async createWallet(userIndex, userNamePrefix = 'user',
+      targetNodeType = 'bitcoin', inMemoryDatabase = true) {
     // wallet is btc or elements support.
     // (multi support is exist pubkey management risk.)
     const userName = `${targetNodeType}-${userNamePrefix}${userIndex}`;
@@ -187,7 +192,7 @@ module.exports = class WalletManager {
     }
     const walletObj = new Wallet(userNamePrefix, userIndex,
         this.dirName, this.network, this.xprivkey,
-        this.nodeConfigMap[targetNodeType], this);
+        this.nodeConfigMap[targetNodeType], this, inMemoryDatabase);
     await walletObj.initialize();
     if (!(targetNodeType in this.walletList)) {
       this.walletList[targetNodeType] = {};

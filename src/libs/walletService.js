@@ -873,7 +873,7 @@ module.exports = class Wallet {
           if (this.isElements) {
             // TODO priority is low.
           } else {
-            const hashtype = (addrType === 'p2sh-p2wpkh') ?
+            let hashtype = (addrType === 'p2sh-p2wpkh') ?
                 'p2wpkh' : addrType;
             hashtype = (addrType === 'p2sh-p2wsh') ? 'p2wsh' : addrType;
             // calc sighash

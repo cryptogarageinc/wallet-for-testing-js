@@ -8,9 +8,20 @@ npm install
 const WalletManager = require('wallet-for-testing-js');
 ```
 
-## use console app
+## use wallet console app
 ```
 node wallet-console.js
+```
+
+## use single console app
+- windows
+```
+debug_tx.bat xxxxx
+```
+
+- macos or linux
+```
+debug_tx.sh xxxxx
 ```
 
 ## test

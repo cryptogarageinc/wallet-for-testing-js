@@ -225,7 +225,7 @@ module.exports = class Wallet {
     }
     tx = await this.signRawTransactionWithWallet(tx.hex, false);
     const txid = await this.sendRawTransaction(tx.hex);
-    return {txid: txid, hex: tx.hex};
+    return {txid: txid, vout: 0, hex: tx.hex};
   }
 
   createRawTransaction(version = 2, locktime = 0, txin = [],
@@ -875,7 +875,7 @@ module.exports = class Wallet {
           } else {
             const hashtype = (addrType === 'p2sh-p2wpkh') ?
                 'p2wpkh' : addrType;
-            addrType = (addrType === 'p2sh-p2wsh') ? 'p2wsh' : addrType;
+            hashtype = (addrType === 'p2sh-p2wsh') ? 'p2wsh' : addrType;
             // calc sighash
             const hexData =
                 (addrInfo.pubkey) ? addrInfo.pubkey : addrInfo.script;

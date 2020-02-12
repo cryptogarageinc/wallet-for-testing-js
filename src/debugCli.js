@@ -462,6 +462,49 @@ const getpubkeyaddress = async function() {
   console.log(JSON.stringify(addrInfo, null, 2));
 };
 
+const getscriptaddress = async function() {
+// parameter: '<addrtype(p2pkh,p2wpkh,p2sh-p2wpkh)> <network> <privkey or pubkey>',
+  let addrtype = 'p2pkh';
+  if (process.argv.length < 4) {
+    addrtype = await readInput('addrtype > ');
+  } else {
+    addrtype = process.argv[3];
+  }
+  let network = 'regtest';
+  if (process.argv.length < 5) {
+    network = await readInput('network > ');
+  } else {
+    network = process.argv[4];
+  }
+  let isElements = false;
+  if ((network === 'liquidregtest') || (network === 'elementsregtest')) {
+    network = 'regtest';
+    isElements = true;
+  } else if (network === 'liquidv1') {
+    isElements = true;
+  } else if (network === '') {
+    network = 'regtest';
+  }
+
+  let script = '';
+  if (process.argv.length < 6) {
+    script = await readInput('script > ');
+  } else {
+    script = process.argv[5];
+  }
+
+  const addrInfo = cfdjs.CreateAddress({
+    isElements: isElements,
+    keyData: {
+      hex: script,
+      type: 'redeem_script',
+    },
+    network: network,
+    hashType: addrtype,
+  });
+  console.log(JSON.stringify(addrInfo, null, 2));
+};
+
 const getconfidentialaddress = async function() {
 // parameter: '<address> <blinding key>',
   let address = '';
@@ -537,6 +580,12 @@ const commandData = {
     alias: 'getpaddr',
     parameter: '<addrtype(p2pkh,p2wpkh,p2sh-p2wpkh)> <network(mainnet,testnet,regtest,liquidv1,liquidregtest)> <privkey or pubkey>',
     function: getpubkeyaddress,
+  },
+  getscriptaddress: {
+    name: 'getscriptaddress',
+    alias: 'getsaddr',
+    parameter: '<addrtype(p2sh,p2wsh,p2sh-p2wsh)> <network(mainnet,testnet,regtest,liquidv1,liquidregtest)> <privkey or pubkey>',
+    function: getscriptaddress,
   },
   getconfidentialaddress: {
     name: 'getconfidentialaddress',

@@ -195,7 +195,7 @@ const parsedescriptor = async function() {
     network = process.argv[3];
   }
   let isElements = false;
-  if (network === 'liquidregtest') {
+  if ((network === 'liquidregtest') || (network === 'elementsregtest')) {
     network = 'regtest';
     isElements = true;
   } else if (network === 'liquidv1') {
@@ -409,6 +409,90 @@ const estimatefee = async function() {
   console.log('feeInfo =', feeInfo);
 };
 
+const getpubkeyaddress = async function() {
+// parameter: '<addrtype(p2pkh,p2wpkh,p2sh-p2wpkh)> <network> <privkey or pubkey>',
+  let addrtype = 'p2pkh';
+  if (process.argv.length < 4) {
+    addrtype = await readInput('addrtype > ');
+  } else {
+    addrtype = process.argv[3];
+  }
+  let network = 'regtest';
+  if (process.argv.length < 5) {
+    network = await readInput('network > ');
+  } else {
+    network = process.argv[4];
+  }
+  let isElements = false;
+  if ((network === 'liquidregtest') || (network === 'elementsregtest')) {
+    network = 'regtest';
+    isElements = true;
+  } else if (network === 'liquidv1') {
+    isElements = true;
+  } else if (network === '') {
+    network = 'regtest';
+  }
+
+  let key = '';
+  if (process.argv.length < 6) {
+    key = await readInput('pubkey or privkey > ');
+  } else {
+    key = process.argv[5];
+  }
+
+  let pubkey = key;
+  if (key.length === 33 || key.length === 66) {
+    // pubkey
+  } else {
+    // privkey
+    pubkey = cfdjs.GetPubkeyFromPrivkey({
+      privkey: key,
+    }).pubkey;
+  }
+
+  const addrInfo = cfdjs.CreateAddress({
+    isElements: isElements,
+    keyData: {
+      hex: pubkey,
+      type: 'pubkey',
+    },
+    network: network,
+    hashType: addrtype,
+  });
+  console.log(JSON.stringify(addrInfo, null, 2));
+};
+
+const getconfidentialaddress = async function() {
+// parameter: '<address> <blinding key>',
+  let address = '';
+  if (process.argv.length < 4) {
+    address = await readInput('address > ');
+  } else {
+    address = process.argv[3];
+  }
+  let key = '';
+  if (process.argv.length < 5) {
+    key = await readInput('confidentialKey or blindingKey > ');
+  } else {
+    key = process.argv[4];
+  }
+  let cKey = key;
+  if (key.length === 33 || key.length === 66) {
+    // pubkey
+  } else {
+    // privkey
+    cKey = cfdjs.GetPubkeyFromPrivkey({
+      privkey: key,
+    }).pubkey;
+  }
+
+  const ctAddrInfo = cfdjs.GetConfidentialAddress({
+    unblindedAddress: address,
+    key: cKey,
+  });
+  console.log(JSON.stringify(ctAddrInfo, null, 2));
+};
+
 // -----------------------------------------------------------------------------
 
 const commandData = {
@@ -447,6 +531,18 @@ const commandData = {
     alias: 'extkey',
     parameter: '<descriptor or seed> <derivePath> <network>',
     function: createextkey,
+  },
+  getpubkeyaddress: {
+    name: 'getpubkeyaddress',
+    alias: 'getpaddr',
+    parameter: '<addrtype(p2pkh,p2wpkh,p2sh-p2wpkh)> <network(mainnet,testnet,regtest,liquidv1,liquidregtest)> <privkey or pubkey>',
+    function: getpubkeyaddress,
+  },
+  getconfidentialaddress: {
+    name: 'getconfidentialaddress',
+    alias: 'getctaddr',
+    parameter: '<address> <confidentialKey or blindingKey>',
+    function: getconfidentialaddress,
   },
   estimatefee: {
     name: 'estimatefee',

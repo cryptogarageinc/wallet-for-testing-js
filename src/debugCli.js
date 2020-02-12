@@ -226,6 +226,61 @@ const parsedescriptor = async function() {
   console.log(JSON.stringify(descriptorInfo, null, 2));
 };
 
+const parsedescriptors = async function() {
+  let network = 'regtest';
+  if (process.argv.length < 4) {
+    network = await readInput('network > ');
+  } else {
+    network = process.argv[3];
+  }
+  let isElements = false;
+  if ((network === 'liquidregtest') || (network === 'elementsregtest')) {
+    network = 'regtest';
+    isElements = true;
+  } else if (network === 'liquidv1') {
+    isElements = true;
+  } else if (network === '') {
+    network = 'regtest';
+  }
+
+  let descriptor = '';
+  if (process.argv.length < 5) {
+    descriptor = await readInput('descriptor > ');
+  } else {
+    descriptor = process.argv[4];
+  }
+  console.log(descriptor);
+  // if ((path === '\'\'') || (path === '""'))
+
+  let minValue = '';
+  if (process.argv.length < 6) {
+    minValue = await readInput('minValue > ');
+  } else {
+    minValue = process.argv[5];
+  }
+  minValue = Number(minValue);
+
+  let maxValue = '';
+  if (process.argv.length < 7) {
+    maxValue = await readInput('maxValue > ');
+  } else {
+    maxValue = process.argv[6];
+  }
+  maxValue = Number(maxValue);
+
+  const descriptors = [];
+  for (let index = minValue; index <= maxValue; ++index) {
+    const descriptorInfo = cfdjs.ParseDescriptor({
+      isElements: isElements,
+      descriptor: descriptor,
+      network: network,
+      bip32DerivationPath: `${index}`,
+    });
+    descriptors.push(descriptorInfo);
+  }
+  console.log(JSON.stringify(descriptors, null, 2));
+};
+
 const getextkeyinfo = async function() {
   let extkey = '';
   if (process.argv.length < 4) {
@@ -562,6 +617,12 @@ const commandData = {
     alias: 'pdesc',
     parameter: '<network(mainnet,testnet,regtest,liquidv1,liquidregtest)> <descriptor> [<derivePath>]',
     function: parsedescriptor,
+  },
+  parsedescriptors: {
+    name: 'parsedescriptors',
+    alias: 'pdescs',
+    parameter: '<network(mainnet,testnet,regtest,liquidv1,liquidregtest)> <descriptor> <minValue> <maxValue>',
+    function: parsedescriptors,
   },
   getextkeyinfo: {
     name: 'getextkeyinfo',

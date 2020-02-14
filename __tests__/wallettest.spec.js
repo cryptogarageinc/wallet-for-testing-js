@@ -3,6 +3,8 @@ const fs = require('fs');
 const cfd = require('cfd-js');
 // const path = require('path');
 
+const isDebug = true;
+
 const network = 'regtest';
 const configFilePath = __dirname + '/bitcoin.conf';
 const testSeed = '0e09fbdd00e575b654d480ae979f24da45ef4dee645c7dc2e3b30b2e093d38dda0202357754cc856f8920b8e31dd02e9d34f6a2b20dc825c6ba90f90009085e1';
@@ -39,8 +41,8 @@ beforeAll(async () => {
   walletMgr.initialize('bitcoin');
 
   console.log('initialize wallet');
-  btcWallet1 = await walletMgr.createWallet(1, 'testuser', 'bitcoin');
-  btcWallet2 = await walletMgr.createWallet(2, 'testuser', 'bitcoin');
+  btcWallet1 = await walletMgr.createWallet(1, 'testuser', 'bitcoin', !isDebug);
+  btcWallet2 = await walletMgr.createWallet(2, 'testuser', 'bitcoin', !isDebug);
   // btcWallet3 = await walletMgr.createWallet(3, 'testuser', 'bitcoin');
 });
 
@@ -228,4 +230,91 @@ describe('wallet test', () => {
     expect(wData12.spent).toBe(true);
     expect(wData22.spent).toBe(true);
   });
+
+  it('sendscriptaddress test', async () => {
+    await btcWallet2.generate(100); // for using coinbase utxo
+    await btcWallet1.forceUpdateUtxoData();
+
+    btcWallet1.estimateSmartFee(6, 'ECONOMICAL');
+
+    const addr1 = await btcWallet1.getNewAddress('p2wpkh', 'label1-1');
+    const pubkeyHash = addr1.lockingScript.substring(2);
+    const script = cfd.CreateScript({
+      items: [addr1.pubkey, 'OP_CHECKSIG'],
+    });
+    const addr = await btcWallet1.getScriptAddress(script.hex, 'p2wsh', 'label1', [addr1.pubkey]);
+    // send to 1BTC
+    const amount1 = 100000000;
+    const txout1 = {address: addr.address, amount: amount1};
+    let tx1 = btcWallet1.createRawTransaction(2, 0, [], [txout1]);
+    tx1 = await btcWallet1.fundRawTransaction(tx1.hex);
+    tx1 = await btcWallet1.signRawTransactionWithWallet(tx1.hex, false);
+    const txid1 = await btcWallet1.sendRawTransaction(tx1.hex);
+    const decTx1 = btcWallet1.decodeRawTransaction(tx1.hex);
+    console.log('[script] sendRawTransaction1 -> ', {txid: txid1, hex: tx1.hex});
+    expect(decTx1.vout[0].value).toBe(amount1);
+
+    await btcWallet2.generate(1); // for using coinbase utxo
+    await btcWallet1.forceUpdateUtxoData();
+
+    const wData11 = await btcWallet1.getWalletTxData(txid1, 0);
+    expect(wData11.spent).toBe(false);
+
+    const txin2 = {txid: txid1, vout: 0};
+    const txout2 = {address: addr1.address, amount: amount1};
+    let tx2 = btcWallet1.createRawTransaction(2, 0, [txin2], [txout2]);
+    tx2 = await btcWallet1.fundRawTransaction(tx2.hex);
+    const decTx = btcWallet1.decodeRawTransaction(tx2.hex);
+    const prevtxs = [];
+    for (let i = 0; i < decTx.vin.length; ++i) {
+      if (decTx.vin[i]) {
+        const tempTxid = decTx.vin[i].txid;
+        const tempVout = decTx.vin[i].vout;
+        if (tempTxid === txid1 && tempVout === 0) {
+          continue;
+        }
+        prevtxs.push({txid: tempTxid, vout: tempVout});
+      }
+    }
+    tx2 = await btcWallet1.signRawTransactionWithWallet(
+        tx2.hex, false, prevtxs);
+    const sigs1 = await btcWallet1.getSignatures(
+        tx2.hex, false, [{txid: txid1, vout: 0}]);
+    // console.log('[multi] sigs1 -> ', sigs1);
+    // console.log('[multi] sigs2 -> ', sigs2);
+
+    tx2 = cfd.AddSign({
+      tx: tx2.hex,
+      txin: {
+        txid: txid1,
+        vout: 0,
+        isWitness: true,
+        signParams: [
+          {
+            hex: sigs1.signatures[0].signature,
+            type: 'sign',
+            derEncode: true,
+            sighashType: 'all',
+            sighashAnyoneCanPay: false,
+          },
+          {
+            hex: script.hex,
+            type: 'redeem_script',
+          },
+        ],
+      },
+    });
+    const txid2 = await btcWallet1.sendRawTransaction(tx2.hex);
+    console.log('[multi] sendRawTransaction2 -> ', {txid: txid2, hex: tx2.hex});
+
+    await btcWallet2.generate(1); // for using coinbase utxo
+    await btcWallet1.forceUpdateUtxoData();
+
+    const wData12 = await btcWallet1.getWalletTxData(txid1, 0);
+    // console.log('[multi] wData12 -> ', wData12);
+    // console.log('[multi] wData22 -> ', wData22);
+
+    expect(wData12.spent).toBe(true);
+  });
+
 });

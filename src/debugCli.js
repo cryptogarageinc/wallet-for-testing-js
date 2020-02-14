@@ -645,7 +645,7 @@ const commandData = {
   getscriptaddress: {
     name: 'getscriptaddress',
     alias: 'getsaddr',
-    parameter: '<addrtype(p2sh,p2wsh,p2sh-p2wsh)> <network(mainnet,testnet,regtest,liquidv1,liquidregtest)> <privkey or pubkey>',
+    parameter: '<addrtype(p2sh,p2wsh,p2sh-p2wsh)> <network(mainnet,testnet,regtest,liquidv1,liquidregtest)> <scriptHex>',
     function: getscriptaddress,
   },
   getconfidentialaddress: {

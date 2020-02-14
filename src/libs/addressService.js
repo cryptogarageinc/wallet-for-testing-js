@@ -128,7 +128,9 @@ module.exports = class AddressService {
       }
     } catch (error) {
       // not multisig
-      console.log(error);
+      if (error.message !== 'OP_CHCKMULTISIG(OP_CHECKMULTISIGVERIFY) not found in redeem script.') {
+        console.log(error);
+      }
     }
     if (descriptor === '') {
       descriptor = `addr(${addrInfo.address})`;

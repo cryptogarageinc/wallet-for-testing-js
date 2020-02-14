@@ -381,11 +381,11 @@ module.exports = class Wallet {
         script, addrType, label, pubkeys);
   }
 
-  async getScriptAddress(script, addressType = 'p2wsh', label = '') {
+  async getScriptAddress(script, addressType = 'p2wsh', label = '', relatedPubkeys = []) {
     let addrType = (addressType === '') ? this.addressType : addressType;
     addrType = this.convertAddressType(addressType, true);
     return await this.addrService.getScriptAddress(
-        script, addrType, label);
+        script, addrType, label, relatedPubkeys);
   }
 
   async dumpPrivkey(address = '', pubkey = '') {
@@ -637,6 +637,7 @@ module.exports = class Wallet {
               txid: txid,
               vout: vout,
               amount: utxoData.amount,
+              address: utxoData.address,
               redeemScript: utxoData.lockingScript,
               descriptor: utxoData.descriptor,
             });
@@ -659,6 +660,7 @@ module.exports = class Wallet {
         },
       };
     }
+    // console.log('FundRawTransaction : ', reqJson);
     const result = cfd.FundRawTransaction(reqJson);
     return {hex: result.hex, fee: result.feeAmount};
   }

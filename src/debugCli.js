@@ -187,6 +187,28 @@ const decodescript = async function() {
   }
 };
 
+const convertscript = async function() {
+  let script = '';
+  if (process.argv.length < 4) {
+    script = await readInput('script > ');
+  } else if (process.argv.length == 4) {
+    script = process.argv[3];
+  } else {
+    for (let index = 3; index < process.argv.length; ++index) {
+      if (index > 3) {
+          script += ' ';
+      }
+      script += process.argv[index];
+    }
+  }
+
+  const items = script.split(' ');
+  const scriptinfo = cfdjs.CreateScript({
+    items: items,
+  });
+  console.log('\n', 'script: ', scriptinfo.hex);
+};
+
 const parsedescriptor = async function() {
   let network = 'regtest';
   if (process.argv.length < 4) {
@@ -603,8 +625,14 @@ const commandData = {
   decodescript: {
     name: 'decodescript',
     alias: 'script',
-    parameter: '<script> [<show string>]',
+    parameter: '<script> [<show string (true/false)>]',
     function: decodescript,
+  },
+  convertscript: {
+    name: 'convertscript',
+    alias: 'cscript',
+    parameter: '<script args>',
+    function: convertscript,
   },
   getaddressinfo: {
     name: 'getaddressinfo',

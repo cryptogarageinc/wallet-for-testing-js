@@ -199,7 +199,7 @@ const convertscript = async function() {
   } else {
     for (let index = 3; index < process.argv.length; ++index) {
       if (index > 3) {
-          script += ' ';
+        script += ' ';
       }
       script += process.argv[index];
     }

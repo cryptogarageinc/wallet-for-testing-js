@@ -105,9 +105,12 @@ const decoderawtransaction = async function() {
   }
   let decTx = '';
   try {
+    const liquidNetwork = ((network === 'regtest') || (network === 'testnet')) ?
+        'regtest' : 'liquidv1';
     decTx = cfdjs.ElementsDecodeRawTransaction({
       hex: tx,
       mainchainNetwork: network,
+      network: liquidNetwork,
     });
     console.log(JSON.stringify(decTx, null, 2));
     return;

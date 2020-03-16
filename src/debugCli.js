@@ -306,19 +306,47 @@ const parsedescriptors = async function() {
   console.log(JSON.stringify(descriptors, null, 2));
 };
 
-const getextkeyinfo = async function() {
-  let extkey = '';
+const mnemonictoseed = async function() {
+  let mnemonic = '';
   if (process.argv.length < 4) {
-    extkey = await readInput('extkey > ');
+    mnemonic = await readInput('mnemonic > ');
   } else {
-    extkey = process.argv[3];
+    mnemonic = process.argv[3];
   }
-  let network = 'regtest';
+  let passphrase = '';
   if (process.argv.length < 5) {
+    passphrase = await readInput('passphrase > ');
+  } else {
+    passphrase = process.argv[4];
+  }
+
+  const mnemonicItems = mnemonic.split(' ');
+  console.log(`mnemonic = `, mnemonicItems);
+  console.log(`passphrase = [${passphrase}]`);
+
+  const result = cfdjs.ConvertMnemonicToSeed({
+    mnemonic: mnemonicItems,
+    passphrase: passphrase,
+    strict_check: true,
+    language: 'en',
+  });
+  console.log(`seed = ${result.seed}`);
+};
+
+const getextkeyinfo = async function() {
+  let network = 'regtest';
+  if (process.argv.length < 4) {
     network = await readInput('network > ');
   } else {
-    network = process.argv[4];
+    network = process.argv[3];
   }
+  let extkey = '';
+  if (process.argv.length < 5) {
+    extkey = await readInput('extkey > ');
+  } else {
+    extkey = process.argv[4];
+  }
+
   let isCompressKeyStr = 'true';
   if (process.argv.length < 5) {
     isCompressKeyStr = await readInput('isCompressKey > ');
@@ -654,6 +682,12 @@ const commandData = {
     alias: 'pdescs',
     parameter: '<network(mainnet,testnet,regtest,liquidv1,liquidregtest)> <descriptor> <minValue> <maxValue>',
     function: parsedescriptors,
+  },
+  mnemonictoseed: {
+    name: 'mnemonictoseed',
+    alias: 'mnemonic',
+    parameter: '<mnemonic> <passphrase>',
+    function: mnemonictoseed,
   },
   getextkeyinfo: {
     name: 'getextkeyinfo',

@@ -11,12 +11,13 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "cfd-js": "git+https://github.com/cryptogarageinc/cfd-js.git#v0.0.14",
+    "cfd-js": "git+https://github.com/cryptogarageinc/cfd-js.git#v0.0.17",
     "ini": "*",
     "nedb-promises": "^4.0.1",
     "node-json-rpc2": "git+https://github.com/ko-matsu/node-json-rpc2.git#async_minimum"
   },
   "devDependencies": {
+    "acorn": "^5.7.4",
     "eslint": "^6.8.0",
     "eslint-config-google": "^0.14.0",
     "jest": "^24.9.0"

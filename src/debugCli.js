@@ -644,6 +644,72 @@ const getconfidentialaddress = async function() {
   console.log(JSON.stringify(ctAddrInfo, null, 2));
 };
 
+const generatekeywithmnemonic = async function() {
+// parameter: '<network(mainnet,testnet)> <passphrase> <derivePath> <mnemonic ...>',
+  let network = '';
+  if (process.argv.length < 4) {
+    network = await readInput('network > ');
+  } else {
+    network = process.argv[3];
+  }
+  let passphrase = '';
+  if (process.argv.length < 5) {
+    passphrase = await readInput('passphrase > ');
+  } else {
+    passphrase = process.argv[4];
+  }
+  let derivePath = '';
+  if (process.argv.length < 6) {
+    derivePath = await readInput('derivePath > ');
+  } else {
+    derivePath = process.argv[5];
+  }
+
+  const mnemonicList = [];
+  let mnemonic = '';
+  if (process.argv.length < 7) {
+    mnemonic = await readInput('mnemonic > ');
+    mnemonicList.push(mnemonic);
+  } else {
+    for (let idx = 6; idx < process.argv.length; ++idx) {
+      mnemonic = process.argv[idx];
+      mnemonicList.push(mnemonic);
+    }
+  }
+
+  for (let idx = 0; idx < mnemonicList.length; ++idx) {
+    mnemonic = mnemonicList[idx];
+    const mnemonicItems = mnemonic.split(' ');
+
+    const seed = cfdjs.ConvertMnemonicToSeed({
+      mnemonic: mnemonicItems,
+      passphrase: passphrase,
+      strict_check: true,
+      language: 'en',
+    });
+    const masterxpriv = cfdjs.CreateExtkeyFromSeed({
+      seed: seed.seed,
+      network: network,
+      extkeyType: 'extPrivkey',
+    });
+    const rootxpriv = cfdjs.CreateExtkeyFromParentPath({
+      extkey: masterxpriv.extkey,
+      network: network,
+      extkeyType: 'extPrivkey',
+      path: derivePath,
+    });
+    const rootxpub = cfdjs.CreateExtPubkey({
+      extkey: rootxpriv.extkey,
+      network: network,
+    });
+    console.log(`mnemonic    = "${mnemonic}"`);
+    console.log(`seed        = ${seed.seed}`);
+    console.log(`masterXpriv = ${masterxpriv.extkey}`);
+    console.log(`Xpriv       = ${rootxpriv.extkey}`);
+    console.log(`Xpub        = ${rootxpub.extkey}\n`);
+  }
+};
+
 // -----------------------------------------------------------------------------
 
 const commandData = {
@@ -730,6 +796,12 @@ const commandData = {
     alias: 'genkey',
     parameter: '[<network> [<wif> [<isCompressed>]]]',
     function: generatekey,
+  },
+  generatekeywithmnemonic: {
+    name: 'generatekeywithmnemonic',
+    alias: 'genwn',
+    parameter: '<network(mainnet,testnet)> <passphrase> <derivePath> <mnemonic ...>',
+    function: generatekeywithmnemonic,
   },
 };
 

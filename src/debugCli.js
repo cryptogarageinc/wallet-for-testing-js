@@ -136,12 +136,14 @@ const getaddressinfo = async function() {
     address = process.argv[3];
   }
   let confidentialKey = '';
+  let unblindedAddress = '';
   try {
     const ckey = cfdjs.GetUnblindedAddress({
       confidentialAddress: address,
     });
     confidentialKey = ckey.confidentialKey;
     address = ckey.unblindedAddress;
+    unblindedAddress = ckey.unblindedAddress;
   } catch (err) {
     // console.log(err);
   }
@@ -153,6 +155,7 @@ const getaddressinfo = async function() {
     });
     if (confidentialKey !== '') {
       addrinfo['confidential_key'] = confidentialKey;
+      addrinfo['address'] = unblindedAddress;
     }
     console.log(JSON.stringify(addrinfo, null, 2));
     return;
@@ -160,7 +163,7 @@ const getaddressinfo = async function() {
     // console.log(err);
   }
 
-  const addrinfo = cfdjs.GetAddressInfo({
+  let addrinfo = cfdjs.GetAddressInfo({
     address: address,
     isElements: false,
   });

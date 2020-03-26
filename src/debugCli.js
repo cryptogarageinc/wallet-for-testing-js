@@ -805,6 +805,175 @@ const generatekeywithmnemonic = async function() {
   }
 };
 
+const mnemonictoblindtx = async function() {
+// parameter: '<mnemonic ...>',
+  let network = '';
+  if (process.argv.length < 4) {
+    network = await readInput('network > ');
+  } else {
+    network = process.argv[3];
+  }
+  let passphrase = '';
+  if (process.argv.length < 5) {
+    passphrase = await readInput('passphrase > ');
+  } else {
+    passphrase = process.argv[4];
+  }
+  let derivePath = '';
+  if (process.argv.length < 6) {
+    derivePath = await readInput('derivePath > ');
+  } else {
+    derivePath = process.argv[5];
+  }
+
+  const mnemonicList = [];
+  let mnemonic = '';
+  if (process.argv.length < 7) {
+    mnemonic = await readInput('mnemonic > ');
+    mnemonicList.push(mnemonic);
+  } else {
+    for (let idx = 6; idx < process.argv.length; ++idx) {
+      mnemonic = process.argv[idx];
+      mnemonicList.push(mnemonic);
+    }
+  }
+
+  const mnemonicArgList = [];
+  for (let idx = 0; idx < mnemonicList.length; ++idx) {
+    mnemonic = mnemonicList[idx];
+    if (mnemonic.indexOf(' ') === -1) {
+      mnemonicArgList.push(mnemonic);
+    } else {
+      const mnemonicItems = mnemonic.split(' ');
+      for (let i = 0; i < mnemonicItems.length; ++i) {
+        mnemonicArgList.push(mnemonicItems[i]);
+      }
+    }
+  }
+
+  const lqNetwork = (network === 'mainnet') ? 'liquidv1' : 'regtest';
+  const seed = cfdjs.ConvertMnemonicToSeed({
+    mnemonic: mnemonicArgList,
+    passphrase: passphrase,
+    strict_check: true,
+    language: 'en',
+  });
+  const masterxpriv = cfdjs.CreateExtkeyFromSeed({
+    seed: seed.seed,
+    network: network,
+    extkeyType: 'extPrivkey',
+  });
+  let extkeys = [];
+  let privkeys = [];
+  let pubkeys = [];
+  let ctKey = [];
+  let ctBlindKey = [];
+  let addrs = [];
+  let ctadrs = [];
+  for (let i = 0; i < 4; ++i) {
+    for (let j = 0; j < 2; ++j) {
+      const xpriv = cfdjs.CreateExtkeyFromParentPath({
+        extkey: masterxpriv.extkey,
+        network: network,
+        extkeyType: 'extPrivkey',
+        path: derivePath + '/' + j + '/' + i,
+      });
+      const priv = cfdjs.GetPrivkeyFromExtkey({
+        extkey: xpriv.extkey,
+        network: network,
+        wif: true,
+        isCompressed: false,
+      });
+      const priv3 = cfdjs.GetPrivkeyFromExtkey({
+        extkey: xpriv.extkey,
+        network: network,
+        wif: true,
+        isCompressed: true,
+      });
+      const pub = cfdjs.GetPubkeyFromPrivkey({
+        privkey: priv.privkey,
+        isCompressed: false,
+      });
+      let privkeyHex = cfdjs.GetPrivkeyFromWif({
+        wif: priv.privkey,
+      });
+      const pub2 = cfdjs.GetPubkeyFromPrivkey({
+        privkey: priv3.privkey,
+        isCompressed: true,
+      });
+      const priv2 = cfdjs.GetPrivkeyWif({
+        hex: privkeyHex.hex,
+        network: 'testnet',
+        isCompressed: false,
+      });
+      const addr1 = cfdjs.CreateAddress({
+        keyData: {
+          hex: pub.pubkey,
+          type: 'pubkey',
+        },
+        network: lqNetwork,
+        hashType: 'p2pkh',
+        isElements: true,
+      });
+      const addr2 = cfdjs.CreateAddress({
+        keyData: {
+          hex: pub.pubkey,
+          type: 'pubkey',
+        },
+        network: lqNetwork,
+        hashType: 'p2sh-p2wpkh',
+        isElements: true,
+      });
+      const addr3 = cfdjs.CreateAddress({
+        keyData: {
+          hex: pub.pubkey,
+          type: 'pubkey',
+        },
+        network: lqNetwork,
+        hashType: 'p2wpkh',
+        isElements: true,
+      });
+
+      if (j === 0) {
+        console.log(`xpriv   [${i}] = ${xpriv.extkey}`);
+        console.log(`priv    [${i}] = ${priv.privkey}`);
+        console.log(`privHex [${i}] = ${privkeyHex.hex}`);
+        console.log(`pub     [${i}] = ${pub.pubkey}`);
+        console.log(`AddrPkh [${i}] = ${addr1.address}`);
+        console.log(`AddrShWp[${i}] = ${addr2.address}`);
+        console.log(`AddrWpkh[${i}] = ${addr3.address}`);
+        extkeys.push(xpriv.extkey);
+        privkeys.push({wif: priv.privkey, hex: privkeyHex.hex});
+        pubkeys.push(pub.pubkey);
+        addrs.push({legacy: addr1.address, segwit: addr2.address, bech32: addr3.address});
+      } else {
+        console.log(`blindKey[${i}] = ${privkeyHex.hex}`);
+        console.log(`ctKey   [${i}] = ${pub.pubkey}`);
+        console.log(`ctKeyCmp[${i}] = ${pub2.pubkey}`);
+        ctBlindKey.push(privkeyHex.hex);
+        ctKey.push(pub.pubkey);
+
+        const ctadr1 = cfdjs.GetConfidentialAddress({
+          unblindedAddress: addrs[i].legacy,
+          key: pub2.pubkey,
+        });
+        const ctadr2 = cfdjs.GetConfidentialAddress({
+          unblindedAddress: addrs[i].segwit,
+          key: pub2.pubkey,
+        });
+        const ctadr3 = cfdjs.GetConfidentialAddress({
+          unblindedAddress: addrs[i].bech32,
+          key: pub2.pubkey,
+        });
+        console.log(`CAdrPkh [${i}] = ${ctadr1.confidentialAddress}`);
+        console.log(`CAdrShWp[${i}] = ${ctadr2.confidentialAddress}`);
+        console.log(`CAdrWpkh[${i}] = ${ctadr3.confidentialAddress}`);
+        ctadrs.push({legacy: ctadr1.confidentialAddress, segwit: ctadr2.confidentialAddress, bech32: ctadr3.confidentialAddress});
+      }
+    }
+  }
+};
+
 // -----------------------------------------------------------------------------
 
 const commandData = {
@@ -903,6 +1072,12 @@ const commandData = {
     alias: 'genwn',
     parameter: '<network(mainnet,testnet)> <passphrase> <derivePath> <mnemonic ...>',
     function: generatekeywithmnemonic,
+  },
+  mnemonictoblindtx: {
+    name: 'mnemonictoblindtx',
+    alias: 'ledger',
+    parameter: '<mnemonic ...>',
+    function: mnemonictoblindtx,
   },
 };
 

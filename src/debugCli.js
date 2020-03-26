@@ -1,6 +1,7 @@
 // UTF-8
 'use strict';
 const cfdjs = require('cfd-js');
+const fs = require('fs');
 
 // const toSatoshiAmount = function(amount) {
 //   return Number(amount * 100000000);
@@ -96,7 +97,6 @@ const decoderawtransactionFromFile = async function() {
   }
   if (network === '') network = 'regtest';
 
-  let tx = '';
   let filePath = '';
   if (process.argv.length < 5) {
     filePath = await readInput('filePath > ');
@@ -104,10 +104,8 @@ const decoderawtransactionFromFile = async function() {
     filePath = process.argv[4];
   }
 
-  // FIXME ファイルからの読み込み
-  // trim
-
   let decTx = '';
+  let tx = fs.readFileSync(filePath, 'utf-8').toString().trim();
   try {
     const liquidNetwork = ((network === 'regtest') || (network === 'testnet')) ?
         'regtest' : 'liquidv1';
@@ -982,6 +980,12 @@ const commandData = {
     alias: 'dectx',
     parameter: '<network> <tx>',
     function: decoderawtransaction,
+  },
+  decoderawtransaction_readfile: {
+    name: 'decoderawtransaction_readfile',
+    alias: 'dectxrf',
+    parameter: '<network> <filePath>',
+    function: decoderawtransactionFromFile,
   },
   decodescript: {
     name: 'decodescript',

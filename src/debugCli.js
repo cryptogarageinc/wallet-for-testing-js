@@ -433,6 +433,7 @@ const getextkeyinfo = async function() {
   } else {
     network = process.argv[3];
   }
+  if (network === 'liquidv1') network = 'mainnet';
   let extkey = '';
   if (process.argv.length < 5) {
     extkey = await readInput('extkey > ');
@@ -441,14 +442,14 @@ const getextkeyinfo = async function() {
   }
 
   let isCompressKeyStr = 'true';
-  if (process.argv.length < 5) {
+  if (process.argv.length < 6) {
     isCompressKeyStr = await readInput('isCompressKey > ');
   } else {
-    isCompressKeyStr = process.argv[4];
+    isCompressKeyStr = process.argv[5];
   }
   const isCompressKey = (isCompressKeyStr !== 'false');
 
-  const extkeyInfo = cfdjs.GetExtkeyInfo({
+  let extkeyInfo = cfdjs.GetExtkeyInfo({
     extkey: extkey,
   });
 
@@ -472,10 +473,17 @@ const getextkeyinfo = async function() {
 
   let pubkey = undefined;
   try {
-    pubkey = cfdjs.GetPubkeyFromExtkey({
-      extkey: extkey,
-      network: network,
-    });
+    if (privkey !== undefined) {
+      pubkey = cfdjs.GetPubkeyFromPrivkey({
+        privkey: privkey['hex'],
+        isCompressed: isCompressKey,
+      });
+    } else {
+      pubkey = cfdjs.GetPubkeyFromExtkey({
+        extkey: extkey,
+        network: network,
+      });
+    }
   } catch (err) {
   }
 

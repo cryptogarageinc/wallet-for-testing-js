@@ -2,7 +2,6 @@ const DbService = require('./databaseService.js');
 const AddressService = require('./addressService.js');
 const UtxoService = require('./utxoService.js');
 const RpcClient = require('./rpc-client/jsonrpcClient.js');
-const cfd = require('cfd-js');
 
 module.exports = class Wallet {
   constructor(userNamePrefix, userIndex, dirPath, network,
@@ -17,6 +16,7 @@ module.exports = class Wallet {
     this.nodeConfig = nodeConfig;
     this.masterXprivkey = masterXprivkey; // xpriv(m/44'/(nettype)')
     this.manager = manager;
+    this.cfd = this.manager.getCfd();
 
     const conn = RpcClient.createConnection(nodeConfig.host,
         nodeConfig.port, nodeConfig.user, nodeConfig.pass, this.dbName);
@@ -40,7 +40,7 @@ module.exports = class Wallet {
     }
     const extPath = `${userIndex}h`;
     // console.log(`bip44 = ${bip44}, nettypeIndex = ${nettypeIndexStr}`);
-    const childExtkey = cfd.CreateExtkeyFromParentPath({
+    const childExtkey = this.cfd.CreateExtkeyFromParentPath({
       extkey: masterXprivkey,
       network: keyNetwork,
       extkeyType: 'extPrivkey',
@@ -49,7 +49,7 @@ module.exports = class Wallet {
     this.masterXprivkey = childExtkey.extkey;
 
     this.dbService = new DbService(this.dbName, dirPath, inMemoryDatabase);
-    this.addrService = new AddressService(this.dbService);
+    this.addrService = new AddressService(this.dbService, this.cfd);
     this.utxoService = new UtxoService(
         this.dbService, this.addrService, this.client, this);
     this.estimateMode = 'CONSERVATIVE';
@@ -59,6 +59,10 @@ module.exports = class Wallet {
     this.gapLimit = 20;
     this.addressType = 'p2wpkh';
   };
+
+  getCfd() {
+    return this.cfd;
+  }
 
   async initialize() {
     let ret = await this.dbService.initialize();
@@ -232,7 +236,7 @@ module.exports = class Wallet {
       txout = [], fee = {asset: '', amount: 0}) {
     let tx;
     if (this.isElements) {
-      tx = cfd.ElementsCreateRawTransaction({
+      tx = this.cfd.ElementsCreateRawTransaction({
         'version': 2,
         'locktime': 0,
         'txins': [],
@@ -246,7 +250,7 @@ module.exports = class Wallet {
         'fee': fee,
       });
     } else {
-      tx = cfd.CreateRawTransaction({
+      tx = this.cfd.CreateRawTransaction({
         version: version,
         locktime: locktime,
         txins: txin,
@@ -281,7 +285,7 @@ module.exports = class Wallet {
     let ret = await this.addrService.getAddressInfo(address);
     if (!ret) {
       // empty, convert address with cfd.
-      ret = cfd.GetAddressInfo({
+      ret = this.cfd.GetAddressInfo({
         address: address,
       });
       ret['solvable'] = false;
@@ -289,7 +293,7 @@ module.exports = class Wallet {
       ret['solvable'] = (ret.path !== '');
       try {
         if (ret.type === 'p2sh-p2wpkh') {
-          const addrInfo = cfd.CreateAddress({
+          const addrInfo = this.cfd.CreateAddress({
             keyData: {
               hex: ret.pubkey,
               type: 'pubkey',
@@ -308,7 +312,7 @@ module.exports = class Wallet {
           };
           ret['embedded'] = embedded;
         } else if (ret.type === 'p2sh-p2wsh') {
-          const addrInfo = cfd.CreateAddress({
+          const addrInfo = this.cfd.CreateAddress({
             keyData: {
               hex: ret.script,
               type: 'redeem_script',
@@ -319,7 +323,7 @@ module.exports = class Wallet {
           });
           let desc = `addr(${addrInfo.address})`;
           if (ret.multisig === true) {
-            const multisigRet = cfd.GetAddressesFromMultisig( {
+            const multisigRet = this.cfd.GetAddressesFromMultisig( {
               isElements: this.isElements,
               redeemScript: ret.script,
               network: this.network,
@@ -362,14 +366,14 @@ module.exports = class Wallet {
         pubkeyList.push(pubkeys[i]);
       } else {
         // extkey
-        const keyInfo = cfd.GetPubkeyFromExtkey({
+        const keyInfo = this.cfd.GetPubkeyFromExtkey({
           extkey: pubkeys[i],
           network: this.network,
         });
         pubkeyList.push(keyInfo.pubkey);
       }
     }
-    const scriptRet = cfd.CreateMultisig({
+    const scriptRet = this.cfd.CreateMultisig({
       nrequired: requireNum,
       keys: pubkeyList,
       network: this.network,
@@ -410,13 +414,13 @@ module.exports = class Wallet {
         childPath = childPath + '/' + keys[i];
       }
     }
-    const extkey = cfd.CreateExtkeyFromParentPath({
+    const extkey = this.cfd.CreateExtkeyFromParentPath({
       extkey: this.masterXprivkey,
       network: this.network,
       extkeyType: 'extPrivkey',
       path: childPath,
     });
-    const privkey = cfd.GetPrivkeyFromExtkey({
+    const privkey = this.cfd.GetPrivkeyFromExtkey({
       extkey: extkey.extkey,
       network: this.network,
       wif: true,
@@ -530,13 +534,13 @@ module.exports = class Wallet {
       if (this.network === 'liquidv1') {
         mainchainNetwork = 'mainnet';
       }
-      return cfd.ElementsDecodeRawTransaction({
+      return this.cfd.ElementsDecodeRawTransaction({
         hex: tx,
         network: this.network,
         mainchainNetwork: mainchainNetwork,
       });
     } else {
-      return cfd.DecodeRawTransaction({
+      return this.cfd.DecodeRawTransaction({
         hex: tx,
         network: this.network,
       });
@@ -661,7 +665,7 @@ module.exports = class Wallet {
       };
     }
     // console.log('FundRawTransaction : ', reqJson);
-    const result = cfd.FundRawTransaction(reqJson);
+    const result = this.cfd.FundRawTransaction(reqJson);
     return {hex: result.hex, fee: result.feeAmount};
   }
 
@@ -720,7 +724,7 @@ module.exports = class Wallet {
           const hashtype = (addrInfo.type === 'p2sh-p2wpkh') ?
               'p2wpkh' : addrInfo.type;
           // calc sighash
-          const sighashRet = cfd.CreateSignatureHash({
+          const sighashRet = this.cfd.CreateSignatureHash({
             tx: transaction,
             txin: {
               txid: utxo.txid,
@@ -735,7 +739,7 @@ module.exports = class Wallet {
             },
           });
           // calc signature
-          const signatureRet = cfd.CalculateEcSignature({
+          const signatureRet = this.cfd.CalculateEcSignature({
             sighash: sighashRet.sighash,
             privkeyData: {
               privkey: privkey,
@@ -745,7 +749,7 @@ module.exports = class Wallet {
             },
           });
           // add sign
-          const signRet = cfd.AddSign({
+          const signRet = this.cfd.AddSign({
             tx: transaction,
             txin: {
               txid: utxo.txid,
@@ -767,7 +771,7 @@ module.exports = class Wallet {
           transaction = signRet.hex;
           if ((addrInfo.type === 'p2sh-p2wpkh') &&
               ('unlockingScript' in addrInfo.extra)) {
-            const signP2shRet = cfd.AddSign({
+            const signP2shRet = this.cfd.AddSign({
               tx: transaction,
               txin: {
                 txid: utxo.txid,
@@ -882,7 +886,7 @@ module.exports = class Wallet {
             const hexData =
                 (addrInfo.pubkey) ? addrInfo.pubkey : addrInfo.script;
             const keyDataType = (addrInfo.pubkey) ? 'pubkey' : 'redeem_script';
-            const sighashRet = cfd.CreateSignatureHash({
+            const sighashRet = this.cfd.CreateSignatureHash({
               tx: transaction,
               txin: {
                 txid: utxo.txid,
@@ -897,7 +901,7 @@ module.exports = class Wallet {
               },
             });
             // calc signature
-            const signatureRet = cfd.CalculateEcSignature({
+            const signatureRet = this.cfd.CalculateEcSignature({
               sighash: sighashRet.sighash,
               privkeyData: {
                 privkey: privkey,

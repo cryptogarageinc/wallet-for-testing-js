@@ -1,10 +1,9 @@
-const cfd = require('cfd-js');
-
 module.exports = class AddressService {
-  constructor(databaseService) {
+  constructor(databaseService, cfdObject) {
     this.databaseService = databaseService;
     this.addressTable = databaseService.getAddressTable();
     this.configTable = databaseService.getConfigTable();
+    this.cfd = cfdObject;
   };
 
   async initialize(network, masterXprivkey) {
@@ -54,17 +53,17 @@ module.exports = class AddressService {
     // generate hdkey
     const childPath = `${addrRecvType}/${index}`;
     const path = `${this.masterXprivkey}/${childPath}`;
-    const extkey = cfd.CreateExtkeyFromParentPath({
+    const extkey = this.cfd.CreateExtkeyFromParentPath({
       extkey: this.masterXprivkey,
       network: this.network,
       extkeyType: 'extPubkey',
       path: childPath,
     });
-    const pubkey = cfd.GetPubkeyFromExtkey({
+    const pubkey = this.cfd.GetPubkeyFromExtkey({
       extkey: extkey.extkey,
       network: this.network,
     });
-    const addrInfo = cfd.CreateAddress({
+    const addrInfo = this.cfd.CreateAddress({
       keyData: {
         hex: pubkey.pubkey,
         type: 'pubkey',
@@ -98,7 +97,7 @@ module.exports = class AddressService {
   };
 
   async getScriptAddress(script, addrType = 'p2wsh', label = '', relatedPubkey = []) {
-    const addrInfo = cfd.CreateAddress({
+    const addrInfo = this.cfd.CreateAddress({
       keyData: {
         hex: script,
         type: 'redeem_script',
@@ -111,7 +110,7 @@ module.exports = class AddressService {
     let isMultisig = false;
     let descriptor = '';
     try {
-      const multisigRet = cfd.GetAddressesFromMultisig( {
+      const multisigRet = this.cfd.GetAddressesFromMultisig( {
         isElements: this.isElements,
         redeemScript: script,
         network: this.network,

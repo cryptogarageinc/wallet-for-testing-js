@@ -1,6 +1,5 @@
 const Wallet = require('./libs/walletService.js');
 const RpcClient = require('./libs/rpc-client/jsonrpcClient.js');
-const cfd = require('cfd-js');
 const path = require('path');
 const fs = require('fs');
 const ini = require('ini');
@@ -79,7 +78,8 @@ const analyzeElementsConfigureFile = function(file, network) {
 module.exports = class WalletManager {
   constructor(nodeConfigFile, dirPath = './', network = 'regtest',
       seed = '', masterXprivkey = '', englishMnemonic = '', passphrase = '',
-      domainIndex = -1) {
+      domainIndex = -1, cfdObject = undefined) {
+    this.cfd = (!cfdObject) ? require('cfd-js') : cfdObject;
     this.dirName = dirPath;
     this.walletList = {};
     this.masterXprivkey = masterXprivkey;
@@ -112,14 +112,14 @@ module.exports = class WalletManager {
       }
     }
     if (this.seed === '' && englishMnemonic !== '') {
-      this.seed = cfd.ConvertMnemonicToSeed({
+      this.seed = this.cfd.ConvertMnemonicToSeed({
         mnemonic: englishMnemonic.mnemonic,
         language: 'en',
         passphrase: passphrase,
       }).seed;
     }
     if (this.xprivkey === '') {
-      this.xprivkey = cfd.CreateExtkeyFromSeed({
+      this.xprivkey = this.cfd.CreateExtkeyFromSeed({
         seed: seed,
         network: keyNetwork,
         extkeyType: 'extPrivkey',
@@ -139,7 +139,7 @@ module.exports = class WalletManager {
     }
     const extPath = `44h/${nettypeIndex}h`;
     // console.log(`bip44 = ${bip44}, nettypeIndex = ${nettypeIndexStr}`);
-    const childExtkey = cfd.CreateExtkeyFromParentPath({
+    const childExtkey = this.cfd.CreateExtkeyFromParentPath({
       extkey: this.xprivkey,
       network: keyNetwork,
       extkeyType: 'extPrivkey',
@@ -151,6 +151,10 @@ module.exports = class WalletManager {
     this.isShutdown = false;
     // console.log(`xprivkey = ${this.xprivkey}`);
   };
+
+  getCfd() {
+    return this.cfd;
+  }
 
   async initialize(targetNodeType = 'bitcoin') {
     let result = '';

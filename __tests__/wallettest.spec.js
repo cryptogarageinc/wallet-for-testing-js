@@ -252,7 +252,7 @@ describe('wallet test', () => {
     btcWallet1.estimateSmartFee(6, 'ECONOMICAL');
 
     const addr1 = await btcWallet1.getNewAddress('p2wpkh', 'label1-1');
-    const pubkeyHash = addr1.lockingScript.substring(2);
+    // const pubkeyHash = addr1.lockingScript.substring(2);
     const script = cfd.CreateScript({
       items: [addr1.pubkey, 'OP_CHECKSIG'],
     });
@@ -347,5 +347,4 @@ describe('wallet test', () => {
 
     expect(wData12.spent).toBe(true);
   });
-
 });

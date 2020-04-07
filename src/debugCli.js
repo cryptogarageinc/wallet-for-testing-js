@@ -105,7 +105,7 @@ const decoderawtransactionFromFile = async function() {
   }
 
   let decTx = '';
-  let tx = fs.readFileSync(filePath, 'utf-8').toString().trim();
+  const tx = fs.readFileSync(filePath, 'utf-8').toString().trim();
   try {
     const liquidNetwork = ((network === 'regtest') || (network === 'testnet')) ?
         'regtest' : 'liquidv1';
@@ -206,7 +206,7 @@ const getaddressinfo = async function() {
     // console.log(err);
   }
 
-  let addrinfo = cfdjs.GetAddressInfo({
+  const addrinfo = cfdjs.GetAddressInfo({
     address: address,
     isElements: false,
   });
@@ -406,7 +406,7 @@ const getprivkeyinfo = async function() {
   });
 
   try {
-    let privkeyData = cfdjs.GetPrivkeyFromWif({
+    const privkeyData = cfdjs.GetPrivkeyFromWif({
       wif: privkey,
     });
     privkeyData['wif'] = privkey;
@@ -416,7 +416,7 @@ const getprivkeyinfo = async function() {
   } catch (err) {
   }
 
-  let privkeyData = cfdjs.GetPrivkeyWif({
+  const privkeyData = cfdjs.GetPrivkeyWif({
     hex: privkey,
     network: network,
     isCompressed: isCompressed,
@@ -449,7 +449,7 @@ const getextkeyinfo = async function() {
   }
   const isCompressKey = (isCompressKeyStr !== 'false');
 
-  let extkeyInfo = cfdjs.GetExtkeyInfo({
+  const extkeyInfo = cfdjs.GetExtkeyInfo({
     extkey: extkey,
   });
 
@@ -869,13 +869,13 @@ const mnemonictoblindtx = async function() {
     network: network,
     extkeyType: 'extPrivkey',
   });
-  let extkeys = [];
-  let privkeys = [];
-  let pubkeys = [];
-  let ctKey = [];
-  let ctBlindKey = [];
-  let addrs = [];
-  let ctadrs = [];
+  const extkeys = [];
+  const privkeys = [];
+  const pubkeys = [];
+  const ctKey = [];
+  const ctBlindKey = [];
+  const addrs = [];
+  const ctadrs = [];
   for (let i = 0; i < 4; ++i) {
     for (let j = 0; j < 2; ++j) {
       const xpriv = cfdjs.CreateExtkeyFromParentPath({
@@ -900,18 +900,18 @@ const mnemonictoblindtx = async function() {
         privkey: priv.privkey,
         isCompressed: false,
       });
-      let privkeyHex = cfdjs.GetPrivkeyFromWif({
+      const privkeyHex = cfdjs.GetPrivkeyFromWif({
         wif: priv.privkey,
       });
       const pub2 = cfdjs.GetPubkeyFromPrivkey({
         privkey: priv3.privkey,
         isCompressed: true,
       });
-      const priv2 = cfdjs.GetPrivkeyWif({
-        hex: privkeyHex.hex,
-        network: 'testnet',
-        isCompressed: false,
-      });
+      // const priv2 = cfdjs.GetPrivkeyWif({
+      //   hex: privkeyHex.hex,
+      //   network: 'testnet',
+      //   isCompressed: false,
+      // });
       const addr1 = cfdjs.CreateAddress({
         keyData: {
           hex: pub.pubkey,
@@ -951,7 +951,11 @@ const mnemonictoblindtx = async function() {
         extkeys.push(xpriv.extkey);
         privkeys.push({wif: priv.privkey, hex: privkeyHex.hex});
         pubkeys.push(pub.pubkey);
-        addrs.push({legacy: addr1.address, segwit: addr2.address, bech32: addr3.address});
+        addrs.push({
+          legacy: addr1.address,
+          segwit: addr2.address,
+          bech32: addr3.address,
+        });
       } else {
         console.log(`blindKey[${i}] = ${privkeyHex.hex}`);
         console.log(`ctKey   [${i}] = ${pub.pubkey}`);
@@ -974,7 +978,11 @@ const mnemonictoblindtx = async function() {
         console.log(`CAdrPkh [${i}] = ${ctadr1.confidentialAddress}`);
         console.log(`CAdrShWp[${i}] = ${ctadr2.confidentialAddress}`);
         console.log(`CAdrWpkh[${i}] = ${ctadr3.confidentialAddress}`);
-        ctadrs.push({legacy: ctadr1.confidentialAddress, segwit: ctadr2.confidentialAddress, bech32: ctadr3.confidentialAddress});
+        ctadrs.push({
+          legacy: ctadr1.confidentialAddress,
+          segwit: ctadr2.confidentialAddress,
+          bech32: ctadr3.confidentialAddress,
+        });
       }
     }
   }

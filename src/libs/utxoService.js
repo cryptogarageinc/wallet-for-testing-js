@@ -1,5 +1,3 @@
-const cfd = require('cfd-js');
-
 module.exports = class UtxoService {
   constructor(databaseService, addressService, client, parent) {
     this.databaseService = databaseService;
@@ -8,6 +6,7 @@ module.exports = class UtxoService {
     this.parent = parent;
     this.utxoTable = databaseService.getUtxoTable();
     this.configTable = databaseService.getConfigTable();
+    this.cfd = this.parent.getCfd();
   };
 
   async initialize(network, masterXprivkey) {
@@ -17,7 +16,7 @@ module.exports = class UtxoService {
   };
 
   async generate(address, count) {
-    const lockingScript = cfd.GetAddressInfo({
+    const lockingScript = this.cfd.GetAddressInfo({
       address: address,
     }).lockingScript;
     const descriptor = await this.addressService.getDescriptor(address);

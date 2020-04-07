@@ -1,7 +1,7 @@
 const WalletManager = require('../index.js');
 const fs = require('fs');
 const cfd = require('cfd-js');
-// const path = require('path');
+const path = require('path');
 
 const network = 'regtest';
 const configFilePath = __dirname + '/bitcoin.conf';
@@ -17,7 +17,7 @@ const timeout = async function(ms) {
 
 beforeAll(async () => {
   console.log('initialize node');
-  const dbDir = __dirname + '/dbdir';
+  const dbDir = path.resolve(__dirname, 'dbdir');
   // initialize db dir
   try {
     fs.statSync(dbDir);
@@ -25,14 +25,19 @@ beforeAll(async () => {
     for (const file in files) {
       if (files[file]) {
         const targetFile = files[file];
-        fs.unlinkSync(`${dbDir}/${targetFile}`);
+        fs.unlinkSync(path.resolve(dbDir, targetFile));
       }
     }
     fs.rmdirSync(dbDir);
   } catch (err) {
     if (err.code !== 'ENOENT') throw err;
   }
-  fs.mkdirSync(dbDir);
+  try {
+    fs.mkdirSync(dbDir);
+  } catch (tmerr) {
+    await timeout(1000);
+    fs.mkdirSync(dbDir);
+  }
 
   // initialize walletManager
   walletMgr = new WalletManager(configFilePath, dbDir, network, testSeed);

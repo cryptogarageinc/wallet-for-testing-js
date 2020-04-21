@@ -376,6 +376,7 @@ const verifysign = async function() {
   }
   if (!decTx) {
     console.log('read tx fail.');
+    return;
   }
 
   const txins = [];

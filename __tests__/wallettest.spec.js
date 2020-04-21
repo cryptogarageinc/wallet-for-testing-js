@@ -3,7 +3,7 @@ const fs = require('fs');
 const cfd = require('cfd-js');
 const path = require('path');
 
-const isDebug = true;
+const isDebug = false;
 
 const network = 'regtest';
 const configFilePath = __dirname + '/bitcoin.conf';

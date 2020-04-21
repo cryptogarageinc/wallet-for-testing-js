@@ -171,6 +171,249 @@ const decoderawtransaction = async function() {
   }
 };
 
+const verifysignature = async function() {
+  // parameter: '<tx(or filename)> <txid> <vout> <signature> <pubkey> <script> <hashType> <value>',
+  let tx = '';
+  if (process.argv.length < 4) {
+    const workTx = await readInput('tx > ');
+    tx += workTx.trim();
+  } else {
+    tx = process.argv[3];
+  }
+
+  let txid;
+  if (process.argv.length < 5) {
+    txid = await readInput('txid > ');
+  } else {
+    txid = process.argv[4];
+  }
+
+  let vout;
+  if (process.argv.length < 6) {
+    vout = await readInput('vout > ');
+  } else {
+    vout = process.argv[5];
+  }
+
+  let signature;
+  if (process.argv.length < 7) {
+    signature = await readInput('signature > ');
+  } else {
+    signature = process.argv[6];
+  }
+
+  let pubkey;
+  if (process.argv.length < 8) {
+    pubkey = await readInput('pubkey > ');
+  } else {
+    pubkey = process.argv[7];
+  }
+
+  let script;
+  if (process.argv.length < 9) {
+    script = await readInput('script > ');
+  } else {
+    script = process.argv[8];
+  }
+
+  let hashType;
+  if (process.argv.length < 10) {
+    hashType = await readInput('hashType > ');
+  } else {
+    hashType = process.argv[9];
+  }
+  if (hashType === 'p2sh-p2wpkh') hashType = 'p2wpkh';
+  if (hashType === 'p2sh-p2wsh') hashType = 'p2wsh';
+
+  let value;
+  if (process.argv.length < 11) {
+    value = await readInput('value > ');
+  } else {
+    value = process.argv[10];
+  }
+
+  if (hashType.indexOf('sh') === -1) {
+    script = '';
+  }
+
+  let isElements = false;
+  let decTx = '';
+  try {
+    decTx = cfdjs.ElementsDecodeRawTransaction({
+      hex: tx,
+      mainchainNetwork: 'mainnet',
+      network: 'liquidv1',
+    });
+    isElements = true;
+  } catch (err) {
+  }
+  if (!decTx) {
+    try {
+      decTx = cfdjs.DecodeRawTransaction({
+        hex: tx,
+        network: network,
+      });
+    } catch (err) {
+    }
+  }
+  if (!decTx) {
+    try {
+      tx = fs.readFileSync(tx, 'utf-8').toString().trim();
+      try {
+        decTx = cfdjs.ElementsDecodeRawTransaction({
+          hex: tx,
+          mainchainNetwork: 'mainnet',
+          network: 'liquidv1',
+        });
+        isElements = true;
+      } catch (err2) {
+        decTx = cfdjs.DecodeRawTransaction({
+          hex: tx,
+          network: network,
+        });
+      }
+    } catch (err) {
+    }
+  }
+  if (!decTx) {
+    console.log('read tx fail.');
+  }
+  let sig = signature;
+  if (sig.length >= 136) {
+    sig = cfdjs.DecodeDerSignatureToRaw({
+      signature: signature,
+    }).signature;
+  }
+  const amount = (isElements && (value.length === 66)) ? 0 : parseInt(value);
+  const valuecommitment = (isElements && (value.length === 66)) ? value : '';
+  const verifyInput = {
+    tx: tx,
+    isElements: isElements,
+    txin: {
+      txid: txid,
+      vout: parseInt(vout),
+      signature: sig,
+      pubkey: pubkey,
+      redeemScript: script,
+      amount: amount,
+      confidentialValueCommitment: valuecommitment,
+      hashType: hashType,
+    },
+  };
+  try {
+    cfdjs.VerifySignature(verifyInput);
+    console.log('verify success.');
+  } catch (err) {
+    console.log('verify fail.');
+    console.log(err);
+  }
+};
+
+const verifysign = async function() {
+  // parameter: '<tx(or filename)> <txid;vout;value;descriptor> ...',
+  let tx = '';
+  if (process.argv.length < 4) {
+    const workTx = await readInput('tx > ');
+    tx += workTx.trim();
+  } else {
+    tx = process.argv[3];
+  }
+
+  const targetList = [];
+  let targetData;
+  if (process.argv.length < 5) {
+    targetData = await readInput('targetData > ');
+  } else {
+    targetData = process.argv[4];
+  }
+  targetList.push(targetData);
+
+  if (process.argv.length >= 6) {
+    for (let idx=5; idx<process.argv.length; ++idx) {
+      targetData = process.argv[5];
+      targetList.push(targetData);
+    }
+  }
+
+  let isElements = false;
+  let decTx = '';
+  try {
+    decTx = cfdjs.ElementsDecodeRawTransaction({
+      hex: tx,
+      mainchainNetwork: 'mainnet',
+      network: 'liquidv1',
+    });
+    isElements = true;
+  } catch (err) {
+  }
+  if (!decTx) {
+    try {
+      decTx = cfdjs.DecodeRawTransaction({
+        hex: tx,
+        network: network,
+      });
+    } catch (err) {
+    }
+  }
+  if (!decTx) {
+    try {
+      tx = fs.readFileSync(tx, 'utf-8').toString().trim();
+      try {
+        decTx = cfdjs.ElementsDecodeRawTransaction({
+          hex: tx,
+          mainchainNetwork: 'mainnet',
+          network: 'liquidv1',
+        });
+        isElements = true;
+      } catch (err2) {
+        decTx = cfdjs.DecodeRawTransaction({
+          hex: tx,
+          network: network,
+        });
+      }
+    } catch (err) {
+    }
+  }
+  if (!decTx) {
+    console.log('read tx fail.');
+  }
+
+  const txins = [];
+  for (const data of targetList) {
+    const arr = data.split(';');
+    if (arr.length < 4) {
+      console.log('low item. usage: <txid;vout;value;descriptor>');
+      return;
+    }
+    const txid = arr[0];
+    const vout = parseInt(arr[1]);
+    const value = arr[2];
+    const amount = (isElements && (value.length === 66)) ? 0 : parseInt(value);
+    const valuecommitment = (isElements && (value.length === 66)) ? value : '';
+    const descriptor = arr[3];
+    txins.push({
+      txid: txid,
+      vout: vout,
+      amount: amount,
+      confidentialValueCommitment: valuecommitment,
+      descriptor: descriptor,
+    });
+  }
+
+  const verifyInput = {
+    tx: tx,
+    isElements: isElements,
+    txins: txins,
+  };
+  console.log('verifyInput: ', verifyInput.txins);
+  const result = cfdjs.VerifySign(verifyInput);
+  if (result.success) {
+    console.log('VerifySign success.');
+  } else {
+    console.log('VerifySign fail:', JSON.stringify(result, null, 2));
+  }
+};
+
 const getaddressinfo = async function() {
   let address = '';
   if (process.argv.length < 4) {
@@ -1002,6 +1245,18 @@ const commandData = {
     alias: 'dectxrf',
     parameter: '<network> <filePath>',
     function: decoderawtransactionFromFile,
+  },
+  verifysignature: {
+    name: 'verifysignature',
+    alias: 'verifysig',
+    parameter: '<tx(or filename)> <txid> <vout> <signature> <pubkey> <script> <hashType> <value>',
+    function: verifysignature,
+  },
+  verifysign: {
+    name: 'verifysign',
+    alias: 'vsign',
+    parameter: '<tx(or filename)> <txid;vout;value;descriptor> ...',
+    function: verifysign,
   },
   decodescript: {
     name: 'decodescript',

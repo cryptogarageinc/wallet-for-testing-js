@@ -670,29 +670,7 @@ const getprivkeyinfo = async function() {
   console.log(privkeyData);
 };
 
-const getextkeyinfo = async function() {
-  let network = 'regtest';
-  if (process.argv.length < 4) {
-    network = await readInput('network > ');
-  } else {
-    network = process.argv[3];
-  }
-  if (network === 'liquidv1') network = 'mainnet';
-  let extkey = '';
-  if (process.argv.length < 5) {
-    extkey = await readInput('extkey > ');
-  } else {
-    extkey = process.argv[4];
-  }
-
-  let isCompressKeyStr = 'true';
-  if (process.argv.length < 6) {
-    // do nothing
-  } else {
-    isCompressKeyStr = process.argv[5];
-  }
-  const isCompressKey = (isCompressKeyStr !== 'false');
-
+const getKeyInfo = function(extkey, network, isCompressKey) {
   const extkeyInfo = cfdjs.GetExtkeyInfo({
     extkey: extkey,
   });
@@ -741,6 +719,33 @@ const getextkeyinfo = async function() {
   if (pubkey !== undefined) {
     extkeyInfo['pubkey'] = pubkey.pubkey;
   }
+  return extkeyInfo;
+};
+
+const getextkeyinfo = async function() {
+  let network = 'regtest';
+  if (process.argv.length < 4) {
+    network = await readInput('network > ');
+  } else {
+    network = process.argv[3];
+  }
+  if (network === 'liquidv1') network = 'mainnet';
+  let extkey = '';
+  if (process.argv.length < 5) {
+    extkey = await readInput('extkey > ');
+  } else {
+    extkey = process.argv[4];
+  }
+
+  let isCompressKeyStr = 'true';
+  if (process.argv.length < 6) {
+    // do nothing
+  } else {
+    isCompressKeyStr = process.argv[5];
+  }
+  const isCompressKey = (isCompressKeyStr !== 'false');
+
+  const extkeyInfo = getKeyInfo(extkey, network, isCompressKey);
   console.log(JSON.stringify(extkeyInfo, null, 2));
 };
 
@@ -765,18 +770,29 @@ const createextkey = async function() {
   }
 
   let network = 'regtest';
-  if (process.argv.length < 6) {
+  let hasExtkey = false;
+  try {
+    const keyInfo = cfdjs.GetExtkeyInfo({
+      extkey: basekey,
+    });
+    hasExtkey = true;
+    if ((keyInfo.version === '0488ade4') || (keyInfo.version === '0488b21e')) {
+      network = 'mainnet';
+    }
+  } catch (err) {
+    // do nothing
+  }
+
+  if (hasExtkey) {
+    // do nothing
+  } else if (process.argv.length < 6) {
     network = await readInput('network > ');
   } else {
     network = process.argv[5];
   }
   if (network === '') network = 'regtest';
 
-  try {
-    cfdjs.GetExtkeyInfo({
-      extkey: basekey,
-    });
-  } catch (err) {
+  if (!hasExtkey) {
     // seed
     const extkeyInfo = cfdjs.CreateExtkeyFromSeed({
       seed: basekey,
@@ -787,6 +803,7 @@ const createextkey = async function() {
   }
 
   let child = undefined;
+  let parentFingerprint = '';
   if (path !== '') {
     try {
       child = cfdjs.CreateExtkeyFromParentPath({
@@ -804,13 +821,32 @@ const createextkey = async function() {
         path: path,
       });
     }
+    const tempChild = cfdjs.CreateExtkeyFromParentPath({
+      extkey: basekey,
+      network: network,
+      extkeyType: 'extPubkey',
+      path: '0',
+    });
+    const keyInfo = cfdjs.GetExtkeyInfo({
+      extkey: tempChild.extkey,
+    });
+    parentFingerprint = keyInfo.fingerprint;
   }
 
+  const dumpInfo = {};
   if (child !== undefined) {
-    console.log(`key = ${child.extkey}`);
-    console.log(`path: ${path}`);
+    const keyInfo = getKeyInfo(child.extkey, network, true);
+    dumpInfo.key = child.extkey;
+    dumpInfo.path = path;
+    dumpInfo.keyOriginInfo = `[${parentFingerprint}/${path}]`;
+    dumpInfo.info = keyInfo;
+    console.log(JSON.stringify(dumpInfo, null, 2));
   } else {
-    console.log(`key = ${basekey}`);
+    const keyInfo = getKeyInfo(basekey, network, true);
+    dumpInfo.key = basekey;
+    dumpInfo.path = 'm';
+    dumpInfo.info = keyInfo;
+    console.log(JSON.stringify(dumpInfo, null, 2));
   }
 };
 
@@ -1310,7 +1346,7 @@ const commandData = {
   createextkey: {
     name: 'createextkey',
     alias: 'extkey',
-    parameter: '<descriptor or seed> <derivePath> <network>',
+    parameter: '<descriptor or seed> <derivePath> [<network>]',
     function: createextkey,
   },
   getpubkeyaddress: {

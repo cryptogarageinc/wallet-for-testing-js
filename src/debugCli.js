@@ -687,7 +687,7 @@ const getextkeyinfo = async function() {
 
   let isCompressKeyStr = 'true';
   if (process.argv.length < 6) {
-    isCompressKeyStr = await readInput('isCompressKey > ');
+    // do nothing
   } else {
     isCompressKeyStr = process.argv[5];
   }
@@ -1298,13 +1298,13 @@ const commandData = {
   getprivkeyinfo: {
     name: 'getprivkeyinfo',
     alias: 'privkey',
-    parameter: '<network(mainnet,testnet)> <isCompressed> <privkey>',
+    parameter: '<network(mainnet,testnet)> <privkey>',
     function: getprivkeyinfo,
   },
   getextkeyinfo: {
     name: 'getextkeyinfo',
     alias: 'keyinfo',
-    parameter: '<network(mainnet,testnet,regtest,liquidv1,liquidregtest)> <descriptor> <derivePath>',
+    parameter: '<network(mainnet,testnet,regtest,liquidv1,liquidregtest)> <descriptor> [<isCompressed>]',
     function: getextkeyinfo,
   },
   createextkey: {

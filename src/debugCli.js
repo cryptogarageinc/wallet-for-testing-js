@@ -1045,6 +1045,15 @@ const generatekeywithmnemonic = async function() {
   } else {
     derivePath = process.argv[5];
   }
+  let derivePathList = [];
+  if (derivePath.indexOf(',') >= 0) {
+    const pathList = derivePath.split(',');
+    for (const path of pathList) {
+      derivePathList.push(path);
+    }
+  } else {
+    derivePathList.push(derivePath);
+  }
 
   const mnemonicList = [];
   let mnemonic = '';
@@ -1073,21 +1082,40 @@ const generatekeywithmnemonic = async function() {
       network: network,
       extkeyType: 'extPrivkey',
     });
-    const rootxpriv = cfdjs.CreateExtkeyFromParentPath({
-      extkey: masterxpriv.extkey,
-      network: network,
-      extkeyType: 'extPrivkey',
-      path: derivePath,
-    });
-    const rootxpub = cfdjs.CreateExtPubkey({
-      extkey: rootxpriv.extkey,
-      network: network,
-    });
     console.log(`mnemonic    = "${mnemonic}"`);
-    console.log(`seed        = ${seed.seed}`);
-    console.log(`masterXpriv = ${masterxpriv.extkey}`);
-    console.log(`Xpriv       = ${rootxpriv.extkey}`);
-    console.log(`Xpub        = ${rootxpub.extkey}\n`);
+    // console.log(`seed        = ${seed.seed}`);
+    // console.log(`masterXpriv = ${masterxpriv.extkey}`);
+    if (derivePathList.length > 1) {
+      for (const path of derivePathList) {
+        const rootxpriv = cfdjs.CreateExtkeyFromParentPath({
+          extkey: masterxpriv.extkey,
+          network: network,
+          extkeyType: 'extPrivkey',
+          path: path,
+        });
+        const rootxpub = cfdjs.CreateExtPubkey({
+          extkey: rootxpriv.extkey,
+          network: network,
+        });
+        console.log(`Xpriv(${path}) = ${rootxpriv.extkey}`);
+        console.log(`Xpub (${path}) = ${rootxpub.extkey}`);
+      }
+    } else {
+      const rootxpriv = cfdjs.CreateExtkeyFromParentPath({
+        extkey: masterxpriv.extkey,
+        network: network,
+        extkeyType: 'extPrivkey',
+        path: derivePath,
+      });
+      const rootxpub = cfdjs.CreateExtPubkey({
+        extkey: rootxpriv.extkey,
+        network: network,
+      });
+      console.log(`mnemonic    = "${mnemonic}"`);
+      console.log(`Xpriv       = ${rootxpriv.extkey}`);
+      console.log(`Xpub        = ${rootxpub.extkey}`);
+    }
+    console.log('');
   }
 };
 

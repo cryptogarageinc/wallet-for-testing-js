@@ -1,6 +1,7 @@
 // UTF-8
 'use strict';
 const cfdjs = require('cfd-js');
+const cfdjsUtil = require('cfd-js/cfdjs_util');
 const fs = require('fs');
 
 // const toSatoshiAmount = function(amount) {
@@ -850,6 +851,50 @@ const createextkey = async function() {
   }
 };
 
+const checkextkey = async function() {
+  let basekey = '';
+  if (process.argv.length < 4) {
+    basekey = await readInput('extkey > ');
+  } else {
+    basekey = process.argv[3];
+  }
+  let path = '';
+  if (process.argv.length < 5) {
+    path = await readInput('bip32DerivationPath > ');
+  } else {
+    path = process.argv[4];
+  }
+  if ((path === '\'\'') || (path === '""')) {
+    path = '';
+  }
+  if ((path.length > 2) && (path.charAt(0) === '\'') && (path.charAt(path.length - 1) === '\'')) {
+    path = path.substring(1, path.length - 1);
+  }
+  let childkey = '';
+  if (process.argv.length < 6) {
+    childkey = await readInput('child extkey > ');
+  } else {
+    childkey = process.argv[5];
+  }
+  let childPath = '';
+  if (process.argv.length < 7) {
+    childPath = await readInput('child bip32DerivationPath > ');
+  } else {
+    childPath = process.argv[6];
+  }
+  if ((childPath === '\'\'') || (childPath === '""')) {
+    childPath = '';
+  }
+  if ((childPath.length > 2) && (childPath.charAt(0) === '\'') &&
+      (childPath.charAt(path.length - 1) === '\'')) {
+    childPath = childPath.substring(1, childPath.length - 1);
+  }
+
+  const isSuccess = cfdjsUtil.HasChildExtkey(
+      basekey, path, childkey, childPath);
+  console.log(`HasChildExtkey ${isSuccess}.`);
+};
+
 const estimatefee = async function() {
   let feeStr = '1.0';
   if (process.argv.length < 4) {
@@ -1045,7 +1090,7 @@ const generatekeywithmnemonic = async function() {
   } else {
     derivePath = process.argv[5];
   }
-  let derivePathList = [];
+  const derivePathList = [];
   if (derivePath.indexOf(',') >= 0) {
     const pathList = derivePath.split(',');
     for (const path of pathList) {
@@ -1368,14 +1413,20 @@ const commandData = {
   getextkeyinfo: {
     name: 'getextkeyinfo',
     alias: 'keyinfo',
-    parameter: '<network(mainnet,testnet,regtest,liquidv1,liquidregtest)> <descriptor> [<isCompressed>]',
+    parameter: '<network(mainnet,testnet,regtest,liquidv1,liquidregtest)> <extkey> [<isCompressed>]',
     function: getextkeyinfo,
   },
   createextkey: {
     name: 'createextkey',
     alias: 'extkey',
-    parameter: '<descriptor or seed> <derivePath> [<network>]',
+    parameter: '<extkey or seed> <derivePath> [<network>]',
     function: createextkey,
+  },
+  checkextkey: {
+    name: 'checkextkey',
+    alias: 'checkkey',
+    parameter: '<extkey> <derivePath> <child extkey> <child derivePath>',
+    function: checkextkey,
   },
   getpubkeyaddress: {
     name: 'getpubkeyaddress',

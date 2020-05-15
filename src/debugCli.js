@@ -881,6 +881,7 @@ const createextkey = async function() {
       childNumber: keyInfo.childNumber,
     });
     basekey = newExtkey.extkey;
+    network = inputNetwork;
   }
 
   const dumpInfo = {};

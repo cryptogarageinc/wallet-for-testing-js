@@ -121,7 +121,7 @@ const decoderawtransactionFromFile = async function() {
       hex: tx,
       mainchainNetwork: network,
       network: liquidNetwork,
-      fullDump: true,
+      fullDump: fullDump,
     });
     console.log(JSON.stringify(decTx, null, 2));
     return;
@@ -779,6 +779,7 @@ const createextkey = async function() {
   }
 
   let network = 'regtest';
+  let inputNetwork = 'regtest';
   let hasExtkey = false;
   try {
     const keyInfo = cfdjs.GetExtkeyInfo({
@@ -791,15 +792,22 @@ const createextkey = async function() {
   } catch (err) {
     // do nothing
   }
+  if (process.argv.length >= 6) {
+    inputNetwork = process.argv[5];
+    if (inputNetwork === '') inputNetwork = 'regtest';
+  }
 
   if (hasExtkey) {
-    // do nothing
-  } else if (process.argv.length < 6) {
-    network = await readInput('network > ');
+    if (process.argv.length < 6) {
+      inputNetwork = network;
+    }
   } else {
-    network = process.argv[5];
+    if (process.argv.length < 6) {
+      inputNetwork = await readInput('network > ');
+    }
+    if (inputNetwork === '') inputNetwork = 'regtest';
+    network = inputNetwork;
   }
-  if (network === '') network = 'regtest';
 
   if (!hasExtkey) {
     // seed
@@ -840,6 +848,39 @@ const createextkey = async function() {
       extkey: tempChild.extkey,
     });
     parentFingerprint = keyInfo.fingerprint;
+  } else if (network !== inputNetwork) {
+    const keyInfo = cfdjs.GetExtkeyInfo({
+      extkey: basekey,
+    });
+    let keyType = 'extPubkey';
+    let key = '';
+    if ((keyInfo.version === '0488ade4') || (keyInfo.version === '04358394')) {
+      // privkey
+      keyType = 'extPrivkey';
+      const privkeyRet = cfdjs.GetPrivkeyFromExtkey({
+        extkey: basekey,
+        network: network,
+        wif: false,
+        isCompressed: true,
+      });
+      key = privkeyRet.privkey;
+    } else {
+      const pubkeyRet = cfdjs.GetPubkeyFromExtkey({
+        extkey: basekey,
+        network: network,
+      });
+      key = pubkeyRet.pubkey;
+    }
+    const newExtkey = cfdjs.CreateExtkey({
+      network: inputNetwork,
+      extkeyType: keyType,
+      parentFingerprint: keyInfo.fingerprint,
+      key: key,
+      depth: keyInfo.depth,
+      chainCode: keyInfo.chainCode,
+      childNumber: keyInfo.childNumber,
+    });
+    basekey = newExtkey.extkey;
   }
 
   const dumpInfo = {};
@@ -853,7 +894,14 @@ const createextkey = async function() {
   } else {
     const keyInfo = getKeyInfo(basekey, network, true);
     dumpInfo.key = basekey;
-    dumpInfo.path = 'm';
+    if (keyInfo.depth === 0) {
+      dumpInfo.path = 'm';
+    } else if (keyInfo.childNumber >= 0x80000000) {
+      const diffVal = keyInfo.childNumber - 0x80000000;
+      dumpInfo.path = `${diffVal}h`;
+    } else {
+      dumpInfo.path = `${keyInfo.childNumber}`;
+    }
     dumpInfo.info = keyInfo;
     console.log(JSON.stringify(dumpInfo, null, 2));
   }

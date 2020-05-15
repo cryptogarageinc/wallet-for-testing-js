@@ -105,6 +105,13 @@ const decoderawtransactionFromFile = async function() {
     filePath = process.argv[4];
   }
 
+  let fullDump = false;
+  if (process.argv.length < 6) {
+    // do nothing
+  } else {
+    fullDump = (process.argv[5] === 'true');
+  }
+
   let decTx = '';
   const tx = fs.readFileSync(filePath, 'utf-8').toString().trim();
   try {
@@ -114,6 +121,7 @@ const decoderawtransactionFromFile = async function() {
       hex: tx,
       mainchainNetwork: network,
       network: liquidNetwork,
+      fullDump: true,
     });
     console.log(JSON.stringify(decTx, null, 2));
     return;
@@ -1353,7 +1361,7 @@ const commandData = {
   decoderawtransaction_readfile: {
     name: 'decoderawtransaction_readfile',
     alias: 'dectxrf',
-    parameter: '<network> <filePath>',
+    parameter: '<network> <filePath> [<fullDump>]',
     function: decoderawtransactionFromFile,
   },
   verifysignature: {

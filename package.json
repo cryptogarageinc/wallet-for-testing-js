@@ -11,7 +11,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "cfd-js": "git+https://github.com/cryptogarageinc/cfd-js.git#semver:~0.0.31",
+    "cfd-js": "git+https://github.com/cryptogarageinc/cfd-js.git#semver:^0.1.0",
     "ini": "*",
     "nedb-promises": "^4.0.1",
     "node-json-rpc2": "git+https://github.com/ko-matsu/node-json-rpc2.git#async_minimum"

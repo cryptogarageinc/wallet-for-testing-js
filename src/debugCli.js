@@ -1000,6 +1000,67 @@ const estimatefee = async function() {
   console.log('feeInfo =', feeInfo);
 };
 
+const getissuanceblindingkey = async function() {
+// parameter: '<masterBlindingKey> <txid> <vout>',
+  let masterBlindingKey = '0';
+  if (process.argv.length < 4) {
+    masterBlindingKey = await readInput('masterBlindingKey > ');
+  } else {
+    masterBlindingKey = process.argv[3];
+  }
+  let txid = '';
+  if (process.argv.length < 5) {
+    txid = await readInput('txid > ');
+  } else {
+    txid = process.argv[4];
+  }
+  let voutStr = '0';
+  if (process.argv.length < 6) {
+    voutStr = await readInput('vout > ');
+  } else {
+    voutStr = process.argv[5];
+  }
+  const vout = parseInt(voutStr);
+
+  const keyInfo = cfdjs.GetIssuanceBlindingKey({
+    masterBlindingKey: masterBlindingKey,
+    txid: txid,
+    vout: vout,
+  });
+  console.log(JSON.stringify(keyInfo, null, 2));
+};
+
+const getblindingkey = async function() {
+// parameter: '<masterBlindingKey> <address>',
+  let masterBlindingKey = '0';
+  if (process.argv.length < 4) {
+    masterBlindingKey = await readInput('masterBlindingKey > ');
+  } else {
+    masterBlindingKey = process.argv[3];
+  }
+  let address = '';
+  if (process.argv.length < 5) {
+    address = await readInput('address > ');
+  } else {
+    address = process.argv[4];
+  }
+
+  const keyInfo = cfdjs.GetDefaultBlindingKey({
+    masterBlindingKey: masterBlindingKey,
+    address: address,
+  });
+  const ctKey = cfdjs.GetPubkeyFromPrivkey({
+    privkey: keyInfo.blindingKey,
+  });
+  const addrInfo = cfdjs.GetConfidentialAddress({
+    unblindedAddress: address,
+    key: ctKey.pubkey,
+  });
+  console.log(`blinding key    : ${keyInfo.blindingKey}`);
+  console.log(`confidential key: ${ctKey.pubkey}`);
+  console.log(`ct address      : ${addrInfo.confidentialAddress}`);
+};
+
 const getpubkeyaddress = async function() {
 // parameter: '<addrtype(p2pkh,p2wpkh,p2sh-p2wpkh)> <network> <privkey or pubkey>',
   let addrtype = 'p2pkh';
@@ -1484,6 +1545,18 @@ const commandData = {
     alias: 'checkkey',
     parameter: '<extkey> <derivePath> <child extkey> <child derivePath>',
     function: checkextkey,
+  },
+  getissuanceblindingkey: {
+    name: 'getissuanceblindingkey',
+    alias: 'ibkey',
+    parameter: '<masterBlindingKey> <txid> <vout>',
+    function: getissuanceblindingkey,
+  },
+  getblindingkey: {
+    name: 'getblindingkey',
+    alias: 'bkey',
+    parameter: '<masterBlindingKey> <address>',
+    function: getblindingkey,
   },
   getpubkeyaddress: {
     name: 'getpubkeyaddress',

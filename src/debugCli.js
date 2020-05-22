@@ -89,6 +89,45 @@ const generatekey = async function() {
   console.log(result);
 };
 
+const getcommitment = async function() {
+  let amountStr = '0';
+  if (process.argv.length < 4) {
+    amountStr = await readInput('amount > ');
+  } else {
+    amountStr = process.argv[3];
+  }
+  const amount = parseInt(amountStr);
+
+  let amountBlinder = '';
+  if (process.argv.length < 5) {
+    amountBlinder = await readInput('amountBlinder > ');
+  } else {
+    amountBlinder = process.argv[4];
+  }
+
+  let assetBlinder = '';
+  if (process.argv.length < 6) {
+    assetBlinder = await readInput('assetBlinder > ');
+  } else {
+    assetBlinder = process.argv[5];
+  }
+
+  let asset = '';
+  if (process.argv.length < 7) {
+    asset = await readInput('asset > ');
+  } else {
+    asset = process.argv[6];
+  }
+
+  const result = cfdjs.GetCommitment({
+    amount: amount,
+    asset: asset,
+    assetBlindFactor: assetBlinder,
+    blindFactor: amountBlinder,
+  });
+  console.log(result);
+};
+
 const decoderawtransactionFromFile = async function() {
   let network = 'regtest';
   if (process.argv.length < 4) {
@@ -1581,6 +1620,12 @@ const commandData = {
     alias: 'fee',
     parameter: '<feeRate> <feeAsset> <tx>',
     function: estimatefee,
+  },
+  getcommitment: {
+    name: 'getcommitment',
+    alias: 'commitment',
+    parameter: '<amount> <amountBlinder> <assetBlinder> <asset>',
+    function: getcommitment,
   },
   generatekey: {
     name: 'generatekey',

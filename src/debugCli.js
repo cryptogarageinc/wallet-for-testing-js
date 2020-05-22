@@ -128,6 +128,32 @@ const getcommitment = async function() {
   console.log(result);
 };
 
+const decodedersignature = async function() {
+  let signature = '';
+  if (process.argv.length < 4) {
+    signature = await readInput('signature > ');
+  } else {
+    signature = process.argv[3];
+  }
+
+  let sighashType = 'all';
+  if (process.argv.length >= 5) {
+    sighashType = process.argv[4];
+  }
+
+  let sighashAnyoneCanPay = false;
+  if (process.argv.length >= 6) {
+    sighashAnyoneCanPay = (process.argv[5] === 'true');
+  }
+
+  const result = cfdjs.DecodeDerSignatureToRaw({
+    signature: signature,
+    sighashType: sighashType,
+    sighashAnyoneCanPay: sighashAnyoneCanPay,
+  });
+  console.log(result);
+};
+
 const decoderawtransactionFromFile = async function() {
   let network = 'regtest';
   if (process.argv.length < 4) {
@@ -925,10 +951,14 @@ const createextkey = async function() {
 
   const dumpInfo = {};
   if (child !== undefined) {
+    let splitPath = path;
+    if (splitPath.startsWith('m/')) {
+      splitPath = splitPath.substring(2);
+    }
     const keyInfo = getKeyInfo(child.extkey, network, true);
     dumpInfo.key = child.extkey;
     dumpInfo.path = path;
-    dumpInfo.keyOriginInfo = `[${parentFingerprint}/${path}]`;
+    dumpInfo.keyOriginInfo = `[${parentFingerprint}/${splitPath}]`;
     dumpInfo.info = keyInfo;
     console.log(JSON.stringify(dumpInfo, null, 2));
   } else {
@@ -1626,6 +1656,12 @@ const commandData = {
     alias: 'commitment',
     parameter: '<amount> <amountBlinder> <assetBlinder> <asset>',
     function: getcommitment,
+  },
+  decodedersignature: {
+    name: 'decodedersignature',
+    alias: 'dersig',
+    parameter: '<der signature> [<sighashtype> <anyoneCanPay>]',
+    function: decodedersignature,
   },
   generatekey: {
     name: 'generatekey',

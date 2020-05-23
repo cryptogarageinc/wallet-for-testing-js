@@ -11,10 +11,10 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "cfd-js": "git+https://github.com/cryptogarageinc/cfd-js.git#semver:^0.1.2",
+    "cfd-js": "cryptogarageinc/cfd-js#semver:^0.1.3",
     "ini": "*",
     "nedb-promises": "^4.0.1",
-    "node-json-rpc2": "git+https://github.com/ko-matsu/node-json-rpc2.git#async_minimum"
+    "node-json-rpc2": "ko-matsu/node-json-rpc2#async_minimum"
   },
   "devDependencies": {
     "acorn": "*",

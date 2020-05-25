@@ -1,18 +1,21 @@
 module.exports = {
-  'env': {
-    'commonjs': true,
-    'es6': true,
-    'node': true,
+  env: {
+    commonjs: true,
+    es6: true,
+    node: true,
   },
-  'extends': [
+  extends: [
     'google',
   ],
-  'globals': {
-    'Atomics': 'readonly',
-    'SharedArrayBuffer': 'readonly',
+  globals: {
+    Atomics: 'readonly',
+    SharedArrayBuffer: 'readonly',
+    "ts-jest": {
+      tsConfig: "tsconfig.json",
+    },
   },
-  'parserOptions': {
-    'ecmaVersion': 2018,
+  parserOptions: {
+    ecmaVersion: 2018,
   },
   'rules': {
     'new-cap': ['off'],
@@ -21,5 +24,11 @@ module.exports = {
       'ignoreStrings': true,
       'ignoreTemplateLiterals': true 
     }],
+  },
+  testMatch: [
+    "<rootDir>/__tests__/*.spec.ts",
+  ],
+  transform: {
+    "^.+\\.ts?$": "ts-jest",
   },
 };

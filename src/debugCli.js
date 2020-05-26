@@ -245,6 +245,19 @@ const decoderawtransaction = async function() {
   }
 };
 
+const decodesignature = async function() {
+  let signature;
+  if (process.argv.length < 5) {
+    signature = await readInput('signature > ');
+  } else {
+    signature = process.argv[4];
+  }
+  const sig = cfdjs.DecodeDerSignatureToRaw({
+    signature: signature,
+  }).signature;
+  console.log(sig);
+};
+
 const verifysignature = async function() {
   // parameter: '<tx(or filename)> <txid> <vout> <signature> <pubkey> <script> <hashType> <value>',
   let tx = '';
@@ -1542,6 +1555,12 @@ const commandData = {
     alias: 'dectxrf',
     parameter: '<network> <filePath> [<fullDump>]',
     function: decoderawtransactionFromFile,
+  },
+  decodesignature: {
+    name: 'decodesignature',
+    alias: 'decsig',
+    parameter: '<signature>',
+    function: decodesignature,
   },
   verifysignature: {
     name: 'verifysignature',

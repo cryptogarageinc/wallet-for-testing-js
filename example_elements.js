@@ -152,6 +152,7 @@ const txFeeAmount = 13000;  // feerate: 0.148
 // dust laptop safe error tent soon fragile skill pear alley awkward vague stomach duck future
 // xprv9s21ZrQH143K39sCCERa3w6NuVmYLMxHKH1PjEnuiaq2RB9iHhEwncTGpbx1WANWJZzFFbFdBi7BKECLg3HnFgajeRi5Go6YxD1K2nZtpDB/44h/1776h/1h
 const baseXpubkey = 'xpub6CADKiKYZrFrmFbPAQPSrzKMRohBHNmYM7GHNngAaaVHqNhC3apR1aNKJkigUjBDU7HwciQSRjeBK42vZUMZGNEjZkPjDWDawKVxTLGhNVE';
+const minimumBits = 36;
 
 // ----
 
@@ -227,7 +228,7 @@ const feeBlindTx = cfdjs.BlindRawTransaction({
   },
   ],
   txoutConfidentialAddresses: ctAddrList,
-  minimumBits: 36,
+  minimumBits: minimumBits,
 });
 
 const commitment = cfdjs.GetCommitment({
@@ -254,4 +255,22 @@ const feeSignTx = cfdjs.SignWithPrivkey({
 const dectx = cfdjs.ElementsDecodeRawTransaction({hex: feeSignTx.hex});
 
 console.log(feeSignTx.hex);
+console.log(`Amount:${feeAmount}, changeAmount:${changeAmount}`);
 console.log(`vsize: ${dectx.vsize}`);
+
+const estimateFeeResult = cfdjs.EstimateFee({
+  selectUtxos: [{
+    txid: feeUtxo.txid,
+    vout: feeUtxo.vout,
+    amount: feeUtxo.amount,
+    asset: feeUtxo.asset,
+    descriptor: 'wpkh([e3c39d64/0\'/1\'/14\']02c7822c824258258d8d16b6fd25317b60b4374ca4f5ce1a69b810615e0c5497a8)',
+  }],
+  feeRate: 0.147,
+  tx: feeSignTx.hex,
+  isElements: true,
+  feeAsset: feeUtxo.asset,
+  isBlind: true,
+  minimumBits: minimumBits,
+});
+console.log(`EstimateFee:`, estimateFeeResult);

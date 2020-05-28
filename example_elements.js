@@ -131,3 +131,127 @@ const multisigSign = cfdjs.AddMultisigSign({
 // multisig sign end
 
 console.log(multisigSign.hex);
+
+console.log('-------------------------------------------------------------------');
+console.log('-- large output tx --');
+
+const feeOutputNum = 100;
+const feeUtxo = {
+  txid: '0000000000000000000000000000000000000000000000000000000000000001',
+  vout: 1,
+  amount: 100000000,
+  asset: '5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225',
+  blindFactor: '0000000000000000000000000000000000000000000000000000000000000000',
+  assetBlindFactor: '0000000000000000000000000000000000000000000000000000000000000000',
+  privkey: 'cU4KjNUT7GjHm7CkjRjG46SzLrXHXoH3ekXmqa2jTCFPMkQ64sw1',
+};
+const networkType = 'liquidv1';
+const mainchainNetworkType = 'mainnet';
+const masterBlindingKey = '28054244faf0d4a04fc9dd3012443fc126c4a353f48d0277d3c57f69164adf87';
+const txFeeAmount = 13000;  // feerate: 0.148
+// dust laptop safe error tent soon fragile skill pear alley awkward vague stomach duck future
+// xprv9s21ZrQH143K39sCCERa3w6NuVmYLMxHKH1PjEnuiaq2RB9iHhEwncTGpbx1WANWJZzFFbFdBi7BKECLg3HnFgajeRi5Go6YxD1K2nZtpDB/44h/1776h/1h
+const baseXpubkey = 'xpub6CADKiKYZrFrmFbPAQPSrzKMRohBHNmYM7GHNngAaaVHqNhC3apR1aNKJkigUjBDU7HwciQSRjeBK42vZUMZGNEjZkPjDWDawKVxTLGhNVE';
+
+// ----
+
+const feeAmount = parseInt((feeUtxo.amount - txFeeAmount) / (feeOutputNum + 1));
+const changeAmount = feeUtxo.amount - txFeeAmount - (feeAmount * feeOutputNum);
+
+const txoutList = [];
+const ctAddrList = [];
+for (let i = 0; i <= feeOutputNum; ++i) {
+  const child = cfdjs.CreateExtkeyFromParentPath({
+    extkey: baseXpubkey,
+    network: mainchainNetworkType,
+    extkeyType: 'extPubkey',
+    path: `0/${i}`,
+  });
+  const pubkeyRet = cfdjs.GetPubkeyFromExtkey({
+    extkey: child.extkey,
+    network: mainchainNetworkType,
+  });
+  const addrInfo = cfdjs.CreateAddress({
+    isElements: true,
+    keyData: {
+      hex: pubkeyRet.pubkey,
+      type: 'pubkey',
+    },
+    network: networkType,
+    hashType: 'p2wpkh',
+  });
+  const blindingKey = cfdjs.GetDefaultBlindingKey({
+    masterBlindingKey: masterBlindingKey,
+    address: addrInfo.address,
+  });
+  const ctKey = cfdjs.GetPubkeyFromPrivkey({
+    privkey: blindingKey.blindingKey,
+  });
+  const ctAddr = cfdjs.GetConfidentialAddress({
+    unblindedAddress: addrInfo.address,
+    key: ctKey.pubkey,
+  });
+  const amount = (i === feeOutputNum) ? changeAmount : feeAmount;
+  txoutList.push({
+    address: ctAddr.confidentialAddress,
+    asset: feeUtxo.asset,
+    amount: amount,
+  });
+  ctAddrList.push(ctAddr.confidentialAddress);
+}
+
+const feeTxdata = cfdjs.ElementsCreateRawTransaction({
+  version: 2,
+  locktime: 0,
+  txins: [{
+    txid: feeUtxo.txid,
+    vout: feeUtxo.vout,
+    sequence: 4294967295,
+  }],
+  txouts: txoutList,
+  fee: {
+    amount: txFeeAmount,
+    asset: feeUtxo.asset,
+  },
+});
+
+const feeBlindTx = cfdjs.BlindRawTransaction({
+  tx: feeTxdata.hex,
+  txins: [{
+    txid: feeUtxo.txid,
+    vout: feeUtxo.vout,
+    asset: feeUtxo.asset,
+    amount: feeUtxo.amount,
+    blindFactor: feeUtxo.blindFactor,
+    assetBlindFactor: feeUtxo.assetBlindFactor,
+  },
+  ],
+  txoutConfidentialAddresses: ctAddrList,
+  minimumBits: 36,
+});
+
+const commitment = cfdjs.GetCommitment({
+  amount: feeUtxo.amount,
+  asset: feeUtxo.asset,
+  assetBlindFactor: feeUtxo.assetBlindFactor,
+  blindFactor: feeUtxo.blindFactor,
+});
+
+// privkey sign (calc sighash + get ecSig + add Signature)
+const feeSignTx = cfdjs.SignWithPrivkey({
+  tx: feeBlindTx.hex,
+  isElements: true,
+  txin: {
+    txid: feeUtxo.txid,
+    vout: feeUtxo.vout,
+    privkey: feeUtxo.privkey,
+    hashType: 'p2wpkh',
+    sighashType: 'all',
+    confidentialValueCommitment: commitment.amountCommitment,
+  },
+});
+
+const dectx = cfdjs.ElementsDecodeRawTransaction({hex: feeSignTx.hex});
+
+console.log(feeSignTx.hex);
+console.log(`vsize: ${dectx.vsize}`);

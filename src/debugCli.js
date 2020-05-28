@@ -9,13 +9,18 @@ const fs = require('fs');
 // };
 
 // -----------------------------------------------------------------------------
+/**
+ * read input from console.
+ * @param {string} question input comment.
+ * @return {Promise<string>} Promise's input object.
+ */
 function readInput(question) {
   const readline = require('readline').createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     readline.question(question, (answer) => {
       resolve(answer);
       readline.close();
@@ -66,9 +71,13 @@ const checkString = function(arg, matchText, alias = undefined) {
 };
 
 // -----------------------------------------------------------------------------
-
-function strToBool(str) {
-  return (str == 'true') ? true : false;
+/**
+ * convert string to boolean.
+ * @param {string} boolStr boolean string.
+ * @return {boolean} boolean value.
+ */
+function strToBool(boolStr) {
+  return (boolStr == 'true') ? true : false;
 }
 // const toBigInt = function(n) {
 //   let s = bigInt(n).toString(16);
@@ -614,17 +623,50 @@ const parsedescriptor = async function() {
   }
   let path = '';
   if (process.argv.length < 6) {
-    path = await readInput('bip32DerivationPath > ');
+    if (descriptor.indexOf('*') >= 0) {
+      path = await readInput('bip32DerivationPath > ');
+    }
   } else {
     path = process.argv[5];
   }
 
-  const descriptorInfo = cfdjs.ParseDescriptor({
+  let descriptorInfo = cfdjs.ParseDescriptor({
     isElements: isElements,
     descriptor: descriptor,
     network: network,
     bip32DerivationPath: path,
   });
+
+
+  try {
+    let typeName = 'redeem_script';
+    let value = '';
+    let hashType = '';
+    if ((descriptorInfo.hashType === 'p2pkh') || (descriptorInfo.hashType === 'p2wpkh')) {
+      value = descriptorInfo.scripts[0].key;
+      typeName = 'pubkey';
+      hashType = descriptorInfo.hashType;
+    } else {
+      value = descriptorInfo.redeemScript;
+      if (descriptorInfo.hashType === 'p2wsh') {
+        hashType = descriptorInfo.hashType;
+      } else {
+        hashType = 'p2sh';
+      }
+    }
+    const addrInfo = cfdjs.CreateAddress({
+      isElements: isElements,
+      keyData: {
+        hex: value,
+        type: typeName,
+      },
+      network: network,
+      hashType: hashType,
+    });
+    descriptorInfo.address = addrInfo.address;
+  } catch (e) {
+    // do nothing
+  }
   console.log(JSON.stringify(descriptorInfo, null, 2));
 };
 
@@ -1550,7 +1592,7 @@ const commandData = {
     parameter: '<network> <tx>',
     function: decoderawtransaction,
   },
-  decoderawtransaction_readfile: {
+  decoderawtransactionReadfile: {
     name: 'decoderawtransaction_readfile',
     alias: 'dectxrf',
     parameter: '<network> <filePath> [<fullDump>]',

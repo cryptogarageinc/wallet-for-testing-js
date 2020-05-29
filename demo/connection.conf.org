@@ -1,0 +1,6 @@
+rpcuser=bitcoinrpc
+rpcpassword=bitcoinrpc
+rpcport=8443
+mainchainrpcuser=bitcoinrpc
+mainchainrpcpassword=bitcoinrpc
+mainchainrpcport=18443

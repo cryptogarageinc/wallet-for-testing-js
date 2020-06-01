@@ -5,6 +5,9 @@ on:
     branches:
     - master
     - develop
+    paths-ignore:
+    - 'src/consoleCli.js'
+    - 'src/debugCli.js'
   pull_request:
     branches:
     - master

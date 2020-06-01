@@ -712,6 +712,13 @@ const parsedescriptors = async function() {
   }
   maxValue = Number(maxValue);
 
+  let viewtype = 'all';
+  if (process.argv.length < 8) {
+    // do nothing
+  } else {
+    viewtype = process.argv[7];
+  }
+
   const descriptors = [];
   for (let index = minValue; index <= maxValue; ++index) {
     const descriptorInfo = cfdjs.ParseDescriptor({
@@ -720,7 +727,13 @@ const parsedescriptors = async function() {
       network: network,
       bip32DerivationPath: `${index}`,
     });
-    descriptors.push(descriptorInfo);
+    if (viewtype === 'address') {
+      descriptors.push(descriptorInfo.address);
+    } else if (viewtype === 'lockingScript') {
+      descriptors.push(descriptorInfo.lockingScript);
+    } else {
+      descriptors.push(descriptorInfo);
+    }
   }
   console.log(JSON.stringify(descriptors, null, 2));
 };
@@ -1643,7 +1656,7 @@ const commandData = {
   parsedescriptors: {
     name: 'parsedescriptors',
     alias: 'pdescs',
-    parameter: '<network(mainnet,testnet,regtest,liquidv1,liquidregtest)> <descriptor> <minValue> <maxValue>',
+    parameter: '<network(mainnet,testnet,regtest,liquidv1,liquidregtest)> <descriptor> <minValue> <maxValue> [<viewType(all/address/lockingScript)>]',
     function: parsedescriptors,
   },
   mnemonictoseed: {

@@ -12,7 +12,7 @@ module.exports = class UtxoTable {
 
   async addUtxo(txid, vout, amount, address, descriptor, lockingScript,
       solvable, blockHash = '', blockHeight = -1, coinbase = false, asset = '',
-      confidentialKey = '', assetCommitment = '', amountCommitment = '',
+      confidentialKey = '', assetBlinder = '', amountBlinder = '',
       extend = {}) {
     let mapData = {};
     const outpoint = `${txid},${vout}`;
@@ -30,8 +30,8 @@ module.exports = class UtxoTable {
         lockingScript: lockingScript, blockHash: blockHash,
         blockHeight: blockHeight, asset: asset,
         confidentialKey: confidentialKey,
-        assetCommitment: assetCommitment,
-        amountCommitment: amountCommitment,
+        assetBlinder: assetBlinder,
+        amountBlinder: amountBlinder,
         spent: false, solvable: solvable, coinbase: coinbase, extend: extend};
     }
     return await this.database.insert(mapData, {outpoint: outpoint});

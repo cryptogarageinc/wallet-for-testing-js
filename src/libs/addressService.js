@@ -127,7 +127,7 @@ module.exports = class AddressService {
       }
     } catch (error) {
       // not multisig
-      if (error.message !== 'OP_CHCKMULTISIG(OP_CHECKMULTISIGVERIFY) not found in redeem script.') {
+      if (error.message.indexOf('OP_CHCKMULTISIG(OP_CHECKMULTISIGVERIFY) not found in redeem script.') === -1) {
         console.log(error);
       }
     }

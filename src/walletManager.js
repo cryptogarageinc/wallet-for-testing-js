@@ -8,15 +8,6 @@ const ini = require('ini');
 // --------------------------------------------------------------------------------------
 // private
 // --------------------------------------------------------------------------------------
-const analyzeConfigureFile = function(file, network) {
-  const filename = path.basename(file);
-  if (filename === 'elements.conf') {
-    return analyzeElementsConfigureFile(file, network);
-  } else {
-    return analyzeBitcoinConfigureFile(file, network);
-  }
-};
-
 const analyzeBitcoinConfigureFile = function(file, network) {
   let textdata = fs.readFileSync(file, 'utf-8');
   // replace option (testnet and regtest)
@@ -72,10 +63,32 @@ const analyzeElementsConfigureFile = function(file, network) {
   return data;
 };
 
+const analyzeConfigureFile = function(file, network) {
+  const filename = path.basename(file);
+  if (filename === 'elements.conf') {
+    return analyzeElementsConfigureFile(file, network);
+  } else {
+    return analyzeBitcoinConfigureFile(file, network);
+  }
+};
+
+
 // --------------------------------------------------------------------------------------
 // public
 // --------------------------------------------------------------------------------------
 module.exports = class WalletManager {
+  /**
+   * constructor.
+   * @param {string} nodeConfigFile node configration file path.
+   * @param {string} dirPath directory path.
+   * @param {NetworkType} network network type.
+   * @param {string} seed master seed.
+   * @param {string} masterXprivkey master xprivkey (ignore seed).
+   * @param {string} englishMnemonic mnemonic by english.
+   * @param {string} passphrase passphrase.
+   * @param {number} domainIndex domain index no.
+   * @param {cfdjs} cfdObject cfd-js object.
+   */
   constructor(nodeConfigFile, dirPath = './', network = 'regtest',
       seed = '', masterXprivkey = '', englishMnemonic = '', passphrase = '',
       domainIndex = -1, cfdObject = undefined) {
@@ -152,10 +165,19 @@ module.exports = class WalletManager {
     // console.log(`xprivkey = ${this.xprivkey}`);
   };
 
+  /**
+   * constructor.
+   * @return {cfdjs} cfd object.
+   */
   getCfd() {
     return this.cfd;
   }
 
+  /**
+   * initialize function.
+   * @param {string} targetNodeType target node type.
+   * @return {Promise<boolean>} success or fail.
+   */
   async initialize(targetNodeType = 'bitcoin') {
     let result = '';
     try {
@@ -181,10 +203,21 @@ module.exports = class WalletManager {
     }
   };
 
+  /**
+   * shutdown.
+   */
   shutdown() {
     this.isShutdown = true;
   };
 
+  /**
+   * create wallet.
+   * @param {number} userIndex user index value.
+   * @param {string} userNamePrefix username prefix string.
+   * @param {string} targetNodeType target node type.
+   * @param {boolean} inMemoryDatabase uses in-memory database.
+   * @return {Promise<Wallet>} wallet object.
+   */
   async createWallet(userIndex, userNamePrefix = 'user',
       targetNodeType = 'bitcoin', inMemoryDatabase = true) {
     // wallet is btc or elements support.
@@ -205,11 +238,22 @@ module.exports = class WalletManager {
     return walletObj;
   };
 
+  /**
+   * get wallet.
+   * @param {number} userIndex user index value.
+   * @param {string} userNamePrefix username prefix string.
+   * @param {string} targetNodeType target node type.
+   * @return {Wallet} wallet object.
+   */
   getWallet(userIndex, userNamePrefix, targetNodeType) {
     const userName = `${targetNodeType}-${userNamePrefix}${userIndex}`;
     return this.walletList[targetNodeType][userName];
   };
 
+  /**
+   * check update target bitcoin block.
+   * @return {Promise<void>} async.
+   */
   async checkUpdateBitcoinBlock() {
     await this.checkUpdateBlock('bitcoin');
     if (!this.isShutdown) {
@@ -219,6 +263,10 @@ module.exports = class WalletManager {
     }
   }
 
+  /**
+   * check update target elements block.
+   * @return {Promise<void>} async.
+   */
   async checkUpdateElementsBlock() {
     await this.checkUpdateBlock('elements');
     if (!this.isShutdown) {
@@ -230,6 +278,11 @@ module.exports = class WalletManager {
 
   // use interval function
   // https://nodejs.org/ja/docs/guides/timers-in-node/
+  /**
+   * check update block.
+   * @param {string} targetNodeType target node type.
+   * @return {Promise<boolean>} success or fail.
+   */
   async checkUpdateBlock(targetNodeType) {
     if (this.isShutdown) {
       return false;
@@ -300,23 +353,18 @@ module.exports = class WalletManager {
         }
       }
       this.bitcoinTipHeightCache = tipHeight;
+      return true;
     } catch (err) {
       console.log('[WalletManager] update error: ', err);
+      return false;
     }
   }
 
-  async getTransaction(targetNodeType, tx) {
-    // TODO priority is low.
-  };
-
-  async getRawTransaction(targetNodeType, tx) {
-    // TODO priority is low.
-  };
-
-  async getTxOut(targetNodeType, tx) {
-    // TODO priority is low.
-  };
-
+  /**
+   * get block count.
+   * @param {string} targetNodeType target node type.
+   * @return {Promise<number>} block count.
+   */
   async getBlockCount(targetNodeType) {
     if (targetNodeType === 'bitcoin') {
       return await this.btcClient.getblockcount();
@@ -325,6 +373,12 @@ module.exports = class WalletManager {
     }
   };
 
+  /**
+   * get block.
+   * @param {string} targetNodeType target node type.
+   * @param {string} blockHash block hash.
+   * @return {Promise<*>} block data.
+   */
   async getBlock(targetNodeType, blockHash) {
     if (targetNodeType === 'bitcoin') {
       return await this.btcClient.getblock(blockHash);
@@ -333,6 +387,12 @@ module.exports = class WalletManager {
     }
   };
 
+  /**
+   * get block hash.
+   * @param {string} targetNodeType target node type.
+   * @param {number} count block count
+   * @return {Promise<string>} block hash
+   */
   async getBlockHash(targetNodeType, count) {
     if (targetNodeType === 'bitcoin') {
       return await this.btcClient.getblockhash(count);
@@ -341,14 +401,12 @@ module.exports = class WalletManager {
     }
   };
 
-  async getMemPoolInfo(targetNodeType) {
-    // TODO priority is low.
-  };
-
-  async getRawMemPool(targetNodeType) {
-    // TODO priority is low.
-  };
-
+  /**
+   * send transaction.
+   * @param {string} targetNodeType target node type
+   * @param {string} tx transaction hex
+   * @return {Promise<*>} send transaction info.
+   */
   async sendRawTransaction(targetNodeType, tx) {
     if (targetNodeType === 'bitcoin') {
       return await this.btcClient.sendrawtransaction(tx);
@@ -357,6 +415,11 @@ module.exports = class WalletManager {
     }
   };
 
+  /**
+   * stop target node.
+   * @param {string} targetNodeType targete node type.
+   * @return {Promise<*>} response.
+   */
   async stop(targetNodeType) {
     if (targetNodeType === 'bitcoin') {
       return await this.btcClient.stop();
@@ -365,6 +428,13 @@ module.exports = class WalletManager {
     }
   };
 
+  /**
+   * call RPC command directly.
+   * @param {string} targetNodeType target node type.
+   * @param {string} command RPC command.
+   * @param {string[]} parameters parameter list.
+   * @return {Promise<*>} response info.
+   */
   async callRpcDirect(targetNodeType, command, parameters = []) {
     if (targetNodeType === 'bitcoin') {
       return await this.btcClient.directExecute(command, parameters);

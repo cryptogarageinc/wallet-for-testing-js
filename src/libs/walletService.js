@@ -4,6 +4,17 @@ const UtxoService = require('./utxoService.js');
 const RpcClient = require('./rpc-client/jsonrpcClient.js');
 
 module.exports = class Wallet {
+  /**
+   * constructor.
+   * @param {string} userNamePrefix user name prefix.
+   * @param {number} userIndex user index.
+   * @param {string} dirPath directory path.
+   * @param {string} network network type.
+   * @param {string} masterXprivkey master xprivkey.
+   * @param {NodeConfigurationData} nodeConfig node config.
+   * @param {WalletManager} manager wallet manager.
+   * @param {boolean} inMemoryDatabase use in-memory database.
+   */
   constructor(userNamePrefix, userIndex, dirPath, network,
       masterXprivkey, nodeConfig, manager, inMemoryDatabase = true) {
     if (isNaN(userIndex)) {
@@ -60,10 +71,18 @@ module.exports = class Wallet {
     this.addressType = 'p2wpkh';
   };
 
+  /**
+   * constructor.
+   * @return {cfdjs} cfd object.
+   */
   getCfd() {
     return this.cfd;
   }
 
+  /**
+   * initialize function.
+   * @return {Promise<boolean>} success or fail.
+   */
   async initialize() {
     let ret = await this.dbService.initialize();
     if (ret === false) {
@@ -93,10 +112,18 @@ module.exports = class Wallet {
     return true;
   };
 
+  /**
+   * get current target.
+   * @return {string} node type.
+   */
   getTarget() {
     return (!this.isElements) ? 'bitcoin' : 'elements';
   };
 
+  /**
+   * check connection.
+   * @return {Promise<boolean>} connection success or fail;
+   */
   async checkConnection() {
     let result = '';
     try {
@@ -112,6 +139,13 @@ module.exports = class Wallet {
     }
   }
 
+  /**
+   * callback update block.
+   * @param {*} tipBlockCount block count.
+   * @param {*} blockHashList block hash list.
+   * @param {*} blockTxMap block transaction map.
+   * @return {Promise<boolean>} success or fail.
+   */
   async callbackUpdateBlock(tipBlockCount, blockHashList, blockTxMap) {
     const configTbl = this.dbService.getConfigTable();
     const ret = await this.utxoService.changeState(blockHashList, blockTxMap);
@@ -119,6 +153,10 @@ module.exports = class Wallet {
     return ret;
   }
 
+  /**
+   * force update utxo.
+   * @return {Promise<boolean>} success or fail.
+   */
   async forceUpdateUtxoData() {
     const configTbl = this.dbService.getConfigTable();
     const tipHeightCache = await configTbl.getTipBlockHeight();
@@ -165,6 +203,12 @@ module.exports = class Wallet {
   // async lock
   // https://gist.github.com/yujin02/1a69f5b20d9fc9873281
 
+  /**
+   * call generate block.
+   * @param {*} count execute count.
+   * @param {*} address send address.
+   * @return {Promise<*>} generate response data.
+   */
   async generate(count, address = '') {
     await this.forceUpdateUtxoData();
     let addr = address;
@@ -177,6 +221,11 @@ module.exports = class Wallet {
     return await this.utxoService.generate(addr, count);
   };
 
+  /**
+   * generate fund.
+   * @param {bigint | number} satoshiAmount satoshi amount.
+   * @return {Promise<bigint | number>} generate amount.
+   */
   async generateFund(satoshiAmount) {
     if (isNaN(satoshiAmount)) {
       throw new Error('Wallet satoshiAmount is number only.');
@@ -199,6 +248,16 @@ module.exports = class Wallet {
   }
 
   // estimateMode: UNSET or CONSERVATIVE or ECONOMICAL
+  /**
+   * send to address.
+   * @param {string} address bitcoin address.
+   * @param {bigint | number} satoshiAmount satoshi amount.
+   * @param {string} asset asset id.
+   * @param {string} estimateMode estimate mode.
+   * @param {number} feeRateForUnset unset fee rate.
+   * @param {number} targetConf target confirmation
+   * @return {Promise<*>} send tx info.
+   */
   async sendToAddress(address, satoshiAmount, asset = '',
       estimateMode = 'CONSERVATIVE', feeRateForUnset = 20.0, targetConf = 6) {
     if (isNaN(satoshiAmount)) {
@@ -232,6 +291,15 @@ module.exports = class Wallet {
     return {txid: txid, vout: 0, hex: tx.hex};
   }
 
+  /**
+   * create transaction.
+   * @param {number} version tx version
+   * @param {number} locktime locktime
+   * @param {*} txin tx inputs
+   * @param {*} txout tx outputs
+   * @param {*} fee fee info.
+   * @return {*} tx info.
+   */
   createRawTransaction(version = 2, locktime = 0, txin = [],
       txout = [], fee = {asset: '', amount: 0}) {
     let tx;
@@ -260,6 +328,14 @@ module.exports = class Wallet {
     return tx;
   }
 
+  /**
+   * get new address.
+   * @param {string} addressType address type.
+   * @param {string} label label name.
+   * @param {number} targetIndex target index.
+   * @param {boolean} hasFeeAddress use fee addresss.
+   * @return {Promise<*>} address info.
+   */
   async getNewAddress(addressType = '', label = '', targetIndex = -1,
       hasFeeAddress = false) {
     let addrType = (addressType === '') ? this.addressType : addressType;
@@ -273,14 +349,28 @@ module.exports = class Wallet {
     }
   }
 
+  /**
+   * get generated address list.
+   * @return {Promise<*[]>} address list.
+   */
   async getAddresses() {
     return await this.addrService.getAddresses();
   }
 
+  /**
+   * get address list by label.
+   * @param {string} label label name
+   * @return {Promise<*[]>} address list.
+   */
   async getAddressesByLabel(label) {
     return await this.addrService.getAddressesByLabel(label);
   }
 
+  /**
+   * get address info.
+   * @param {string} address address
+   * @return {Promise<*>} address info.
+   */
   async getAddressInfo(address) {
     let ret = await this.addrService.getAddressInfo(address);
     if (!ret) {
@@ -348,6 +438,14 @@ module.exports = class Wallet {
     return ret;
   }
 
+  /**
+   * add multisig address.
+   * @param {string[]} pubkeys pubkey list.
+   * @param {number} requireNum multisig require number.
+   * @param {string} addressType address type.
+   * @param {string} label label name.
+   * @return {Promise<*>} multisig address info.
+   */
   async addMultisigAddress(pubkeys = [], requireNum = 1, addressType = 'p2wsh', label = '') {
     if ((!pubkeys) || (pubkeys.length <= 1)) {
       throw Error('Illegal pubkey length.');
@@ -385,6 +483,14 @@ module.exports = class Wallet {
         script, addrType, label, pubkeys);
   }
 
+  /**
+   * get script address.
+   * @param {string} script redeem script.
+   * @param {string} addressType address type.
+   * @param {string} label label name.
+   * @param {string[]} relatedPubkeys related pubkey list.
+   * @return {Promise<*>} script address info.
+   */
   async getScriptAddress(script, addressType = 'p2wsh', label = '', relatedPubkeys = []) {
     let addrType = (addressType === '') ? this.addressType : addressType;
     addrType = this.convertAddressType(addressType, true);
@@ -392,6 +498,12 @@ module.exports = class Wallet {
         script, addrType, label, relatedPubkeys);
   }
 
+  /**
+   * get privkey.
+   * @param {string} address address.
+   * @param {string} pubkey pubkey.
+   * @return {Promise<string>} privkey.
+   */
   async dumpPrivkey(address = '', pubkey = '') {
     let addrInfo;
     if (address !== '') {
@@ -429,6 +541,12 @@ module.exports = class Wallet {
     return privkey.privkey;
   }
 
+  /**
+   * estimate smart fee.
+   * @param {number} confTarget  confirmation target count.
+   * @param {string} estimateMode estimate mode.
+   * @return {void} empty
+   */
   estimateSmartFee(confTarget = 6, estimateMode = 'CONSERVATIVE') {
     if (this.isElements || (this.network === 'testnet')) {
       this.estimateMode = 'ECONOMICAL';
@@ -447,14 +565,30 @@ module.exports = class Wallet {
     }
   }
 
+  /**
+   * set gap limit.
+   * @param {number} limit  gap limit.
+   * @return {void} empty
+   */
   setGapLimit(limit = 20) {
     this.gapLimit = limit;
   }
 
+  /**
+   * set address type.
+   * @param {string} addressType address type.
+   * @return {void} empty.
+   */
   setAddressType(addressType = 'p2wpkh') {
     this.addressType = this.convertAddressType(addressType);
   }
 
+  /**
+   * convert address type.
+   * @param {string} addressType address type.
+   * @param {boolean} isScript use script address.
+   * @return {string} convert address type.
+   */
   convertAddressType(addressType = 'p2wpkh', isScript = false) {
     if ((!isScript) && ((addressType === 'p2wpkh') || (addressType === 'p2pkh') ||
         (addressType === 'p2sh-p2wpkh'))) {
@@ -473,6 +607,14 @@ module.exports = class Wallet {
     }
   }
 
+  /**
+   * get balance.
+   * @param {number} minimumConf minimum confermation
+   * @param {string} address address
+   * @param {string} path bip32 path
+   * @param {string} asset asset id
+   * @return {Promise<*>} barance data.
+   */
   async getBalance(minimumConf = 6, address = '', path = '', asset = '') {
     const list = await this.utxoService.listUnspent(
         minimumConf, 9999999999, address, asset, path, true);
@@ -510,24 +652,51 @@ module.exports = class Wallet {
     return map;
   }
 
+  /**
+   * get unspent utxo lists.
+   * @param {number} minimumConf minimum confirmation
+   * @param {number} maximumConf maximum confirmation
+   * @param {string} address address
+   * @param {string} path bip32 path
+   * @param {string} asset asset
+   * @return {Promise<*>} utxo list.
+   */
   async listUnspent(minimumConf = 1, maximumConf = 9999999999,
       address = '', path = '', asset = '') {
     return await this.utxoService.listUnspent(
         minimumConf, maximumConf, address, asset, path);
   }
 
+  /**
+   * get mempool utxo count.
+   * @return {Promise<number>} utxo count from mempool.
+   */
   async getMempoolUtxoCount() {
     return await this.utxoService.getMempoolUtxoCount();
   }
 
+  /**
+   * get utxo block id list.
+   * @return {Promise<string[]>} block id list.
+   */
   async getUtxoBlockIds() {
     return await this.utxoService.getUtxoBlockIds();
   }
 
+  /**
+   * set minimum fee rate.
+   * @param {number} minimumFeeRate minimum fee rate.
+   * @return {void} empty.
+   */
   async setMinimumFeeRate(minimumFeeRate = 2.0) {
     this.minimumFeeRate = minimumFeeRate;
   }
 
+  /**
+   * decode transaction .
+   * @param {string} tx transaction hex.
+   * @return {*} decode transaction.
+   */
   decodeRawTransaction(tx) {
     if (this.isElements) {
       let mainchainNetwork = 'regtest';
@@ -547,6 +716,12 @@ module.exports = class Wallet {
     }
   }
 
+  /**
+   * fund transaction.
+   * @param {string} tx transaction hex.
+   * @param {*} feeAsset fee asset
+   * @return {Promise<*>} fund data.
+   */
   async fundRawTransaction(tx, feeAsset = '') {
     let feeRate;
     if (this.isElements || (this.network === 'testnet')) {
@@ -560,6 +735,14 @@ module.exports = class Wallet {
         tx, feeRate, feeAsset, this.targetConf);
   }
 
+  /**
+   * fund transaction internal.
+   * @param {string} tx transaction hex
+   * @param {number} feeRate fee rate
+   * @param {string} feeAsset fee asset
+   * @param {number} targetConf target confirmation
+   * @return {Promise<*>} fund data.
+   */
   async fundRawTransactionInternal(tx, feeRate, feeAsset = '', targetConf = 6) {
     // Should UTXO for fishing address be given priority?
     const utxos = await this.utxoService.listUnspent(
@@ -670,6 +853,14 @@ module.exports = class Wallet {
   }
 
   // prevtxs: {txid: '', vout: 0}
+  /**
+   * sign transaction with wallet.
+   * @param {string} tx transaction hex
+   * @param {boolean} ignoreError ignore error
+   * @param {any[]} prevtxs outpoint list
+   * @param {string} sighashtype sighash type
+   * @return {Promise<*>} signed transaction.
+   */
   async signRawTransactionWithWallet(tx, ignoreError = true, prevtxs = [], sighashtype = 'all') {
     let transaction = tx;
     const decTx = this.decodeRawTransaction(tx);
@@ -803,6 +994,14 @@ module.exports = class Wallet {
 
 
   // prevtxs: {txid: '', vout: 0}
+  /**
+   * get signature list.
+   * @param {string} tx transaction hex
+   * @param {boolean} ignoreError ignore error
+   * @param {any[]} prevtxs outpoint list
+   * @param {string} sighashtype sighash type
+   * @return {Promise<*[]>} signature list.
+   */
   async getSignatures(tx, ignoreError = true, prevtxs = [], sighashtype = 'all') {
     const transaction = tx;
     const decTx = this.decodeRawTransaction(tx);
@@ -931,30 +1130,54 @@ module.exports = class Wallet {
     return {signatures: signatures, complete: complete, errors: errors};
   }
 
-  async generateKey(wif = true) {
-    // TODO priority is low.
-  }
-
-  async createNewAddress(addressType = 'p2wpkh') {
-    // TODO priority is low.
-  }
-
+  /**
+   * set pay tx fee amount.
+   * @param {bigint | number} minimumFeeAmount minimum fee amount
+   * @return {Promise<void>} empty.
+   */
   async setPayTxFee(minimumFeeAmount = 0) {
     // TODO priority is low.
   }
 
+  /**
+   * set relay fee amount.
+   * @param {bigint | number} relayFeeAmount relay fee amount
+   * @return {Promise<void>} empty.
+   */
   async setRelayFee(relayFeeAmount = 0) {
     // TODO priority is low.
   }
 
+  /**
+   * import address.
+   * @param {string} address address
+   * @param {string} pubkey pubkey
+   * @param {string} path bip32 path
+   * @param {string} privkeyWif privkey(wif)
+   * @return {Promise<void>} empty
+   */
   async importAddress(address = '', pubkey = '', path = '', privkeyWif = '') {
     // TODO priority is low.
   }
 
+  // async importScriptAddress(address = '', pubkey = '', path = '', privkeyWif = '') {
+  // async importDeriveAddresses(descriptor = '', pubkey = '', path = '', privkeyWif = '') {
+
+  /**
+   * send transaction.
+   * @param {string} tx transaction hex
+   * @return {Promise<*>} send transaction info
+   */
   async sendRawTransaction(tx) {
     return await this.sendRawTransactionInternal(tx);
   };
 
+  /**
+   * send transaction.
+   * @param {string} tx transaction hex
+   * @param {string} unblindTx unblind transactdion hex
+   * @return {Promise<*>} send transaction info
+   */
   async sendRawTransactionInternal(tx, unblindTx = '') {
     try {
       const txid = await this.client.sendrawtransaction(tx);
@@ -967,6 +1190,12 @@ module.exports = class Wallet {
     }
   };
 
+  /**
+   * get wallet transaction data.
+   * @param {string} txid txid
+   * @param {number} vout vout
+   * @return {Promise<any>} utxo data.
+   */
   async getWalletTxData(txid, vout) {
     return await this.utxoService.getUtxoData(`${txid},${vout}`);
   };

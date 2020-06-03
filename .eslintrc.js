@@ -6,29 +6,28 @@ module.exports = {
   },
   extends: [
     'google',
+    "plugin:@typescript-eslint/eslint-recommended",
+    "plugin:@typescript-eslint/recommended",
   ],
   globals: {
     Atomics: 'readonly',
     SharedArrayBuffer: 'readonly',
-    "ts-jest": {
-      tsConfig: "tsconfig.json",
-    },
   },
   parserOptions: {
     ecmaVersion: 2018,
   },
-  'rules': {
+  plugins: [
+    "@typescript-eslint",
+  ],
+  rules: {
     'new-cap': ['off'],
     'max-len': ['error', {
       'ignoreComments': true,
       'ignoreStrings': true,
       'ignoreTemplateLiterals': true 
     }],
-  },
-  testMatch: [
-    "<rootDir>/__tests__/*.spec.ts",
-  ],
-  transform: {
-    "^.+\\.ts?$": "ts-jest",
+    '@typescript-eslint/no-var-requires': 0,
+    '@typescript-eslint/no-empty-function': 0,
+    '@typescript-eslint/explicit-function-return-type': 0,
   },
 };

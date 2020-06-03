@@ -42,9 +42,10 @@ echo "start bitcoin node"
 
 set -e
 
-if [ ! -d node_modules ]; then
-  mkdir node_modules
+if [ -d node_modules ]; then
+  rm -rf node_modules
 fi
+mkdir node_modules
 chmod 777 node_modules
 node --version
 npm install && npm test

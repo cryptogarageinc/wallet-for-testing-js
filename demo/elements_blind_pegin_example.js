@@ -18,8 +18,8 @@ const toSatoshiAmount = function(btcAmount) {
   return Math.round(btcAmount * COIN_BASE);
 };
 
-const btcSendToAddress = async function(amount, btcAdrType){
-  let address = await btcCli.directExecute('getnewaddress', ['', btcAdrType]);
+const btcSendToAddress = async function(amount, btcAdrType) {
+  const address = await btcCli.directExecute('getnewaddress', ['', btcAdrType]);
   const txid = await btcCli.directExecute('sendtoaddress', [address, amount]);
   await btcCli.directExecute('generatetoaddress', [6, address]);
   const gettransaction = await btcCli.directExecute('gettransaction', [txid]);
@@ -36,14 +36,14 @@ const btcSendToAddress = async function(amount, btcAdrType){
   } else if ((tx.vout.length > 3) && Number(tx.vout[3].value) === satoshi) {
     vout = 3;
   } else {
-    console.log("decode fail. tx=", JSON.stringify(tx, null, 2));
+    console.log('decode fail. tx=', JSON.stringify(tx, null, 2));
   }
-  return {txid:txid, vout:vout, address:address, amount: amount};
-}
+  return {txid: txid, vout: vout, address: address, amount: amount};
+};
 
-const btcCfdSendToAddress = async function(utxo, amount, address){
+const btcCfdSendToAddress = async function(utxo, amount, address) {
   // createTx
-  let newAddress = await btcCli.directExecute('getnewaddress', ['', 'bech32']);
+  const newAddress = await btcCli.directExecute('getnewaddress', ['', 'bech32']);
   const txdata = cfdjs.CreateRawTransaction({
     'version': 2,
     'locktime': 0,
@@ -55,7 +55,7 @@ const btcCfdSendToAddress = async function(utxo, amount, address){
     'txouts': [{
       'address': address,
       'amount': toSatoshiAmount(amount),
-    },{
+    }, {
       'address': newAddress,
       'amount': toSatoshiAmount(utxo.amount - amount - 0.00002000),
     }],
@@ -64,11 +64,11 @@ const btcCfdSendToAddress = async function(utxo, amount, address){
   const signTx = await btcCli.directExecute('signrawtransactionwithwallet', [txdata.hex]);
   const txid = await btcCli.directExecute('sendrawtransaction', [signTx.hex]);
   // await elementsCli.directExecute('generatetoaddress', [6, utxoAddr]);
-  console.log("txid = " + txid);
+  console.log('txid = ' + txid);
   // const decTx = cfdjs.DecodeRawTransaction({hex: signTx.hex, network: 'regtest'});
   // console.log('btcCfdSendToAddress: ', JSON.stringify(decTx, null, 2));
   return {txid: txid, vout: 0};
-}
+};
 
 // -----------------------------------------------------------------------------
 
@@ -172,8 +172,8 @@ const main = async () => {
       }
 
       // liquid and elements is constant. dynafed is native segwit.
-      let peginAddrType = 'p2sh-p2wsh';
-      let peginHashType = 'p2wpkh';
+      const peginAddrType = 'p2sh-p2wsh';
+      const peginHashType = 'p2wpkh';
 
       let elemUtxoAddress = await elementsCli.directExecute(
           'getnewaddress', ['', adrType]);
@@ -207,7 +207,8 @@ const main = async () => {
       listunspentResult.sort((a, b) => (a.amount - b.amount));
       // pick btc utxo (If isBlinded is true, pick blinded utxo)
       utxos.btc = listunspentResult.find((unspent) => {
-        return (unspent.txid === utxoTxid) && (Number(unspent.amount) === elmAmount);
+        return (unspent.txid === utxoTxid) &&
+            (Number(unspent.amount) === elmAmount);
       });
       if (!utxos.btc) {
         throw Error('listunspent fail. Maybe low fee.');
@@ -237,9 +238,9 @@ const main = async () => {
       }
       const pegPrivkey = await elementsCli.directExecute(
           'dumpprivkey', [elemAddress]);
-      console.log("elemAddressinfo =>\n", addressinfo)
+      console.log('elemAddressinfo =>\n', addressinfo);
 
-      let elemAddress2 = await elementsCli.directExecute(
+      const elemAddress2 = await elementsCli.directExecute(
           'getnewaddress', ['', adrType]);
       const addressinfo2 = await elementsCli.directExecute(
           'getaddressinfo', [elemAddress2]);
@@ -265,14 +266,14 @@ const main = async () => {
           'fedpegscript': sidechainInfo.fedpegscript,
           'redeemScript': multisigScript,
           'network': mainchainNetwork,
-          'hashType': peginAddrType,  // if use dynafed, can use p2wsh.
+          'hashType': peginAddrType, // if use dynafed, can use p2wsh.
         };
       } else {
         paramPeginAddrJson = {
           'fedpegscript': sidechainInfo.fedpegscript,
           'pubkey': addressinfo.pubkey,
           'network': mainchainNetwork,
-          'hashType': peginAddrType,  // if use dynafed, can use p2wsh.
+          'hashType': peginAddrType, // if use dynafed, can use p2wsh.
         };
       }
 
@@ -300,16 +301,19 @@ const main = async () => {
 
       let utxoAddrinfo = await elementsCli.directExecute(
           'getaddressinfo', [utxos.btc.address]);
-      const utxoConfAddr = (isBlind) ? utxoAddrinfo.confidential : utxos.btc.address;
+      const utxoConfAddr = (isBlind) ?
+          utxoAddrinfo.confidential : utxos.btc.address;
       utxoAddrinfo = await elementsCli.directExecute(
           'getaddressinfo', [utxoConfAddr]);
-      console.log("utxoAddrinfo =>\n", utxoAddrinfo)
-      console.log("utxoConfAddr =>\n", utxoConfAddr)
+      console.log('utxoAddrinfo =>\n', utxoAddrinfo);
+      console.log('utxoConfAddr =>\n', utxoConfAddr);
 
+      /*
       const peginBtcTxObj = cfdjs.DecodeRawTransaction({
         'hex': txData.hex,
         'network': mainchainNetwork,
       });
+      */
 
       // Pegin ---------------------------------------------------------------
       const paramPeginJson = {
@@ -360,7 +364,7 @@ const main = async () => {
         'hex': peginTx.hex,
         'network': network,
       });
-      console.log("peginTxObj =>\n", JSON.stringify(peginTxObj, null, 2))
+      console.log('peginTxObj =>\n', JSON.stringify(peginTxObj, null, 2));
 
       // === blind transaction ===
       let blindTx = peginTx;
@@ -404,7 +408,7 @@ const main = async () => {
       let signedTx = blindTx;
       // calc signature hash
       inputAddrInfo.btc = await elementsCli.getaddressinfo(utxoConfAddr);
-      let sighashParamJson = {
+      const sighashParamJson = {
         'tx': signedTx.hex,
         'txin': {
           'txid': utxos.btc.txid,
@@ -519,29 +523,29 @@ const main = async () => {
             'vout': sendTxidVout,
             'isWitness': (peginHashType === 'p2pkh') ? false : true,
             'signParam': [{
-                'hex': signature,
-                'type': 'sign',
-                'derEncode': true,
-                'sighashType': 'all',
-                'sighashAnyoneCanPay': false,
-              },{
-                'hex': addressinfo.pubkey,
-                'type': 'pubkey',
-                'derEncode': false,
-              },
+              'hex': signature,
+              'type': 'sign',
+              'derEncode': true,
+              'sighashType': 'all',
+              'sighashAnyoneCanPay': false,
+            }, {
+              'hex': addressinfo.pubkey,
+              'type': 'pubkey',
+              'derEncode': false,
+            },
             ],
           },
         });
       } else {
         const datas = [{
-            pubkey: addressinfo.pubkey,
-            privkey: pegPrivkey,
-          }, {
-            pubkey: addressinfo2.pubkey,
-            privkey: pegPrivkey2,
-          }
+          pubkey: addressinfo.pubkey,
+          privkey: pegPrivkey,
+        }, {
+          pubkey: addressinfo2.pubkey,
+          privkey: pegPrivkey2,
+        },
         ];
-        let sigArr = [];
+        const sigArr = [];
         for (let i = 0; i < datas.length; ++i) {
           const signatureHash = cfdjs.CreateElementsSignatureHash({
             'tx': signedTx.hex,
@@ -579,7 +583,7 @@ const main = async () => {
             'txid': sendTxid,
             'vout': sendTxidVout,
             'isWitness': (peginHashType === 'p2pkh') ? false : true,
-            signParams: [
+            'signParams': [
               {
                 hex: sigArr[0],
                 type: 'sign',
@@ -597,9 +601,9 @@ const main = async () => {
                 relatedPubkey: datas[1].pubkey,
               },
             ],
-            redeemScript: (peginHashType === 'p2pkh') ? multisigScript : '',
-            witnessScript: (peginHashType === 'p2pkh') ? '' : multisigScript,
-            hashType: (peginHashType === 'p2pkh') ? 'p2sh' : 'p2wsh',
+            'redeemScript': (peginHashType === 'p2pkh') ? multisigScript : '',
+            'witnessScript': (peginHashType === 'p2pkh') ? '' : multisigScript,
+            'hashType': (peginHashType === 'p2pkh') ? 'p2sh' : 'p2wsh',
           },
         });
       }

@@ -35,6 +35,7 @@ module.exports = class UtxoService {
         const coinbase = (i === 0 );
         const txid = block.tx[i].txid;
         const txData = block.tx[i];
+        let alreadyRegisted = false;
         if (i === 0) {
           // coinbase
           for (let j = 0; j < txData.vout.length; j++) {
@@ -48,12 +49,13 @@ module.exports = class UtxoService {
                   txid, j, satoshi, address, descriptor, lockingScript,
                   true, blockHash, blockHeight, coinbase);
               if (ret === false) {
-                console.log('addUtxo: addUtxo fail.');
-                // throw Error('addUtxo: addUtxo fail.');
+                // console.info('addUtxo: addUtxo fail. (already registed)\n',
+                //     `txid=${txid}, vout=${j}`);
+                alreadyRegisted = true;
               }
             }
           }
-        } else {
+        } else if (!alreadyRegisted) {
           const count = await this.utxoTable.getUtxoCountByTxid(txid);
           if (count > 0) {
             const ret = await this.utxoTable.updateBlockInfo(

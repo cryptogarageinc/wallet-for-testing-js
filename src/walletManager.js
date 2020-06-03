@@ -259,7 +259,7 @@ module.exports = class WalletManager {
     if (!this.isShutdown) {
       setTimeout(async () => {
         await this.checkUpdateBitcoinBlock();
-      }, 2000);
+      }, 1000);
     }
   }
 
@@ -272,7 +272,7 @@ module.exports = class WalletManager {
     if (!this.isShutdown) {
       setTimeout(async () => {
         await this.checkUpdateElementsBlock();
-      }, 2000);
+      }, 1000);
     }
   }
 

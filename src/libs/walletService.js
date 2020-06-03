@@ -205,12 +205,16 @@ module.exports = class Wallet {
 
   /**
    * call generate block.
-   * @param {*} count execute count.
-   * @param {*} address send address.
+   * @param {number} count execute count.
+   * @param {string} address send address.
+   * @param {boolean} nowait nowait flag.
    * @return {Promise<*>} generate response data.
    */
-  async generate(count, address = '') {
+  async generate(count, address = '', nowait = false) {
     await this.forceUpdateUtxoData();
+    const configTbl = this.dbService.getConfigTable();
+    const tipHeightCache = await configTbl.getTipBlockHeight();
+
     let addr = address;
     if (addr === '') {
       const addrInfo = await this.addrService.getFeeAddress(
@@ -218,22 +222,38 @@ module.exports = class Wallet {
       addr = addrInfo.address;
     }
 
-    return await this.utxoService.generate(addr, count);
+    const generateInfo = await this.utxoService.generate(addr, count);
+    if (!nowait) {
+      const sleep = (msec) => new Promise(
+          (resolve) => setTimeout(resolve, msec));
+      let tipHeightAfter = await configTbl.getTipBlockHeight();
+      let loop = 0;
+      while (tipHeightCache == tipHeightAfter) {
+        await sleep(500);
+        tipHeightAfter = await configTbl.getTipBlockHeight();
+        ++loop;
+        if (loop > 20) {
+          break;
+        }
+      }
+    }
+    return generateInfo;
   };
 
   /**
    * generate fund.
    * @param {bigint | number} satoshiAmount satoshi amount.
+   * @param {boolean} nowait nowait flag.
    * @return {Promise<bigint | number>} generate amount.
    */
-  async generateFund(satoshiAmount) {
+  async generateFund(satoshiAmount, nowait = false) {
     if (isNaN(satoshiAmount)) {
       throw new Error('Wallet satoshiAmount is number only.');
     }
     await this.forceUpdateUtxoData();
     let total = 0;
     while (true) {
-      const ret = await this.generate(1);
+      const ret = await this.generate(1, '', nowait);
       if (ret === false) {
         console.log('[generateFund] generate error.');
         break;

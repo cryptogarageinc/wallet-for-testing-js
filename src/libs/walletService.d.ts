@@ -118,9 +118,11 @@ export class Wallet {
 
   forceUpdateUtxoData(): Promise<boolean>;
 
-  generate(count: number, address: string): Promise<AmountByAddress>;
+  generate(count: number, address: string,
+    nowait: boolean): Promise<AmountByAddress>;
 
-  generateFund(satoshiAmount: bigint | number): Promise<bigint | number>;
+  generateFund(satoshiAmount: bigint | number,
+    nowait: boolean): Promise<bigint | number>;
 
   // estimateMode: UNSET or CONSERVATIVE or ECONOMICAL
   sendToAddress(address: string, satoshiAmount: bigint | number,

@@ -13,7 +13,7 @@ let btcWallet1;
 let btcWallet2;
 // let btcWallet3;
 
-const timeout = async function(ms) {
+const sleep = async function(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
@@ -37,7 +37,7 @@ beforeAll(async () => {
   try {
     fs.mkdirSync(dbDir);
   } catch (tmerr) {
-    await timeout(1000);
+    await sleep(1000);
     fs.mkdirSync(dbDir);
   }
 
@@ -75,21 +75,26 @@ describe('wallet test', () => {
   });
 
   it('generateFund test', async () => {
+    jest.setTimeout(30000);
+
     const amount = 20000000000; // 200BTC
-    const ret = await btcWallet1.generateFund(amount);
+    const ret = await btcWallet1.generateFund(amount, true);
     console.log('generateFund -> ', ret);
     expect(ret).toBe(amount);
   });
 
   it('generate test', async () => {
-    const ret = await btcWallet1.generate(2);
+    const ret = await btcWallet1.generate(2, '', true);
     console.log('generate -> ', ret);
     expect(ret.amount).not.toBe(0);
   });
 
   it('sendtoaddress test', async () => {
-    await btcWallet2.generate(100); // for using coinbase utxo
+    jest.setTimeout(15000);
+
+    await btcWallet2.generate(100, '', true); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
+    await btcWallet2.forceUpdateUtxoData();  // after nowait generate
 
     btcWallet1.estimateSmartFee(6, 'ECONOMICAL');
 
@@ -101,13 +106,6 @@ describe('wallet test', () => {
     await btcWallet2.generate(1);
     console.log('sendToAddress1 -> ', sendData);
     expect(decTx.vout[0].value).toBe(amount);
-
-    // wait update
-    try {
-      await timeout(2000);
-    } catch (tmerr) {
-      // ignore error
-    }
 
     // second send tx
     const addr2 = await btcWallet1.getNewAddress('p2wpkh', 'label1');
@@ -237,17 +235,11 @@ describe('wallet test', () => {
   });
 
   it('sendscriptaddress test', async () => {
-    jest.setTimeout(30000);
+    jest.setTimeout(15000);
 
-    await btcWallet2.generate(100); // for using coinbase utxo
-    // wait update
-    try {
-      await timeout(2000);
-    } catch (tmerr) {
-      // ignore error
-    }
+    await btcWallet2.generate(100, '', true); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
-    await btcWallet2.forceUpdateUtxoData();
+    await btcWallet2.forceUpdateUtxoData();  // after nowait generate
 
     btcWallet1.estimateSmartFee(6, 'ECONOMICAL');
 
@@ -269,15 +261,7 @@ describe('wallet test', () => {
     expect(decTx1.vout[0].value).toBe(amount1);
 
     await btcWallet2.generate(1); // for using coinbase utxo
-    // wait update
-    try {
-      await timeout(2000);
-    } catch (tmerr) {
-      // ignore error
-    }
-
     await btcWallet1.forceUpdateUtxoData();
-    await btcWallet2.forceUpdateUtxoData();
 
     const wData11 = await btcWallet1.getWalletTxData(txid1, 0);
     expect(wData11.spent).toBe(false);
@@ -331,15 +315,7 @@ describe('wallet test', () => {
     console.log('[multi] sendRawTransaction2 -> ', {txid: txid2, hex: tx2.hex});
 
     await btcWallet2.generate(1); // for using coinbase utxo
-    // wait update
-    try {
-      await timeout(2000);
-    } catch (tmerr) {
-      // ignore error
-    }
-
     await btcWallet1.forceUpdateUtxoData();
-    await btcWallet2.forceUpdateUtxoData();
 
     const wData12 = await btcWallet1.getWalletTxData(txid1, 0);
     // console.log('[multi] wData12 -> ', wData12);

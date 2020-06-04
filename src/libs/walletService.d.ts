@@ -1,6 +1,5 @@
-import {WalletManager, TargetNode, AddressType, NodeConfigurationData, BlockData} from '../walletManager';
-import * as cfdjs from 'cfd-js/index.d';
-
+import {WalletManager, TargetNode, AddressType, AddressKind, NodeConfigurationData, BlockData} from '../walletManager';
+import cfdjs from 'cfd-js/index.d';
 
 export interface UtxoData {
     outpoint: string;
@@ -25,6 +24,7 @@ export interface UtxoData {
 export interface AddressData {
     pubkey?: string;
     path?: string;
+    script?: string;
     address: string;
     type: string;
     lockingScript: string;
@@ -105,7 +105,8 @@ export class Wallet {
       nodeConfig: NodeConfigurationData, manager: WalletManager,
       inMemoryDatabase: boolean);
 
-  getCfd(): cfdjs;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getCfd(): any;
 
   initialize(): Promise<boolean>;
 
@@ -118,25 +119,26 @@ export class Wallet {
 
   forceUpdateUtxoData(): Promise<boolean>;
 
-  generate(count: number, address: string,
-    nowait: boolean): Promise<AmountByAddress>;
+  generate(count: number, address?: string,
+    nowait?: boolean): Promise<AmountByAddress>;
 
   generateFund(satoshiAmount: bigint | number,
-    nowait: boolean): Promise<bigint | number>;
+    nowait?: boolean): Promise<bigint | number>;
 
   // estimateMode: UNSET or CONSERVATIVE or ECONOMICAL
   sendToAddress(address: string, satoshiAmount: bigint | number,
-      asset: string, estimateMode: string, feeRateForUnset: number,
-      targetConf: number): Promise<SendToAddressResponse>;
+      asset?: string, estimateMode?: string, feeRateForUnset?: number,
+      targetConf?: number): Promise<SendToAddressResponse>;
 
-  createRawTransaction(version: number, locktime: number,
-      txin: TxInRequest[] | ElementsTxInRequest[],
-      txout: TxOutRequest[] | ElementsTxOutRequest[],
-      fee: AmountByAsset): string;
+  createRawTransaction(version?: number, locktime?: number,
+      txin?: cfdjs.TxInRequest[] | cfdjs.ElementsTxInRequest[],
+      txout?: cfdjs.TxOutRequest[] | cfdjs.ElementsTxOutRequest[],
+      fee?: AmountByAsset): cfdjs.CreateRawTransactionResponse |
+        cfdjs.ElementsCreateRawTransactionResponse;
 
-  getNewAddress(addressType: AddressType | AddressKind | undefined,
-      label: string, targetIndex: number,
-      hasFeeAddress: boolean): Promise<AddressData>;
+  getNewAddress(addressType?: AddressType | AddressKind | undefined,
+      label?: string, targetIndex?: number,
+      hasFeeAddress?: boolean): Promise<AddressData>;
 
   getAddresses(): Promise<AddressData[]>;
 
@@ -144,53 +146,53 @@ export class Wallet {
 
   getAddressInfo(address: string): Promise<AddressData>;
 
-  addMultisigAddress(pubkeys: string[], requireNum: number,
-      addressType: AddressType | AddressKind,
-      label: string): Promise<AddressData>;
+  addMultisigAddress(pubkeys: string[], requireNum?: number,
+      addressType?: AddressType | AddressKind,
+      label?: string): Promise<AddressData>;
 
   getScriptAddress(script: string,
-      addressType: AddressType | AddressKind, label: string,
-      relatedPubkeys: string[]): Promise<AddressData>;
+      addressType?: AddressType | AddressKind, label?: string,
+      relatedPubkeys?: string[]): Promise<AddressData>;
 
-  dumpPrivkey(address: string, pubkey: string): Promise<string>;
+  dumpPrivkey(address?: string, pubkey?: string): Promise<string>;
 
-  estimateSmartFee(confTarget: number, estimateMode: string): void;
+  estimateSmartFee(confTarget?: number, estimateMode?: string): void;
 
-  setGapLimit(limit: number): void;
+  setGapLimit(limit?: number): void;
 
-  setAddressType(addressType: AddressType | AddressKind): void;
+  setAddressType(addressType?: AddressType | AddressKind): void;
 
-  convertAddressType(addressType: AddressType | AddressKind,
-      isScript: boolean): AddressType;
+  convertAddressType(addressType?: AddressType | AddressKind,
+      isScript?: boolean): AddressType;
 
-  getBalance(minimumConf: number, address: string, path: string,
-      asset: string): Promise<GetBalanceResponse>;
+  getBalance(minimumConf?: number, address?: string, path?: string,
+      asset?: string): Promise<GetBalanceResponse>;
 
-  listUnspent(minimumConf: number, maximumConf: number,
-      address: string, path: string, asset: string): Promise<UtxoData[]>;
+  listUnspent(minimumConf?: number, maximumConf?: number,
+      address?: string, path?: string, asset?: string): Promise<UtxoData[]>;
 
   getMempoolUtxoCount(): Promise<number>;
 
   getUtxoBlockIds(): Promise<string[]>;
 
-  setMinimumFeeRate(minimumFeeRate: number): Promise<void>
+  setMinimumFeeRate(minimumFeeRate?: number): Promise<void>
 
   decodeRawTransaction(tx: string):
       cfdjs.DecodeRawTransactionResponse |
       cfdjs.ElementsDecodeRawTransactionResponse;
 
   fundRawTransaction(tx: string,
-      feeAsset: string): Promise<FundRawTxResponse>;
+      feeAsset?: string): Promise<FundRawTxResponse>;
 
-  signRawTransactionWithWallet(tx: string, ignoreError: boolean,
-      prevtxs: OutPoint[],
-      sighashtype: string): Promise<SignResponse>;
+  signRawTransactionWithWallet(tx: string, ignoreError?: boolean,
+      prevtxs?: OutPoint[],
+      sighashtype?: string): Promise<SignResponse>;
 
-  getSignatures(tx: string, ignoreError: boolean,
-      prevtxs: OutPoint[],
-      sighashtype: string): Promise<GetSignaturesResponse>;
+  getSignatures(tx: string, ignoreError?: boolean,
+      prevtxs?: OutPoint[],
+      sighashtype?: string): Promise<GetSignaturesResponse>;
 
   sendRawTransaction(tx: string): Promise<string>;
 
   getWalletTxData(txid: string, vout: number): Promise<UtxoData>;
-};
+}

@@ -1,6 +1,7 @@
 import {Wallet} from './libs/walletService.d';
 import * as cfdjs from 'cfd-js/index.d';
 
+// definition (need export)
 export enum TargetNode {
   Bitcoin = 'bitcoin',
   Elements = 'elements',
@@ -11,6 +12,7 @@ export enum NetworkType {
   Testnet = 'testnet',
   Regtest = 'regtest',
   LiquidV1 = 'liquidv1',
+  LiquidRegtest = 'liquidregtest',
 }
 
 export enum AddressKind {
@@ -28,6 +30,7 @@ export enum AddressType {
   P2shP2wsh = 'p2sh-p2wsh',
 }
 
+// type
 export interface NodeConnectionInfo {
   host: string;
   port: number;
@@ -41,7 +44,7 @@ export interface NodeConfigurationData {
 }
 
 export interface BlockData {
-  blockHeight: blockHeight;
+  blockHeight: number;
   tx: cfdjs.DecodeRawTransactionResponse[];
 }
 
@@ -75,26 +78,28 @@ export class WalletManager {
    * @param {string} dirPath directory path.
    * @param {NetworkType} network network type.
    * @param {string} seed master seed.
-   * @param {string} masterXprivkey master xprivkey (ignore seed).
-   * @param {string} englishMnemonic mnemonic by english.
-   * @param {string} passphrase passphrase.
-   * @param {number} domainIndex domain index no.
-   * @param {cfdjs} cfdObject cfd-js object.
+   * @param {string} masterXprivkey? master xprivkey (ignore seed).
+   * @param {string} englishMnemonic? mnemonic by english.
+   * @param {string} passphrase? passphrase.
+   * @param {number} domainIndex? domain index no.
+   * @param {cfdjs} cfdObject? cfd-js object.
    */
   constructor(nodeConfigFile: string, dirPath: string,
-      network: NetworkType,
-      seed: string, masterXprivkey: string,
-      englishMnemonic: string, passphrase: string,
-      domainIndex: number, cfdObject: cfdjs);
+      network: NetworkType, seed: string,
+      masterXprivkey?: string, englishMnemonic?: string,
+      passphrase?: string, domainIndex?: number,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      cfdObject?: any);
 
-  getCfd(): cfdjs;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getCfd(): any;
 
-  initialize(targetNodeType: TargetNode): Promise<boolean>;
+  initialize(targetNodeType?: TargetNode): Promise<boolean>;
 
   shutdown(): void;
 
-  createWallet(userIndex: number, userNamePrefix: string,
-      targetNodeType: TargetNode, inMemoryDatabase: boolean): Promise<Wallet>;
+  createWallet(userIndex: number, userNamePrefix?: string,
+      targetNodeType?: TargetNode, inMemoryDatabase?: boolean): Promise<Wallet>;
 
   getWallet(userIndex: number, userNamePrefix: string,
     targetNodeType: TargetNode): Wallet;
@@ -119,5 +124,5 @@ export class WalletManager {
   stop(targetNodeType: TargetNode): Promise<string>;
 
   callRpcDirect(targetNodeType: TargetNode, command: string,
-      parameters: string[]): Promise<string>;
-};
+      parameters?: string[]): Promise<string>;
+}

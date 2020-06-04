@@ -84,7 +84,8 @@ module.exports = class Wallet {
    * @return {Promise<boolean>} success or fail.
    */
   async initialize() {
-    let ret = await this.dbService.initialize();
+    const dbBaseName = (this.isElements) ? 'edb' : 'db';
+    let ret = await this.dbService.initialize(dbBaseName);
     if (ret === false) {
       console.log('[wallet] databaseService initialize failed.');
       throw Error('[wallet] databaseService initialize failed.');

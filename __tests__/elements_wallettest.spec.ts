@@ -1,27 +1,30 @@
-const WalletManager = require('../index.js');
-const fs = require('fs');
-const cfd = require('cfd-js');
-const path = require('path');
+import {WalletManager, TargetNode, AddressType, AddressKind, NodeConfigurationData, BlockData, NetworkType} from '../src/walletManager';
+import {Wallet} from '../src/libs/walletService';
+import fs from 'fs';
+import cfd from 'cfd-js';
+import path from 'path';
 
 const isDebug = false;
 
-const mainchainNetwork = 'regtest';
-const network = 'liquidregtest';
+const mainchainNetwork = NetworkType.Regtest;
+const network = NetworkType.LiquidRegtest;
 const btcConfigFilePath = __dirname + '/bitcoin.conf';
 const elementsConfigFilePath = __dirname + '/elements.conf';
 const testSeed = '0e09fbdd00e575b654d480ae979f24da45ef4dee645c7dc2e3b30b2e093d38dda0202357754cc856f8920b8e31dd02e9d34f6a2b20dc825c6ba90f90009085e1';
-let walletMgr;
-let btcWallet1;
-let btcWallet2;
+let btcWalletMgr: WalletManager;
+let btcWallet1: Wallet;
+let btcWallet2: Wallet;
 // let btcWallet3;
+let elmWalletMgr: WalletManager;
+let elmWallet1: Wallet;
+let elmWallet2: Wallet;
 
-const timeout = async function(ms) {
+const sleep = async function(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
-beforeAll(async () => {
-  console.log('initialize node');
-  const dbDir = path.resolve(__dirname, 'dbdir');
+const getDbDir = async function(dirName: string) {
+  const dbDir = path.resolve(__dirname, dirName);
   // initialize db dir
   try {
     fs.statSync(dbDir);
@@ -39,65 +42,80 @@ beforeAll(async () => {
   try {
     fs.mkdirSync(dbDir);
   } catch (tmerr) {
-    await timeout(1000);
+    await sleep(1000);
     fs.mkdirSync(dbDir);
   }
+  return dbDir;
+};
+
+beforeAll(async () => {
+  console.log('initialize node');
+  const dbDir = await getDbDir('dbdir');
 
   // initialize walletManager
-  walletMgr = new WalletManager(btcConfigFilePath, dbDir, mainchainNetwork, testSeed);
-  walletMgr.initialize('bitcoin');
-  walletMgr = new WalletManager(elementsConfigFilePath, dbDir, network, testSeed);
-  walletMgr.initialize('elements');
+  btcWalletMgr = new WalletManager(btcConfigFilePath, dbDir,
+      mainchainNetwork, testSeed);
+  btcWalletMgr.initialize(TargetNode.Bitcoin);
+  elmWalletMgr = new WalletManager(elementsConfigFilePath, dbDir,
+      network, testSeed);
+  elmWalletMgr.initialize(TargetNode.Elements);
 
   console.log('initialize wallet');
-  btcWallet1 = await walletMgr.createWallet(1, 'testuser', 'bitcoin', !isDebug);
-  btcWallet2 = await walletMgr.createWallet(2, 'testuser', 'bitcoin', !isDebug);
-  // btcWallet3 = await walletMgr.createWallet(3, 'testuser', 'bitcoin');
+  btcWallet1 = await btcWalletMgr.createWallet(1, 'testuser', TargetNode.Bitcoin, !isDebug);
+  btcWallet2 = await btcWalletMgr.createWallet(2, 'testuser', TargetNode.Bitcoin, !isDebug);
+  // btcWallet3 = await walletMgr.createWallet(3, 'testuser', TargetNode.Bitcoin);
+  elmWallet1 = await elmWalletMgr.createWallet(1, 'testuser', TargetNode.Elements, !isDebug);
+  elmWallet2 = await elmWalletMgr.createWallet(2, 'testuser', TargetNode.Elements, !isDebug);
 });
 
 describe('wallet test', () => {
-  it('wpkh address1 test', async () => {
-    const ret = await btcWallet2.getNewAddress('p2wpkh', 'label1', 1);
+  it('btc wpkh address1 test', async () => {
+    const ret = await btcWallet2.getNewAddress(AddressType.P2wpkh, 'label1', 1);
     expect(
         `${ret.address},${ret.path},${ret.lockingScript},${ret.pubkey},${ret.type}`,
     ).toBe(
         'bcrt1qd40vlvfv5khcwx205z5ml0zzmqr4pnyzturxet,tprv8fce2zvfnLAY47yqNRUy5DcM8bzqiC19WYKaP7wWLeM6FbR7mcvyDCEPesLEoJukk3bFry52mCsAhWwPBBZoqvjmEt1jkjMV7jEMMzy7BDE/0/1,00146d5ecfb12ca5af87194fa0a9bfbc42d80750cc82,027635bd0677cc5466ab49d7edeb410f35fa657f0bf5a8200e32fab6501d708fd8,p2wpkh');
   });
-  it('pkh address1 test', async () => {
-    const ret = await btcWallet2.getNewAddress('p2pkh', 'label1', 1);
+  it('btc pkh address1 test', async () => {
+    const ret = await btcWallet2.getNewAddress(AddressType.P2pkh, 'label1', 1);
     expect(
         `${ret.address},${ret.path},${ret.lockingScript},${ret.pubkey},${ret.type}`,
     ).toBe(
         'mqVFXZtrfUPoqd49RW9YVickLbn6VuxeSy,tprv8fce2zvfnLAY47yqNRUy5DcM8bzqiC19WYKaP7wWLeM6FbR7mcvyDCEPesLEoJukk3bFry52mCsAhWwPBBZoqvjmEt1jkjMV7jEMMzy7BDE/0/1,76a9146d5ecfb12ca5af87194fa0a9bfbc42d80750cc8288ac,027635bd0677cc5466ab49d7edeb410f35fa657f0bf5a8200e32fab6501d708fd8,p2pkh');
   });
-  it('sh-wpkh address1 test', async () => {
-    const ret = await btcWallet2.getNewAddress('p2sh-p2wpkh', 'label1', 1);
+  it('btc sh-wpkh address1 test', async () => {
+    const ret = await btcWallet2.getNewAddress(AddressType.P2shP2wpkh, 'label1', 1);
     expect(
         `${ret.address},${ret.path},${ret.lockingScript},${ret.pubkey},${ret.type}`,
     ).toBe(
         '2MxSFp2PpYRT7QoAedCjWB6gUGiHL5Huyw5,tprv8fce2zvfnLAY47yqNRUy5DcM8bzqiC19WYKaP7wWLeM6FbR7mcvyDCEPesLEoJukk3bFry52mCsAhWwPBBZoqvjmEt1jkjMV7jEMMzy7BDE/0/1,a91438eeb9f2d38ff1c2dd2ff21b7786c08681bc9f4c87,027635bd0677cc5466ab49d7edeb410f35fa657f0bf5a8200e32fab6501d708fd8,p2sh-p2wpkh');
   });
 
-  it('generateFund test', async () => {
+  it('btc generateFund test', async () => {
+    jest.setTimeout(30000);
+
     const amount = 20000000000; // 200BTC
-    const ret = await btcWallet1.generateFund(amount);
+    const ret = await btcWallet1.generateFund(amount, true);
     console.log('generateFund -> ', ret);
     expect(ret).toBe(amount);
   });
 
-  it('generate test', async () => {
-    const ret = await btcWallet1.generate(2);
+  it('btc generate test', async () => {
+    const ret = await btcWallet1.generate(2, '', true);
     console.log('generate -> ', ret);
     expect(ret.amount).not.toBe(0);
   });
 
-  it('sendtoaddress test', async () => {
-    await btcWallet2.generate(100); // for using coinbase utxo
+  it('btc sendtoaddress test', async () => {
+    jest.setTimeout(15000);
+
+    await btcWallet2.generate(100, '', true); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
+    await btcWallet2.forceUpdateUtxoData(); // after nowait generate
 
     btcWallet1.estimateSmartFee(6, 'ECONOMICAL');
 
-    const addr = await btcWallet1.getNewAddress('p2wpkh', 'label1');
+    const addr = await btcWallet1.getNewAddress(AddressType.P2wpkh, 'label1');
     // send to 1BTC
     const amount = 100000000;
     const sendData = await btcWallet1.sendToAddress(addr.address, amount);
@@ -106,16 +124,9 @@ describe('wallet test', () => {
     console.log('sendToAddress1 -> ', sendData);
     expect(decTx.vout[0].value).toBe(amount);
 
-    // wait update
-    try {
-      await timeout(2000);
-    } catch (tmerr) {
-      // ignore error
-    }
-
     // second send tx
-    const addr2 = await btcWallet1.getNewAddress('p2wpkh', 'label1');
-    const addr3 = await btcWallet1.getNewAddress('p2wpkh', 'label2');
+    const addr2 = await btcWallet1.getNewAddress(AddressType.P2wpkh, 'label1');
+    const addr3 = await btcWallet1.getNewAddress(AddressType.P2wpkh, 'label2');
     const txin = {txid: sendData.txid, vout: 0};
     const amount2 = 99900000;
     const txout1 = {address: addr2.address, amount: amount2};
@@ -136,20 +147,20 @@ describe('wallet test', () => {
   });
 
 
-  it('multisig test', async () => {
+  it('btc multisig test', async () => {
     btcWallet1.estimateSmartFee(6, 'ECONOMICAL');
     btcWallet2.estimateSmartFee(6, 'ECONOMICAL');
 
     await btcWallet2.generate(1); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
 
-    const addr1 = await btcWallet1.getNewAddress('p2wpkh', 'label1-1');
-    const addr2 = await btcWallet2.getNewAddress('p2wpkh', 'label2-1');
+    const addr1 = await btcWallet1.getNewAddress(AddressType.P2wpkh, 'label1-1');
+    const addr2 = await btcWallet2.getNewAddress(AddressType.P2wpkh, 'label2-1');
 
     const multisigAddr1 = await btcWallet1.addMultisigAddress(
-        [addr1.pubkey, addr2.pubkey], 2, 'p2wsh', 'label-m1');
+        [addr1.pubkey, addr2.pubkey], 2, AddressType.P2wsh, 'label-m1');
     const multisigAddr2 = await btcWallet2.addMultisigAddress(
-        [addr1.pubkey, addr2.pubkey], 2, 'p2wsh', 'label-m1');
+        [addr1.pubkey, addr2.pubkey], 2, AddressType.P2wsh, 'label-m1');
     expect(multisigAddr1.address).toBe(multisigAddr2.address);
 
     // multisigに送信
@@ -202,7 +213,6 @@ describe('wallet test', () => {
       txin: {
         txid: txid1,
         vout: 0,
-        isWitness: true,
         signParams: [
           {
             hex: sigs2.signatures[0].signature,
@@ -222,7 +232,7 @@ describe('wallet test', () => {
           },
         ],
         witnessScript: multisigAddr1.script,
-        hashType: 'p2wsh',
+        hashType: AddressType.P2wsh,
       },
     });
     const txid2 = await btcWallet1.sendRawTransaction(tx2.hex);
@@ -240,27 +250,21 @@ describe('wallet test', () => {
     expect(wData22.spent).toBe(true);
   });
 
-  it('sendscriptaddress test', async () => {
-    jest.setTimeout(30000);
+  it('btc sendscriptaddress test', async () => {
+    jest.setTimeout(15000);
 
-    await btcWallet2.generate(100); // for using coinbase utxo
-    // wait update
-    try {
-      await timeout(2000);
-    } catch (tmerr) {
-      // ignore error
-    }
+    await btcWallet2.generate(100, '', true); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
-    await btcWallet2.forceUpdateUtxoData();
+    await btcWallet2.forceUpdateUtxoData(); // after nowait generate
 
     btcWallet1.estimateSmartFee(6, 'ECONOMICAL');
 
-    const addr1 = await btcWallet1.getNewAddress('p2wpkh', 'label1-1');
+    const addr1 = await btcWallet1.getNewAddress(AddressType.P2wpkh, 'label1-1');
     // const pubkeyHash = addr1.lockingScript.substring(2);
     const script = cfd.CreateScript({
       items: [addr1.pubkey, 'OP_CHECKSIG'],
     });
-    const addr = await btcWallet1.getScriptAddress(script.hex, 'p2wsh', 'label1', [addr1.pubkey]);
+    const addr = await btcWallet1.getScriptAddress(script.hex, AddressType.P2wsh, 'label1', [addr1.pubkey]);
     // send to 1BTC
     const amount1 = 100000000;
     const txout1 = {address: addr.address, amount: amount1};
@@ -273,15 +277,7 @@ describe('wallet test', () => {
     expect(decTx1.vout[0].value).toBe(amount1);
 
     await btcWallet2.generate(1); // for using coinbase utxo
-    // wait update
-    try {
-      await timeout(2000);
-    } catch (tmerr) {
-      // ignore error
-    }
-
     await btcWallet1.forceUpdateUtxoData();
-    await btcWallet2.forceUpdateUtxoData();
 
     const wData11 = await btcWallet1.getWalletTxData(txid1, 0);
     expect(wData11.spent).toBe(false);
@@ -335,15 +331,7 @@ describe('wallet test', () => {
     console.log('[multi] sendRawTransaction2 -> ', {txid: txid2, hex: tx2.hex});
 
     await btcWallet2.generate(1); // for using coinbase utxo
-    // wait update
-    try {
-      await timeout(2000);
-    } catch (tmerr) {
-      // ignore error
-    }
-
     await btcWallet1.forceUpdateUtxoData();
-    await btcWallet2.forceUpdateUtxoData();
 
     const wData12 = await btcWallet1.getWalletTxData(txid1, 0);
     // console.log('[multi] wData12 -> ', wData12);
@@ -351,4 +339,12 @@ describe('wallet test', () => {
 
     expect(wData12.spent).toBe(true);
   });
+
+  // pegin test
+  // pegout test
+  // getbalance test
+  // sendtoaddress test
+  // issuance test
+  // reissuance test
+  // asset sendtoaddress test
 });

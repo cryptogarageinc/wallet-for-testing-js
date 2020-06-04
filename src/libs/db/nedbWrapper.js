@@ -19,13 +19,18 @@ module.exports = class NedbWrapper {
   };
 
   async insert(data, query = {}) {
-    if (Object.keys(query).length > 0) {
-      const num = await this.datastore.count(query);
-      if (num > 0) {
-        return false;
+    try {
+      if (Object.keys(query).length > 0) {
+        const num = await this.datastore.count(query);
+        if (num > 0) {
+          return false;
+        }
       }
+      return await this.datastore.insert(data);
+    } catch (e) {
+      console.log(e);
+      return false;
     }
-    return await this.datastore.insert(data);
   };
 
   async update(query, data, options = {}) {

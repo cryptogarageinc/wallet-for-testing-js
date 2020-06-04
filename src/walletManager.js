@@ -76,7 +76,36 @@ const analyzeConfigureFile = function(file, network) {
 // --------------------------------------------------------------------------------------
 // public
 // --------------------------------------------------------------------------------------
-module.exports = class WalletManager {
+
+const targetNodeDefine = {
+  Bitcoin: 'bitcoin',
+  Elements: 'elements',
+};
+
+const networkTypeDefine = {
+  Mainnet: 'mainnet',
+  Testnet: 'testnet',
+  Regtest: 'regtest',
+  LiquidV1: 'liquidv1',
+  LiquidRegtest: 'liquidregtest',
+};
+
+const addressKindDefine = {
+  Legacy: 'legacy',
+  P2shSegwit: 'p2sh-segwit',
+  Bech32: 'bech32',
+};
+
+const addressTypeDefine = {
+  P2wpkh: 'p2wpkh',
+  P2pkh: 'p2pkh',
+  P2shP2wpkh: 'p2sh-p2wpkh',
+  P2wsh: 'p2wsh',
+  P2sh: 'p2sh',
+  P2shP2wsh: 'p2sh-p2wsh',
+};
+
+const walletManager = class WalletManager {
   /**
    * constructor.
    * @param {string} nodeConfigFile node configration file path.
@@ -307,7 +336,13 @@ module.exports = class WalletManager {
         // console.log(`[WM] checkUpdateBlock targetNodeType: ${targetNodeType}`);
       }
       if (chaintips === undefined) {
-        console.log('[WM] checkUpdateBlock undef chaintips.');
+        if (targetNodeType === 'bitcoin') {
+          console.log('[WM] checkUpdateBlock undef chaintips.');
+        } else {
+          // elements
+          // FIXME not implements.
+          // console.log('[WM] checkUpdateBlock undef chaintips.');
+        }
         return false;
       }
 
@@ -443,3 +478,27 @@ module.exports = class WalletManager {
     }
   };
 };
+
+// export
+module.exports = walletManager;
+module.exports.WalletManager = walletManager;
+module.exports.TargetNode = targetNodeDefine;
+module.exports.TargetNode.Bitcoin = targetNodeDefine.Bitcoin;
+module.exports.TargetNode.Elements = targetNodeDefine.Elements;
+module.exports.NetworkType = networkTypeDefine;
+module.exports.NetworkType.Mainnet = networkTypeDefine.Mainnet;
+module.exports.NetworkType.Testnet = networkTypeDefine.Testnet;
+module.exports.NetworkType.Regtest = networkTypeDefine.Regtest;
+module.exports.NetworkType.LiquidV1 = networkTypeDefine.LiquidV1;
+module.exports.NetworkType.LiquidRegtest = networkTypeDefine.LiquidRegtest;
+module.exports.AddressKind = addressKindDefine;
+module.exports.AddressKind.Legacy = addressKindDefine.Legacy;
+module.exports.AddressKind.P2shSegwit = addressKindDefine.P2shSegwit;
+module.exports.AddressKind.Bech32 = addressKindDefine.Bech32;
+module.exports.AddressType = addressTypeDefine;
+module.exports.AddressType.P2wpkh = addressTypeDefine.P2wpkh;
+module.exports.AddressType.P2pkh = addressTypeDefine.P2pkh;
+module.exports.AddressType.P2shP2wpkh = addressTypeDefine.P2shP2wpkh;
+module.exports.AddressType.P2wsh = addressTypeDefine.P2wsh;
+module.exports.AddressType.P2sh = addressTypeDefine.P2sh;
+module.exports.AddressType.P2shP2wsh = addressTypeDefine.P2shP2wsh;

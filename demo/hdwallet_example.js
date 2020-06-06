@@ -162,10 +162,10 @@ const main = async () => {
       // === pre process ===
       // split mnemonic to array
       let mnemonic;
-      if (mnemonic_str.includes(' ')) {
-        mnemonic = mnemonic_str.split(' ');
-      } else if (mnemonic_str.includes('　')) {
-        mnemonic = mnemonic_str.split('　');
+      if (mnemonicStr.includes(' ')) {
+        mnemonic = mnemonicStr.split(' ');
+      } else if (mnemonicStr.includes('　')) {
+        mnemonic = mnemonicStr.split('　');
       } else {
         throw Error('invalid mnemonic found');
       }

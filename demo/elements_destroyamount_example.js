@@ -188,7 +188,7 @@ const main = async () => {
         },
       };
       const rawTx = cfdjs.CreateDestroyAmount(
-          CreateDestroyAmountTransactionJson
+          CreateDestroyAmountTransactionJson,
       );
       // console.log("raw transaction =>\n", rawTx)
 
@@ -260,7 +260,7 @@ const main = async () => {
               {'amount': toSatoshiAmount(utxosBitcoin.btc.amount)});
         }
         const sighash = cfdjs.CreateElementsSignatureHash(
-            sighashParamJson
+            sighashParamJson,
         );
         // console.log("sighash = ", sighash)
 
@@ -345,7 +345,7 @@ const main = async () => {
               {'amount': toSatoshiAmount(utxos.btc.amount)});
         }
         const sighash = cfdjs.CreateElementsSignatureHash(
-            sighashParamJson
+            sighashParamJson,
         );
         // console.log("sighash = ", sighash)
 

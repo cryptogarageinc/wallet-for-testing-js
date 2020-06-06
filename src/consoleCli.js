@@ -1,12 +1,17 @@
 const WalletManager = require('./walletManager.js');
 
+/**
+ * read input from console.
+ * @param {string} question input comment.
+ * @return {Promise<string>} Promise's input object.
+ */
 function readInput(question) {
   const readline = require('readline').createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     readline.question(question, (answer) => {
       resolve(answer);
       readline.close();
@@ -14,7 +19,7 @@ function readInput(question) {
   });
 }
 
-const generatefundFunc = async function(cmd, words, wallet, walletMgr) {
+const generatefundFunc = async function(cmd, words, wallet) {
   let amount = 100000000;
   if (words.length > 1) {
     amount = parseInt(words[1]);
@@ -23,7 +28,7 @@ const generatefundFunc = async function(cmd, words, wallet, walletMgr) {
   console.log('generateFund -> ', ret);
 };
 
-const generateFunc = async function(cmd, words, wallet, walletMgr) {
+const generateFunc = async function(cmd, words, wallet) {
   let count = 1;
   let addr = '';
   if (words.length > 1) {
@@ -36,7 +41,7 @@ const generateFunc = async function(cmd, words, wallet, walletMgr) {
   console.log('generate -> ', ret);
 };
 
-const sendtoaddressFunc = async function(cmd, words, wallet, walletMgr) {
+const sendtoaddressFunc = async function(cmd, words, wallet) {
   let feeAsset = '';
   let targetConf = 6;
   if (words.length > 3 && (words[3] != '\'\'') && (words[3] != '""')) {
@@ -50,7 +55,7 @@ const sendtoaddressFunc = async function(cmd, words, wallet, walletMgr) {
   console.log('sendtoaddress -> ', ret);
 };
 
-const getnewaddressFunc = async function(cmd, words, wallet, walletMgr) {
+const getnewaddressFunc = async function(cmd, words, wallet) {
   let addrType = 'p2wpkh';
   let label = '';
   if (words.length > 1) {
@@ -63,7 +68,7 @@ const getnewaddressFunc = async function(cmd, words, wallet, walletMgr) {
   console.log('getnewaddress -> ', ret);
 };
 
-const getscriptaddressFunc = async function(cmd, words, wallet, walletMgr) {
+const getscriptaddressFunc = async function(cmd, words, wallet) {
   let addrType = 'p2wpkh';
   let label = '';
   if (words.length > 2) {
@@ -76,7 +81,7 @@ const getscriptaddressFunc = async function(cmd, words, wallet, walletMgr) {
   console.log('getscriptaddress -> ', ret);
 };
 
-const dumpprivkeyFunc = async function(cmd, words, wallet, walletMgr) {
+const dumpprivkeyFunc = async function(cmd, words, wallet) {
   let address = '';
   let pubkey = '';
   if (words.length > 1 && (words[1] != '\'\'') && (words[1] != '""')) {
@@ -89,28 +94,28 @@ const dumpprivkeyFunc = async function(cmd, words, wallet, walletMgr) {
   console.log('dumpprivkey -> ', ret);
 };
 
-const getaddressinfoFunc = async function(cmd, words, wallet, walletMgr) {
+const getaddressinfoFunc = async function(cmd, words, wallet) {
   const ret = await wallet.getAddressInfo(words[1]);
   console.log('getaddressinfo -> ', ret);
 };
 
-const dumpaddressesFunc = async function(cmd, words, wallet, walletMgr) {
+const dumpaddressesFunc = async function(cmd, words, wallet) {
   const ret = await wallet.getAddresses();
   console.log('dumpaddresses -> ', ret);
 };
 
-const dumpaddressesbylabelFunc = async function(cmd, words, wallet, walletMgr) {
+const dumpaddressesbylabelFunc = async function(cmd, words, wallet) {
   const ret = await wallet.getAddressesByLabel(words[1]);
   console.log('dumpaddresses -> ', ret);
 };
 
-const decoderawtransactionFunc = async function(cmd, words, wallet, walletMgr) {
+const decoderawtransactionFunc = async function(cmd, words, wallet) {
   const ret = await wallet.decodeRawTransaction(words[1]);
   console.log('decoderawtransaction -> ',
       JSON.stringify(ret, null, '  '));
 };
 
-const getbalanceFunc = async function(cmd, words, wallet, walletMgr) {
+const getbalanceFunc = async function(cmd, words, wallet) {
   let minimumConf = 1;
   if (words.length > 1) {
     minimumConf = parseInt(words[1]);
@@ -119,7 +124,7 @@ const getbalanceFunc = async function(cmd, words, wallet, walletMgr) {
   console.log('getbalance -> ', ret);
 };
 
-const listunspentFunc = async function(cmd, words, wallet, walletMgr) {
+const listunspentFunc = async function(cmd, words, wallet) {
   let address = '';
   let asset = '';
   let path = '';
@@ -150,12 +155,12 @@ const getblockcountFunc = async function(cmd, words, wallet, walletMgr) {
   console.log('getblockcount -> ', ret);
 };
 
-const getmempoolutxocountFunc = async function(cmd, words, wallet, walletMgr) {
+const getmempoolutxocountFunc = async function(cmd, words, wallet) {
   const ret = await wallet.getMempoolUtxoCount();
   console.log('getmempoolutxocount -> ', ret);
 };
 
-const forceupdateutxoFunc = async function(cmd, words, wallet, walletMgr) {
+const forceupdateutxoFunc = async function(cmd, words, wallet) {
   const ret = await wallet.forceUpdateUtxoData();
   console.log('forceupdateutxo -> ', ret);
 };
@@ -229,7 +234,7 @@ const consoleFunctionList = {
   },
 };
 
-const helpFunc = function(cmd, words, wallet, walletMgr) {
+const helpFunc = function() {
   console.log(' command:');
   Object.keys(consoleFunctionList).forEach((key) =>
     console.log(`  - ${key} ` + (('parameter' in consoleFunctionList[key]) ? `: ${consoleFunctionList[key].parameter}` : '') ),

@@ -1,5 +1,4 @@
 'use strict';
-const path = require('path');
 const fs = require('fs');
 const ini = require('ini');
 const jsonrpcClientLib = require('./jsonrpc-cli-lib');

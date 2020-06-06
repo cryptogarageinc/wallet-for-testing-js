@@ -25,7 +25,7 @@ const commandData = {
     alias: undefined,
     parameter: '<asset amount> <token amount> [<is_blind> <fee>]',
   },
-  sendissue_lib: {
+  sendissueLib: {
     name: 'sendissue_lib',
     alias: undefined,
     parameter: '<asset amount> <token amount> [<is_blind_iussue> <is_blind> <fee>]',
@@ -35,7 +35,7 @@ const commandData = {
     alias: undefined,
     parameter: '<asset> <reissue amount> [<blind flag> <fee>]',
   },
-  sendreissue_lib: {
+  sendreissueLib: {
     name: 'sendreissue_lib',
     alias: undefined,
     parameter: '<asset> <reissue amount> [<is_blind_iussue> <blind flag> <fee>]',
@@ -85,7 +85,7 @@ const main = async () => {
     if (checkString(command, 'sendissue')) {
       const assetAmount = Number(process.argv[3]);
       const tokenAmount = Number(process.argv[4]);
-      let isBlind = true;
+      const isBlind = true;
       let isIssuanceBlind = true;
       let fee = 0.0001;
       if (process.argv.length >= 6) {
@@ -270,7 +270,7 @@ const main = async () => {
       if (!utxos.btc) {
         throw Error('listunspent fail. Maybe low fee.');
       }
-      console.log("unspents >>\n", utxos.btc)
+      console.log('unspents >>\n', utxos.btc);
 
       // === create transaction ===
       // generate addresses
@@ -342,6 +342,12 @@ const main = async () => {
       let blindTx = issueTx;
       const issuancesBlind = [];
       if (isBlind) {
+        const masterBlindingKey = await elementsCli.dumpmasterblindingkey();
+        const issueBlindingKey = cfdjs.GetIssuanceBlindingKey({
+          'masterBlindingKey': masterBlindingKey,
+          'txid': utxos.btc.txid,
+          'vout': utxos.btc.vout,
+        });
         if (isIssuanceBlind) {
           issuancesBlind.push({
             'txid': utxos.btc.txid,
@@ -350,12 +356,6 @@ const main = async () => {
             'tokenBlindingKey': issueBlindingKey.blindingKey,
           });
         }
-        const masterBlindingKey = await elementsCli.dumpmasterblindingkey();
-        const issueBlindingKey = cfdjs.GetIssuanceBlindingKey({
-          'masterBlindingKey': masterBlindingKey,
-          'txid': utxos.btc.txid,
-          'vout': utxos.btc.vout,
-        });
         blindTx = cfdjs.BlindRawTransaction({
           'tx': issueTx.hex,
           'txins': [
@@ -525,13 +525,6 @@ const main = async () => {
           unblindBlindingKeys[type] =
               await elementsCli.dumpblindingkey(addressInfo[type].confidential);
         }
-        const issueMasterBlindingKey =
-            await elementsCli.dumpmasterblindingkey();
-        const issueBlindingKey = cfdjs.GetIssuanceBlindingKey({
-          'masterBlindingKey': issueMasterBlindingKey,
-          'txid': utxos.btc.txid,
-          'vout': utxos.btc.vout,
-        });
         // const unblindReissueTx =
         //     await elementsCli.unblindrawtransaction(gettransaction.hex)
         const unblindIssueTx = cfdjs.UnblindRawTransaction({
@@ -671,7 +664,7 @@ const main = async () => {
             reissueHex,
             true,
             [utxos.token.assetcommitment, utxos.btc.assetcommitment],
-            true
+            true,
         );
         // console.log("blindtx =>\n", reissueHex)
       }
@@ -884,43 +877,46 @@ const main = async () => {
           'tokenBlindingKey': issuanceBlindingKey.blindingKey,
         });
       }
-      const blindTx = cfdjs.BlindRawTransaction({
-        'tx': reissueTx.hex,
-        'txins': [
-          {
-            'txid': utxos.token.txid,
-            'vout': utxos.token.vout,
-            'asset': utxos.token.asset,
-            'blindFactor': utxos.token.amountblinder,
-            'assetBlindFactor': utxos.token.assetblinder,
-            'amount': toSatoshiAmount(utxos.token.amount),
-          },
-          {
-            'txid': utxos.btc.txid,
-            'vout': utxos.btc.vout,
-            'asset': utxos.btc.asset,
-            'blindFactor': utxos.btc.amountblinder,
-            'assetBlindFactor': utxos.btc.assetblinder,
-            'amount': toSatoshiAmount(utxos.btc.amount),
-          },
-        ],
-        'txouts': [
-          {
-            'index': 0,
-            'blindPubkey': addrInfo.token.confidential_key,
-          },
-          {
-            'index': 1,
-            'blindPubkey': addrInfo.btc.confidential_key,
-          },
-          {
-            'index': 3,
-            'blindPubkey': addrInfo.asset.confidential_key,
-          },
-        ],
-        'issuances': issuance,
-      });
-      // console.log("blinded reissue tx =>\n", blindTx)
+      let blindTx = reissueTx;
+      if (isBlind) {
+        blindTx = cfdjs.BlindRawTransaction({
+          'tx': reissueTx.hex,
+          'txins': [
+            {
+              'txid': utxos.token.txid,
+              'vout': utxos.token.vout,
+              'asset': utxos.token.asset,
+              'blindFactor': utxos.token.amountblinder,
+              'assetBlindFactor': utxos.token.assetblinder,
+              'amount': toSatoshiAmount(utxos.token.amount),
+            },
+            {
+              'txid': utxos.btc.txid,
+              'vout': utxos.btc.vout,
+              'asset': utxos.btc.asset,
+              'blindFactor': utxos.btc.amountblinder,
+              'assetBlindFactor': utxos.btc.assetblinder,
+              'amount': toSatoshiAmount(utxos.btc.amount),
+            },
+          ],
+          'txouts': [
+            {
+              'index': 0,
+              'blindPubkey': addrInfo.token.confidential_key,
+            },
+            {
+              'index': 1,
+              'blindPubkey': addrInfo.btc.confidential_key,
+            },
+            {
+              'index': 3,
+              'blindPubkey': addrInfo.asset.confidential_key,
+            },
+          ],
+          'issuances': issuance,
+        });
+        // console.log("blinded reissue tx =>\n", blindTx)
+      }
 
       // === sign transaction ===
       const inputAddrInfo = {};
@@ -1036,13 +1032,6 @@ const main = async () => {
         unblindBlindingKeys[type] =
             await elementsCli.dumpblindingkey(addrInfo[type].confidential);
       }
-      const reissueMasterBlindingKey =
-          await elementsCli.dumpmasterblindingkey();
-      const reissueBlindingKey = cfdjs.GetIssuanceBlindingKey({
-        'masterBlindingKey': reissueMasterBlindingKey,
-        'txid': utxos.token.txid,
-        'vout': utxos.token.vout,
-      });
       // const unblindReissueTx =
       //     await elementsCli.unblindrawtransaction(gettransaction.hex)
       const unblindReissueTx = cfdjs.UnblindRawTransaction({

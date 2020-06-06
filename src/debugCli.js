@@ -630,13 +630,12 @@ const parsedescriptor = async function() {
     path = process.argv[5];
   }
 
-  let descriptorInfo = cfdjs.ParseDescriptor({
+  const descriptorInfo = cfdjs.ParseDescriptor({
     isElements: isElements,
     descriptor: descriptor,
     network: network,
     bip32DerivationPath: path,
   });
-
 
   try {
     let typeName = 'redeem_script';
@@ -759,6 +758,7 @@ const mnemonictoseed = async function() {
   const result = cfdjs.ConvertMnemonicToSeed({
     mnemonic: mnemonicItems,
     passphrase: passphrase,
+    // eslint-disable-next-line @typescript-eslint/camelcase
     strict_check: true,
     language: 'en',
   });
@@ -1374,6 +1374,7 @@ const generatekeywithmnemonic = async function() {
     const seed = cfdjs.ConvertMnemonicToSeed({
       mnemonic: mnemonicItems,
       passphrase: passphrase,
+      // eslint-disable-next-line @typescript-eslint/camelcase
       strict_check: true,
       language: 'en',
     });
@@ -1469,6 +1470,7 @@ const mnemonictoblindtx = async function() {
   const seed = cfdjs.ConvertMnemonicToSeed({
     mnemonic: mnemonicArgList,
     passphrase: passphrase,
+    // eslint-disable-next-line @typescript-eslint/camelcase
     strict_check: true,
     language: 'en',
   });

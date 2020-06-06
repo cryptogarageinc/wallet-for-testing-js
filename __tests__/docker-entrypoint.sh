@@ -32,19 +32,21 @@ do
 done
 echo "start bitcoin node"
 
-# elementsd -chain=liquidregtest -datadir=${WORKDIR_PATH}/elementsd_datadir
-# elements-cli -chain=liquidregtest -datadir=${WORKDIR_PATH}/elementsd_datadir ping > /dev/null 2>&1
-# while [ $? -ne 0 ]
-# do
-#   elements-cli -chain=liquidregtest -datadir=${WORKDIR_PATH}/elementsd_datadir ping > /dev/null 2>&1
-# done
-# echo "start elements node"
+elementsd -chain=liquidregtest -datadir=${WORKDIR_PATH}/elementsd_datadir
+elements-cli -chain=liquidregtest -datadir=${WORKDIR_PATH}/elementsd_datadir ping > /dev/null 2>&1
+while [ $? -ne 0 ]
+do
+  elements-cli -chain=liquidregtest -datadir=${WORKDIR_PATH}/elementsd_datadir ping > /dev/null 2>&1
+done
+echo "start elements node"
 
 set -e
 
-if [ ! -d node_modules ]; then
-  mkdir node_modules
+if [ -d node_modules ]; then
+  rm -rf node_modules
 fi
+mkdir node_modules
 chmod 777 node_modules
 node --version
 npm install && npm test
+rm -rf node_modules

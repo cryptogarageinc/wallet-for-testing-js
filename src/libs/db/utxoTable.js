@@ -1,4 +1,7 @@
+/* eslint-disable require-jsdoc */
 const NedbWrapper = require('./nedbWrapper.js');
+
+const emptyBlinder = '0000000000000000000000000000000000000000000000000000000000000000';
 
 module.exports = class UtxoTable {
   constructor(name = 'db', dirPath = './', inMemoryOnly = true) {
@@ -12,7 +15,7 @@ module.exports = class UtxoTable {
 
   async addUtxo(txid, vout, amount, address, descriptor, lockingScript,
       solvable, blockHash = '', blockHeight = -1, coinbase = false, asset = '',
-      confidentialKey = '', assetCommitment = '', amountCommitment = '',
+      confidentialKey = '', assetBlinder = '', amountBlinder = '',
       extend = {}) {
     let mapData = {};
     const outpoint = `${txid},${vout}`;
@@ -30,8 +33,8 @@ module.exports = class UtxoTable {
         lockingScript: lockingScript, blockHash: blockHash,
         blockHeight: blockHeight, asset: asset,
         confidentialKey: confidentialKey,
-        assetCommitment: assetCommitment,
-        amountCommitment: amountCommitment,
+        assetBlinder: assetBlinder,
+        amountBlinder: amountBlinder,
         spent: false, solvable: solvable, coinbase: coinbase, extend: extend};
     }
     return await this.database.insert(mapData, {outpoint: outpoint});
@@ -169,7 +172,7 @@ module.exports = class UtxoTable {
   async getUtxosBlockHeightSolvedUnspentable(
       bestBlockHeight = 9223372036854775807,
       minimumConf = 6, maximumConf = 9223372036854775807,
-      page = 1, perPage = 10000) {
+      page = 1, perPage = 10000, ignoreConfidential = false) {
     return await this.database.findSorted({$where: function() {
       const height = bestBlockHeight - this.blockHeight + 1;
       if (!this.solvable) return false; // script utxo
@@ -177,6 +180,10 @@ module.exports = class UtxoTable {
         return false;
       }
       if ((minimumConf !== 0) && (this.blockHeight === -1)) {
+        return false;
+      }
+      if (ignoreConfidential && this.assetBlinder &&
+        assetBlinder === emptyBlinder) {
         return false;
       }
       return ((!this.spent) &&
@@ -188,13 +195,17 @@ module.exports = class UtxoTable {
 
   async getUtxosBlockHeightUnspentable(bestBlockHeight = 9223372036854775807,
       minimumConf = 6, maximumConf = 9223372036854775807,
-      page = 1, perPage = 10000) {
+      page = 1, perPage = 10000, ignoreConfidential = false) {
     return await this.database.findSorted({$where: function() {
       const height = bestBlockHeight - this.blockHeight + 1;
       if (this.coinbase && (height < 100)) {
         return false;
       }
       if ((minimumConf !== 0) && (this.blockHeight === -1)) {
+        return false;
+      }
+      if (ignoreConfidential && this.assetBlinder &&
+        assetBlinder === emptyBlinder) {
         return false;
       }
       return ((!this.spent) &&

@@ -148,7 +148,7 @@ const feeUtxo = {
 const networkType = 'liquidv1';
 const mainchainNetworkType = 'mainnet';
 const masterBlindingKey = '28054244faf0d4a04fc9dd3012443fc126c4a353f48d0277d3c57f69164adf87';
-const txFeeAmount = 13000;  // feerate: 0.148
+const txFeeAmount = 13000; // feerate: 0.148
 // dust laptop safe error tent soon fragile skill pear alley awkward vague stomach duck future
 // xprv9s21ZrQH143K39sCCERa3w6NuVmYLMxHKH1PjEnuiaq2RB9iHhEwncTGpbx1WANWJZzFFbFdBi7BKECLg3HnFgajeRi5Go6YxD1K2nZtpDB/44h/1776h/1h
 const baseXpubkey = 'xpub6CADKiKYZrFrmFbPAQPSrzKMRohBHNmYM7GHNngAaaVHqNhC3apR1aNKJkigUjBDU7HwciQSRjeBK42vZUMZGNEjZkPjDWDawKVxTLGhNVE';

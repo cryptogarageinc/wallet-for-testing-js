@@ -32,13 +32,13 @@ do
 done
 echo "start bitcoin node"
 
-# elementsd -chain=liquidregtest -datadir=${WORKDIR_PATH}/elementsd_datadir
-# elements-cli -chain=liquidregtest -datadir=${WORKDIR_PATH}/elementsd_datadir ping > /dev/null 2>&1
-# while [ $? -ne 0 ]
-# do
-#   elements-cli -chain=liquidregtest -datadir=${WORKDIR_PATH}/elementsd_datadir ping > /dev/null 2>&1
-# done
-# echo "start elements node"
+elementsd -chain=liquidregtest -datadir=${WORKDIR_PATH}/elementsd_datadir
+elements-cli -chain=liquidregtest -datadir=${WORKDIR_PATH}/elementsd_datadir ping > /dev/null 2>&1
+while [ $? -ne 0 ]
+do
+  elements-cli -chain=liquidregtest -datadir=${WORKDIR_PATH}/elementsd_datadir ping > /dev/null 2>&1
+done
+echo "start elements node"
 
 set -e
 

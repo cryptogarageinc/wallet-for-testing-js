@@ -15,12 +15,12 @@ const NETWORK = 'regtest';
 // -----------------------------------------------------------------------------
 
 const commandData = {
-  generate_address: {
+  generateAddress: {
     name: 'generate_address',
     alias: undefined,
     parameter: '[<address_type(legacy,p2sh-segwit,bech32,all(default))>]',
   },
-  generate_multisig_address: {
+  generateMultisigAddress: {
     name: 'generate_multisig_address',
     alias: undefined,
     parameter: '[<address_type(legacy,p2sh-segwit,bech32,all(default))>]',

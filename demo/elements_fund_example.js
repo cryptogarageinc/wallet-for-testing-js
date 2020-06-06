@@ -28,22 +28,22 @@ const commandData = {
     alias: undefined,
     parameter: '<btc amount> <fee rate>',
   },
-  cfd_coinselect: {
+  cfdCoinselect: {
     name: 'cfd_coinselect',
     alias: undefined,
     parameter: '<btc amount> <fee rate> [<min change>]',
   },
-  cfd_fundrawtx: {
+  cfdFundrawtx: {
     name: 'cfd_fundrawtx',
     alias: undefined,
     parameter: '<tx asset:amount,asset2:amount2,...> <target asset:amount,asset2:amount2,...> <fee rate> [<min change>]',
   },
-  btc_fundrawtx: {
+  btcFundrawtx: {
     name: 'btc_fundrawtx',
     alias: undefined,
     parameter: '<btc amount> <fee rate> [<min change>]',
   },
-  btccfd_fundrawtx: {
+  btccfdFundrawtx: {
     name: 'btccfd_fundrawtx',
     alias: undefined,
     parameter: '<tx btc amount> <search btc amount> <fee rate> [<min change>]',

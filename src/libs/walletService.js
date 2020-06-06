@@ -232,22 +232,27 @@ module.exports = class Wallet {
       addr = addrInfo.address;
     }
 
-    const generateInfo = await this.utxoService.generate(addr, count);
-    if (!nowait) {
-      const sleep = (msec) => new Promise(
-          (resolve) => setTimeout(resolve, msec));
-      let tipHeightAfter = await configTbl.getTipBlockHeight();
-      let loop = 0;
-      while (tipHeightCache == tipHeightAfter) {
-        await sleep(500);
-        tipHeightAfter = await configTbl.getTipBlockHeight();
-        ++loop;
-        if (loop > 20) {
-          break;
+    try {
+      const generateInfo = await this.utxoService.generate(addr, count);
+      if (!nowait) {
+        const sleep = (msec) => new Promise(
+            (resolve) => setTimeout(resolve, msec));
+        let tipHeightAfter = await configTbl.getTipBlockHeight();
+        let loop = 0;
+        while (tipHeightCache == tipHeightAfter) {
+          await sleep(500);
+          tipHeightAfter = await configTbl.getTipBlockHeight();
+          ++loop;
+          if (loop > 20) {
+            break;
+          }
         }
       }
+      return generateInfo;
+    } catch (e) {
+      console.log('exception: addr=', addr);
+      throw e;
     }
-    return generateInfo;
   };
 
   /**

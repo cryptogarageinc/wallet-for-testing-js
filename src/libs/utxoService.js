@@ -15,13 +15,26 @@ module.exports = class UtxoService {
 
   async initialize(network, masterXprivkey) {
     this.network = network;
+    this.mainchainNetwork = network;
     this.masterXprivkey = masterXprivkey;
+    if ((network === 'mainnet') || (network === 'testnet') || (network === 'regtest')) {
+      this.isElements = false;
+    } else {
+      if (network === 'liquidv1') {
+        this.mainchainNetwork = 'mainnet';
+      } else {
+        this.mainchainNetwork = 'regtest';
+        this.network = 'regtest';
+      }
+      this.isElements = true;
+    }
     return true;
   };
 
   async generate(address, count) {
     const lockingScript = this.cfd.GetAddressInfo({
       address: address,
+      isElements: this.isElements,
     }).lockingScript;
     const descriptor = await this.addressService.getDescriptor(address);
     // console.log('  descriptor = ', descriptor);

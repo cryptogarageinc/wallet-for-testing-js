@@ -387,6 +387,7 @@ describe('wallet test', () => {
     const genesisBlockHash: string = (typeof sideChainInfo.parent_blockhash == 'string') ?
         sideChainInfo.parent_blockhash : '';
 
+    console.log('sideChainInfo:', sideChainInfo);
     // generate btc address
     // TODO: Is it necessary to install it in the wallet?
     const peginKeys = cfd.CreateKeyPair({
@@ -469,13 +470,20 @@ describe('wallet test', () => {
     // send pegin tx
     try {
       const txid = await elmWallet1.sendRawTransaction(signTx.hex);
-      console.log('sendRawTransaction pegin tx:', txid);
+      // console.log('sendRawTransaction pegin tx:', txid);
       expect(txid).toBe(decTx.txid);
+
+      await elmWallet1.generate(1);
+      const gettxout = await elmWalletMgr.callRpcDirect(
+          TargetNode.Elements, 'gettxout', [txid, 0]);
+      console.log('gettxout:', gettxout);
+
+      const balance = await elmWallet1.getBalance(1, '', '', peggedAsset);
+      console.log('wallet balance:', balance);
     } catch (e) {
       console.log(e);
       throw e;
     }
-    sleep(3000);
   });
 
   // pegout test (low)

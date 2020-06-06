@@ -330,19 +330,17 @@ const walletManager = class WalletManager {
         }
         tipHeightCache = this.bitcoinTipHeightCache;
         client = this.btcClient;
-      } else {
+      } else if (targetNodeType === 'elements') {
         // elements
-        // FIXME not implements.
-        // console.log(`[WM] checkUpdateBlock targetNodeType: ${targetNodeType}`);
+        chaintips = await this.elmClient.getchaintips();
+        if (this.elementsTipHeightCache === -1) {
+          this.elementsTipHeightCache = chaintips[0].height;
+        }
+        tipHeightCache = this.elementsTipHeightCache;
+        client = this.elmClient;
       }
       if (chaintips === undefined) {
-        if (targetNodeType === 'bitcoin') {
-          console.log('[WM] checkUpdateBlock undef chaintips.');
-        } else {
-          // elements
-          // FIXME not implements.
-          // console.log('[WM] checkUpdateBlock undef chaintips.');
-        }
+        console.log('[WM] checkUpdateBlock undef chaintips.');
         return false;
       }
 

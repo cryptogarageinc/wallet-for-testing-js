@@ -124,5 +124,6 @@ export class WalletManager {
   stop(targetNodeType: TargetNode): Promise<string>;
 
   callRpcDirect(targetNodeType: TargetNode, command: string,
-      parameters?: string[]): Promise<string>;
+      parameters?: (string | number | boolean | string[])[]):
+        Promise<{[key: string]: string | number | boolean}>;
 }

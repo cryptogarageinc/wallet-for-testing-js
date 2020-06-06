@@ -1,3 +1,7 @@
+/* eslint-disable require-jsdoc */
+
+const emptyBlinder = '0000000000000000000000000000000000000000000000000000000000000000';
+
 module.exports = class UtxoService {
   constructor(databaseService, addressService, client, parent) {
     this.databaseService = databaseService;
@@ -235,10 +239,75 @@ module.exports = class UtxoService {
     return true;
   }
 
-  async addUtxo(tx, unblindTx = '') {
+  async addUtxo(tx) {
     if (this.parent.isElements === true) {
-      // FIXME elements not implement
-      throw Error('addUtxo: elements not implements.');
+      const decTx = this.parent.decodeRawTransaction(tx);
+      // console.log('addUtxo tx = ', decTx);
+      for (let i = 0; i < decTx.vout.length; ++i) {
+        if (decTx.vout[i] && ('scriptPubKey' in decTx.vout[i])) {
+          const lockingScript = decTx.vout[i].scriptPubKey.hex;
+          const addr = await this.addressService.getAddressInfoByLockingScript(
+              lockingScript);
+          // console.log('addr = ', addr);
+          if (addr) {
+            let assetBlinder = emptyBlinder;
+            let amountBlinder = emptyBlinder;
+            let confidentialKey = '';
+            let asset;
+            let value;
+            const extend = {};
+            if ('valuecommitment' in decTx.vout[i]) {
+              // get blinder
+              const blindingKey = this.parent.getBlindingKey(addr.address);
+              const ctAddr = this.cfd.GetConfidentialAddress({
+                unblindedAddress: address,
+                key: blindingKey.pubkey,
+              });
+              confidentialKey = blindingKey.pubkey;
+              extend.push({'confidentialAddress': ctAddr.confidentialAddress});
+              const unblindData = this.cfd.UnblindRawTransaction({
+                tx: tx,
+                txouts: [{
+                  index: i,
+                  blindingKey: blindingKey.privkey,
+                }],
+              });
+              if (unblindData.outputs[0]) {
+                assetBlinder = unblindData.outputs[0].assetBlindFactor;
+                amountBlinder = unblindData.outputs[0].blindFactor;
+                asset = unblindData.outputs[0].asset;
+                value = unblindData.outputs[0].amount;
+              }
+            } else {
+              asset = decTx.vout[i].asset;
+              value = decTx.vout[i].value;
+            }
+            const solvable = (!addr.script && addr.path !== '') ? true : false;
+            const blockHash = '';
+            const blockHeight = -1;
+            const coinbase = false;
+            const ret = await this.utxoTable.addUtxo(decTx.txid, i,
+                value, addr.address,
+                addr.descriptor, lockingScript, solvable,
+                blockHash, blockHeight, coinbase, asset,
+                confidentialKey, assetBlinder, amountBlinder, extend);
+            if (ret === false) {
+              throw Error('addUtxo: addUtxo fail.');
+            }
+          } else {
+            // console.log('unknown address. lockingScript = ', lockingScript);
+          }
+        } else {
+          // console.log("vout = ", decTx.vout[i]);
+        }
+      }
+      // update spendable with txin
+      const vin = decTx.vin;
+      for (let j = 0; j < vin.length; ++j) {
+        if (vin[j]) {
+          await this.updateUtxoState(vin[j].txid, vin[j].vout);
+        }
+      }
     } else {
       const decTx = this.parent.decodeRawTransaction(tx);
       // console.log('addUtxo tx = ', decTx);
@@ -296,15 +365,16 @@ module.exports = class UtxoService {
   };
 
   async listUnspent(minimumConf = 6, maximumConf = 9999999999,
-      address = '', asset = '', path = '', solvedOnly = false) {
+      address = '', asset = '', path = '', solvedOnly = false,
+      ignoreConfidential = false) {
     const count = await this.configTable.getTipBlockHeight();
     let utxos;
     if (solvedOnly) {
       utxos = await this.utxoTable.getUtxosBlockHeightSolvedUnspentable(
-          count, minimumConf, maximumConf, 1, 10000000);
+          count, minimumConf, maximumConf, 1, 10000000, ignoreConfidential);
     } else {
       utxos = await this.utxoTable.getUtxosBlockHeightUnspentable(
-          count, minimumConf, maximumConf, 1, 10000000);
+          count, minimumConf, maximumConf, 1, 10000000, ignoreConfidential);
     }
     if ((address === '') && (asset === '') && (path === '')) {
       return utxos;

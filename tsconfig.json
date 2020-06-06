@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ESNext",
+    "strict": true,  /* Enable all strict type-checking options. */
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "esModuleInterop": true,

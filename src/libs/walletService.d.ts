@@ -38,6 +38,8 @@ export interface AddressData {
 export interface FundRawTxResponse {
     hex: string;
     fee: bigint | number;
+    utxos: UtxoData[];
+    isConfidential: boolean;
 }
 
 export interface AmountByAddress {
@@ -85,6 +87,17 @@ export interface SendToAddressResponse extends OutPoint {
     hex: string;
 }
 
+export interface SendAmount {
+    address: string;
+    satoshiAmount: bigint | number;
+    asset: string;
+}
+
+export interface KeyPair {
+    pubkey: string;
+    privkey: string;
+}
+
 /**
  * Wallet class.
  */
@@ -130,6 +143,12 @@ export class Wallet {
       asset?: string, estimateMode?: string, feeRateForUnset?: number,
       targetConf?: number): Promise<SendToAddressResponse>;
 
+
+  // estimateMode: UNSET or CONSERVATIVE or ECONOMICAL
+  sendToAddresses(addresses: SendAmount[],
+    estimateMode?: string, feeRateForUnset?: number,
+    targetConf?: number): Promise<SendToAddressResponse>;
+
   createRawTransaction(version?: number, locktime?: number,
       txin?: cfdjs.TxInRequest[] | cfdjs.ElementsTxInRequest[],
       txout?: cfdjs.TxOutRequest[] | cfdjs.ElementsTxOutRequest[],
@@ -139,6 +158,10 @@ export class Wallet {
   getNewAddress(addressType?: AddressType | AddressKind | undefined,
       label?: string, targetIndex?: number,
       hasFeeAddress?: boolean): Promise<AddressData>;
+
+  getConfidentialAddress(address: string): string;
+
+  getBlindingKey(address: string): KeyPair;
 
   getAddresses(): Promise<AddressData[]>;
 

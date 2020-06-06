@@ -69,6 +69,9 @@ module.exports = class Wallet {
     this.targetConf = 6;
     this.gapLimit = 20;
     this.addressType = 'p2wpkh';
+    this.masterBlindingKey = '';
+    this.sidechaininfo = {};
+    this.assetLbtc = '';
   };
 
   /**
@@ -110,6 +113,12 @@ module.exports = class Wallet {
       throw Error('[wallet] RPC connect failed.');
     }
     await this.forceUpdateUtxoData();
+    if (this.isElements) {
+      // FIXME get master blinding key
+      this.masterBlindingKey = await this.client.dumpmasterblindingkey();
+      this.sidechaininfo = await this.client.getsidechaininfo();
+      this.assetLbtc = this.sidechaininfo.pegged_asset;
+    }
     return true;
   };
 
@@ -288,7 +297,9 @@ module.exports = class Wallet {
       throw new Error('Wallet feeRateForUnset is number only.');
     }
     let feeRate = feeRateForUnset;
-    if (this.isElements || (this.network === 'testnet')) {
+    if (this.isElements) {
+      feeRate = 0.15;
+    } else if (this.network === 'testnet') {
       feeRate = 1;
     } else if (estimateMode === 'CONSERVATIVE') {
       feeRate = 20.0;
@@ -296,16 +307,99 @@ module.exports = class Wallet {
       feeRate = this.minimumFeeRate;
     }
 
+    if (this.isElements && (!asset)) {
+      throw new Error('Please set asset info by elements mode.');
+    }
     // FIXME save l-btc asset to configTable?
-    let feeAsset = (this.isElements) ? asset : '';
+    const feeAsset = (this.isElements) ? this.assetLbtc : '';
     let tx = this.createRawTransaction(2, 0, [], [{
       'address': address,
       'amount': satoshiAmount,
-    }], feeAsset = '');
+      'asset': asset,
+    }], {asset: feeAsset, amount: 0});
     tx = await this.fundRawTransactionInternal(
         tx.hex, feeRate, feeAsset, targetConf);
+    if (this.isElements && tx.isConfidential) {
+      const utxos = tx.utxos;
+      const inputList = [];
+      for (const utxo of utxos) {
+        inputList.push({
+          txid: utxo.txid,
+          vout: utxo.vout,
+          asset: utxo.asset,
+          amount: utxo.amount,
+          blindFactor: utxo.amoutnBlinder,
+          assetBlindFactor: utxot.assetBlinder,
+        });
+      }
+      tx = this.cfd.BlindRawTransaction({
+        tx: tx.hex,
+        txins: inputList,
+      });
+    }
+    tx = await this.signRawTransactionWithWallet(tx.hex, false);
+    const txid = await this.sendRawTransaction(tx.hex);
+    return {txid: txid, vout: 0, hex: tx.hex};
+  }
+
+  /**
+   * send to address.
+   * @param {*} addresses address amount info list.
+   * @param {string} estimateMode estimate mode.
+   * @param {number} feeRateForUnset unset fee rate.
+   * @param {number} targetConf target confirmation
+   * @return {Promise<*>} send tx info.
+   */
+  async sendToAddresses(addresses, estimateMode, feeRateForUnset,
+      targetConf) {
+    if (isNaN(feeRateForUnset)) {
+      throw new Error('Wallet feeRateForUnset is number only.');
+    }
+    let feeRate = feeRateForUnset;
     if (this.isElements) {
-      // FIXME blinding (if address is CT)
+      feeRate = 0.15;
+    } else if (this.network === 'testnet') {
+      feeRate = 1;
+    } else if (estimateMode === 'CONSERVATIVE') {
+      feeRate = 20.0;
+    } else if (estimateMode === 'ECONOMICAL') {
+      feeRate = this.minimumFeeRate;
+    }
+
+    if (this.isElements && (!asset)) {
+      throw new Error('Please set asset info by elements mode.');
+    }
+    // FIXME save l-btc asset to configTable?
+    const feeAsset = (this.isElements) ? this.assetLbtc : '';
+    const txouts = [];
+    for (const input of addresses) {
+      txouts.push({
+        address: input.address,
+        amount: input.amount,
+        asset: input.asset,
+      });
+    }
+    let tx = this.createRawTransaction(2, 0, [], txouts,
+        {asset: feeAsset, amount: 0});
+    tx = await this.fundRawTransactionInternal(
+        tx.hex, feeRate, feeAsset, targetConf);
+    if (this.isElements && tx.isConfidential) {
+      const utxos = tx.utxos;
+      const inputList = [];
+      for (const utxo of utxos) {
+        inputList.push({
+          txid: utxo.txid,
+          vout: utxo.vout,
+          asset: utxo.asset,
+          amount: utxo.amount,
+          blindFactor: utxo.amoutnBlinder,
+          assetBlindFactor: utxot.assetBlinder,
+        });
+      }
+      tx = this.cfd.BlindRawTransaction({
+        tx: tx.hex,
+        txins: inputList,
+      });
     }
     tx = await this.signRawTransactionWithWallet(tx.hex, false);
     const txid = await this.sendRawTransaction(tx.hex);
@@ -368,6 +462,40 @@ module.exports = class Wallet {
       return await this.addrService.getReceiveAddress(
           addrType, label, targetIndex, this.gapLimit);
     }
+  }
+
+  /**
+   * get confidential address.
+   * @param {string} address unblinded address
+   * @return {string} confidential address
+   */
+  getConfidentialAddress(address) {
+    const keyPair = this.getBlindingKey(address);
+    const ctAddr = this.cfd.GetConfidentialAddress({
+      unblindedAddress: address,
+      key: keyPair.pubkey,
+    });
+    return ctAddr.confidentialAddress;
+  }
+
+  /**
+   * get blinding key.
+   * @param {string} address unblinded address
+   * @return {*} blinding key and confidnetial key
+   */
+  getBlindingKey(address) {
+    const blindingKey = this.cfd.GetDefaultBlindingKey({
+      masterBlindingKey: this.masterBlindingKey,
+      address: address,
+    });
+    const confidentialKey = this.cfd.GetPubkeyFromPrivkey({
+      privkey: blindingKey.blindingKey,
+      isCompressed: true,
+    });
+    return {
+      privkey: blindingKey.blindingKey,
+      pubkey: confidentialKey.pubkey,
+    };
   }
 
   /**
@@ -569,7 +697,10 @@ module.exports = class Wallet {
    * @return {void} empty
    */
   estimateSmartFee(confTarget = 6, estimateMode = 'CONSERVATIVE') {
-    if (this.isElements || (this.network === 'testnet')) {
+    if (this.isElements) {
+      this.estimateMode = 'ECONOMICAL';
+      this.targetConf = 1;
+    } else if (this.network === 'testnet') {
       this.estimateMode = 'ECONOMICAL';
       this.targetConf = 1;
     } else {
@@ -720,13 +851,15 @@ module.exports = class Wallet {
    */
   decodeRawTransaction(tx) {
     if (this.isElements) {
+      let liquidNetwork = 'regtest';
       let mainchainNetwork = 'regtest';
       if (this.network === 'liquidv1') {
         mainchainNetwork = 'mainnet';
+        liquidNetwork = 'liquidv1';
       }
       return this.cfd.ElementsDecodeRawTransaction({
         hex: tx,
-        network: this.network,
+        network: liquidNetwork,
         mainchainNetwork: mainchainNetwork,
       });
     } else {
@@ -745,7 +878,9 @@ module.exports = class Wallet {
    */
   async fundRawTransaction(tx, feeAsset = '') {
     let feeRate;
-    if (this.isElements || (this.network === 'testnet')) {
+    if (this.isElements) {
+      feeRate = 0.15;
+    } else if (this.network === 'testnet') {
       feeRate = 1;
     } else if (this.estimateMode === 'CONSERVATIVE') {
       feeRate = 20.0;
@@ -766,13 +901,28 @@ module.exports = class Wallet {
    */
   async fundRawTransactionInternal(tx, feeRate, feeAsset = '', targetConf = 6) {
     // Should UTXO for fishing address be given priority?
-    const utxos = await this.utxoService.listUnspent(
-        targetConf, 9999999999, '', '', '', true);
-    // console.log('utxos = ', utxos);
     const decTx = this.decodeRawTransaction(tx);
     let reqJson;
+    let isConfidential = false;
+    const responseUtxos = [];
+    const selectedUtxos = [];
     if (this.isElements) {
-      const selectedUtxos = [];
+      // vout confidential check
+      for (const txout of decTx.vout) {
+        if (txout) {
+          if (txout.scriptPubKey) {
+            if (txout.scriptPubKey.type === 'fee') {
+              // do nothing
+            } else if (txout.commitmentnonce_fully_valid === true) {
+              isConfidential = true;
+            }
+          }
+        }
+      }
+      const utxos = await this.utxoService.listUnspent(
+          targetConf, 9999999999, '', this.assetLbtc, '',
+          true, !isConfidential);
+      // console.log('utxos = ', utxos);
       for (let i = 0; i < decTx.vin.length; ++i) {
         if (decTx.vin[i]) {
           const txid = decTx.vin[i].txid;
@@ -786,7 +936,10 @@ module.exports = class Wallet {
               asset: utxoData.asset,
               redeemScript: utxoData.lockingScript,
               descriptor: utxoData.descriptor,
+              blindFactor: utxoData.amountBlinder,
+              assetBlindFactor: utxoData.assetBlinder,
             });
+            responseUtxos.push(utxoData);
           }
         }
       }
@@ -832,9 +985,11 @@ module.exports = class Wallet {
         }
       }
     } else {
+      const utxos = await this.utxoService.listUnspent(
+          targetConf, 9999999999, '', '', '', true);
+      // console.log('utxos = ', utxos);
       const feeAddress = await this.addrService.getFeeAddress(
           'p2wpkh', '', -1, this.gapLimit);
-      const selectedUtxos = [];
       for (let i = 0; i < decTx.vin.length; ++i) {
         if (decTx.vin[i]) {
           const txid = decTx.vin[i].txid;
@@ -849,6 +1004,7 @@ module.exports = class Wallet {
               redeemScript: utxoData.lockingScript,
               descriptor: utxoData.descriptor,
             });
+            responseUtxos.push(utxoData);
           }
         }
       }
@@ -870,7 +1026,8 @@ module.exports = class Wallet {
     }
     // console.log('FundRawTransaction : ', reqJson);
     const result = this.cfd.FundRawTransaction(reqJson);
-    return {hex: result.hex, fee: result.feeAmount};
+    return {hex: result.hex, fee: result.feeAmount,
+      utxos: responseUtxos, isConfidential: isConfidential};
   }
 
   // prevtxs: {txid: '', vout: 0}
@@ -1190,19 +1347,9 @@ module.exports = class Wallet {
    * @return {Promise<*>} send transaction info
    */
   async sendRawTransaction(tx) {
-    return await this.sendRawTransactionInternal(tx);
-  };
-
-  /**
-   * send transaction.
-   * @param {string} tx transaction hex
-   * @param {string} unblindTx unblind transactdion hex
-   * @return {Promise<*>} send transaction info
-   */
-  async sendRawTransactionInternal(tx, unblindTx = '') {
     try {
       const txid = await this.client.sendrawtransaction(tx);
-      await this.utxoService.addUtxo(tx, unblindTx);
+      await this.utxoService.addUtxo(tx);
       return txid;
     } catch (err) {
       console.log('sendtx err. tx = ', JSON.stringify(

@@ -1,8 +1,9 @@
 import {WalletManager, TargetNode, AddressType, AddressKind, NodeConfigurationData, BlockData, NetworkType} from '../src/walletManager';
-import {Wallet} from '../src/libs/walletService';
+import {Wallet, OutPoint} from '../src/libs/walletService';
 import fs from 'fs';
 import cfd from 'cfd-js';
 import path from 'path';
+import {assert} from 'console';
 
 const isDebug = false;
 
@@ -122,7 +123,10 @@ describe('wallet test', () => {
     const decTx = btcWallet1.decodeRawTransaction(sendData.hex);
     await btcWallet2.generate(1);
     console.log('sendToAddress1 -> ', sendData);
-    expect(decTx.vout[0].value).toBe(amount);
+    assert(decTx.vout, 'undefined');
+    if (decTx.vout) {
+      expect(decTx.vout[0].value).toBe(amount);
+    }
 
     // second send tx
     const addr2 = await btcWallet1.getNewAddress(AddressType.P2wpkh, 'label1');
@@ -142,8 +146,14 @@ describe('wallet test', () => {
 
     await btcWallet2.generate(1);
 
-    expect(decTx2.vout[0].value).toBe(amount2);
-    expect(decTx2.vout[0].scriptPubKey.hex).toBe(addr2.lockingScript);
+    assert(decTx2.vout, 'undefined');
+    if (decTx2.vout) {
+      expect(decTx2.vout[0].value).toBe(amount2);
+      assert(decTx2.vout[0].scriptPubKey, 'undefined');
+      if (decTx2.vout[0].scriptPubKey) {
+        expect(decTx2.vout[0].scriptPubKey.hex).toBe(addr2.lockingScript);
+      }
+    }
   });
 
 
@@ -156,7 +166,9 @@ describe('wallet test', () => {
 
     const addr1 = await btcWallet1.getNewAddress(AddressType.P2wpkh, 'label1-1');
     const addr2 = await btcWallet2.getNewAddress(AddressType.P2wpkh, 'label2-1');
-
+    if (!addr1.pubkey || !addr2.pubkey) {
+      throw new Error('pubkey undefined');
+    }
     const multisigAddr1 = await btcWallet1.addMultisigAddress(
         [addr1.pubkey, addr2.pubkey], 2, AddressType.P2wsh, 'label-m1');
     const multisigAddr2 = await btcWallet2.addMultisigAddress(
@@ -172,7 +184,10 @@ describe('wallet test', () => {
     const txid1 = await btcWallet1.sendRawTransaction(tx1.hex);
     const decTx1 = btcWallet1.decodeRawTransaction(tx1.hex);
     console.log('[multi] sendRawTransaction1 -> ', {txid: txid1, hex: tx1.hex});
-    expect(decTx1.vout[0].value).toBe(amount1);
+    assert(decTx1.vout, 'undefined');
+    if (decTx1.vout) {
+      expect(decTx1.vout[0].value).toBe(amount1);
+    }
 
     await btcWallet2.generate(1); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
@@ -188,15 +203,18 @@ describe('wallet test', () => {
     let tx2 = btcWallet1.createRawTransaction(2, 0, [txin2], [txout2]);
     tx2 = await btcWallet1.fundRawTransaction(tx2.hex);
     const decTx = btcWallet1.decodeRawTransaction(tx2.hex);
-    const prevtxs = [];
-    for (let i = 0; i < decTx.vin.length; ++i) {
-      if (decTx.vin[i]) {
-        const tempTxid = decTx.vin[i].txid;
-        const tempVout = decTx.vin[i].vout;
-        if (tempTxid === txid1 && tempVout === 0) {
-          continue;
+    const prevtxs: OutPoint[] = [];
+    assert(decTx.vin, 'undefined');
+    if (decTx.vin) {
+      for (let i = 0; i < decTx.vin.length; ++i) {
+        if (decTx.vin[i]) {
+          const tempTxid = decTx.vin[i].txid;
+          const tempVout = decTx.vin[i].vout;
+          if (tempTxid === txid1 && tempVout === 0) {
+            continue;
+          }
+          prevtxs.push({txid: `${tempTxid}`, vout: parseInt(`${tempVout}`)});
         }
-        prevtxs.push({txid: tempTxid, vout: tempVout});
       }
     }
     tx2 = await btcWallet1.signRawTransactionWithWallet(
@@ -261,6 +279,9 @@ describe('wallet test', () => {
 
     const addr1 = await btcWallet1.getNewAddress(AddressType.P2wpkh, 'label1-1');
     // const pubkeyHash = addr1.lockingScript.substring(2);
+    if (!addr1.pubkey) {
+      throw new Error('pubkey undefined');
+    }
     const script = cfd.CreateScript({
       items: [addr1.pubkey, 'OP_CHECKSIG'],
     });
@@ -274,7 +295,10 @@ describe('wallet test', () => {
     const txid1 = await btcWallet1.sendRawTransaction(tx1.hex);
     const decTx1 = btcWallet1.decodeRawTransaction(tx1.hex);
     console.log('[script] sendRawTransaction1 -> ', {txid: txid1, hex: tx1.hex});
-    expect(decTx1.vout[0].value).toBe(amount1);
+    assert(decTx1.vout, 'undefined');
+    if (decTx1.vout) {
+      expect(decTx1.vout[0].value).toBe(amount1);
+    }
 
     await btcWallet2.generate(1); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
@@ -288,14 +312,17 @@ describe('wallet test', () => {
     tx2 = await btcWallet1.fundRawTransaction(tx2.hex);
     const decTx = btcWallet1.decodeRawTransaction(tx2.hex);
     const prevtxs = [];
-    for (let i = 0; i < decTx.vin.length; ++i) {
-      if (decTx.vin[i]) {
-        const tempTxid = decTx.vin[i].txid;
-        const tempVout = decTx.vin[i].vout;
-        if (tempTxid === txid1 && tempVout === 0) {
-          continue;
+    assert(decTx.vin, 'undefined');
+    if (decTx.vin) {
+      for (let i = 0; i < decTx.vin.length; ++i) {
+        if (decTx.vin[i]) {
+          const tempTxid = decTx.vin[i].txid;
+          const tempVout = decTx.vin[i].vout;
+          if (tempTxid === txid1 && tempVout === 0) {
+            continue;
+          }
+          prevtxs.push({txid: `${tempTxid}`, vout: parseInt(`${tempVout}`)});
         }
-        prevtxs.push({txid: tempTxid, vout: tempVout});
       }
     }
     tx2 = await btcWallet1.signRawTransactionWithWallet(
@@ -341,10 +368,121 @@ describe('wallet test', () => {
   });
 
   // pegin test
-  // pegout test
+  it('pegin test', async () => {
+    jest.setTimeout(60000);
+
+    // 10 LBTC
+    const amount = 1000000000;
+    await btcWallet1.generateFund(amount, true);
+    await btcWallet1.generate(100, '', true);
+    await btcWallet1.generate(1);
+
+    // fedpegscript = getsidechaininfo
+    const sideChainInfo = await elmWalletMgr.callRpcDirect(
+        TargetNode.Elements, 'getsidechaininfo');
+    const fedpegScript: string = (typeof sideChainInfo.fedpegscript == 'string') ?
+        sideChainInfo.fedpegscript : '';
+    const peggedAsset: string = (typeof sideChainInfo.pegged_asset == 'string') ?
+        sideChainInfo.pegged_asset : '';
+    const genesisBlockHash: string = (typeof sideChainInfo.parent_blockhash == 'string') ?
+        sideChainInfo.parent_blockhash : '';
+
+    // generate btc address
+    // TODO: Is it necessary to install it in the wallet?
+    const peginKeys = cfd.CreateKeyPair({
+      network: mainchainNetwork,
+      wif: false,
+      isCompressed: true,
+    });
+    const peginAddr = cfd.CreatePegInAddress({
+      fedpegscript: fedpegScript,
+      pubkey: peginKeys.pubkey,
+      hashType: 'p2sh-p2wsh', // if dynafed, can use p2wsh
+      network: mainchainNetwork,
+    });
+
+    // create elements address (unblind)
+    const elmAddr1 = await elmWallet1.getNewAddress(
+        AddressType.P2wpkh, 'peginAddr');
+    console.log('btc pegin address:', peginAddr);
+
+    // send btc pegin address
+    const sendInfo = await btcWallet1.sendToAddress(
+        peginAddr.mainchainAddress, amount);
+    console.log('send btc pegin tx:', sendInfo);
+
+    await btcWallet1.generate(1);
+
+    const txInfo = await btcWalletMgr.callRpcDirect(
+        TargetNode.Bitcoin, 'getrawtransaction', [sendInfo.txid]);
+    const txHex: string = (typeof txInfo == 'string') ? txInfo : '';
+
+    const txoutProofResp = await btcWalletMgr.callRpcDirect(
+        TargetNode.Bitcoin, 'gettxoutproof', [[sendInfo.txid]]);
+    const txoutProof: string = (typeof txoutProofResp == 'string') ?
+        txoutProofResp : '';
+
+    // create pegin tx (unblind)
+    const feeAmt = 10000;
+    const sendAmt = amount - feeAmt;
+    const peginTx = cfd.CreateRawPegin({
+      version: 2,
+      locktime: 0,
+      txins: [{
+        txid: sendInfo.txid,
+        vout: sendInfo.vout,
+        isPegin: true,
+        peginwitness: {
+          amount: amount,
+          asset: peggedAsset,
+          claimScript: peginAddr.claimScript,
+          mainchainGenesisBlockHash: genesisBlockHash,
+          mainchainRawTransaction: txHex,
+          mainchainTxoutproof: txoutProof,
+        },
+      }],
+      txouts: [{
+        address: elmAddr1.address,
+        amount: sendAmt,
+        asset: peggedAsset,
+      }],
+      fee: {
+        amount: feeAmt,
+        asset: peggedAsset,
+      },
+    });
+    const signTx = cfd.SignWithPrivkey({
+      tx: peginTx.hex,
+      isElements: true,
+      txin: {
+        txid: sendInfo.txid,
+        vout: sendInfo.vout,
+        hashType: 'p2wpkh',
+        amount: amount,
+        privkey: peginKeys.privkey,
+        pubkey: peginKeys.pubkey,
+        sighashType: 'all',
+      },
+    });
+    const decTx = cfd.ElementsDecodeRawTransaction({hex: signTx.hex});
+
+    // send pegin tx
+    try {
+      const txid = await elmWallet1.sendRawTransaction(signTx.hex);
+      console.log('sendRawTransaction pegin tx:', txid);
+      expect(txid).toBe(decTx.txid);
+    } catch (e) {
+      console.log(e);
+      throw e;
+    }
+    sleep(3000);
+  });
+
+  // pegout test (low)
   // getbalance test
-  // sendtoaddress test
-  // issuance test
-  // reissuance test
+  // lbtc sendtoaddress test
+  // lbtc blind/unblind test
+  // issuance / reissuance test
   // asset sendtoaddress test
+  // asset blind/unblind test
 });

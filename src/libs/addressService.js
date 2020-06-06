@@ -8,8 +8,19 @@ module.exports = class AddressService {
 
   async initialize(network, masterXprivkey) {
     this.network = network;
+    this.mainchainNetwork = network;
     this.masterXprivkey = masterXprivkey;
-    this.isElements = false;
+    if ((network === 'mainnet') || (network === 'testnet') || (network === 'regtest')) {
+      this.isElements = false;
+    } else {
+      if (network === 'liquidv1') {
+        this.mainchainNetwork = 'mainnet';
+      } else {
+        this.mainchainNetwork = 'regtest';
+        this.network = 'regtest';
+      }
+      this.isElements = true;
+    }
     return true;
   };
 
@@ -55,13 +66,13 @@ module.exports = class AddressService {
     const path = `${this.masterXprivkey}/${childPath}`;
     const extkey = this.cfd.CreateExtkeyFromParentPath({
       extkey: this.masterXprivkey,
-      network: this.network,
+      network: this.mainchainNetwork,
       extkeyType: 'extPubkey',
       path: childPath,
     });
     const pubkey = this.cfd.GetPubkeyFromExtkey({
       extkey: extkey.extkey,
-      network: this.network,
+      network: this.mainchainNetwork,
     });
     const addrInfo = this.cfd.CreateAddress({
       keyData: {

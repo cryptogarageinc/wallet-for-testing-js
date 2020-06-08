@@ -44,6 +44,7 @@ TODO              text
 
 # Source code
 *.js              text eol=lf
+*.ts              text eol=lf
 
 # Docker
 *.dockerignore    text

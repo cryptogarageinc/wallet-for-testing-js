@@ -423,6 +423,12 @@ describe('wallet test', () => {
     const txoutProof: string = (typeof txoutProofResp == 'string') ?
         txoutProofResp : '';
 
+    const mempoolinfo = await elmWalletMgr.callRpcDirect(
+        TargetNode.Elements, 'getmempoolinfo');
+    let minrelaytxfee: number = (typeof mempoolinfo.minrelaytxfee == 'number') ?
+        mempoolinfo.minrelaytxfee * 100000000 : 1000;
+    console.log('minrelaytxfee:', minrelaytxfee);
+
     // create pegin tx (unblind)
     const feeAmt = 10000;
     const sendAmt = amount - feeAmt;
@@ -452,8 +458,31 @@ describe('wallet test', () => {
         asset: peggedAsset,
       },
     });
-    const signTx = cfd.SignWithPrivkey({
+    const feeData = cfd.EstimateFee({
       tx: peginTx.hex,
+      feeRate: 0.15,
+      isElements: true,
+      isBlind: false,
+      feeAsset: peggedAsset,
+    });
+    const minFee = BigInt(minrelaytxfee);
+    const updateFeeAmt = (minFee > BigInt(feeData.feeAmount)) ? minFee : BigInt(feeData.feeAmount);
+    const updateSendAmt = BigInt(amount) - updateFeeAmt;
+    const updatePeginTx = cfd.UpdateTxOutAmount({
+      tx: peginTx.hex,
+      isElements: true,
+      txouts: [
+        {
+          index: 0,
+          amount: updateSendAmt,
+        }, {
+          index: 1,
+          amount: updateFeeAmt,
+        },
+      ],
+    });
+    const signTx = cfd.SignWithPrivkey({
+      tx: updatePeginTx.hex,
       isElements: true,
       txin: {
         txid: sendInfo.txid,
@@ -477,6 +506,8 @@ describe('wallet test', () => {
       const gettxout = await elmWalletMgr.callRpcDirect(
           TargetNode.Elements, 'gettxout', [txid, 0]);
       console.log('gettxout:', gettxout);
+
+      console.log('tx:', decTx);
 
       const balance = await elmWallet1.getBalance(1, '', '', peggedAsset);
       console.log('wallet balance:', balance);

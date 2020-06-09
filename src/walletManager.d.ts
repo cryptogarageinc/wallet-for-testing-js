@@ -121,6 +121,12 @@ export class WalletManager {
 
   sendsRawTransaction(targetNodeType: TargetNode, tx: string): string;
 
+  getRawTransactionHex(targetNodeType: TargetNode, txid: string,
+      blockHash?: string | null): Promise<string>
+
+  getTxOutProof(targetNodeType: TargetNode, txids: string[],
+    blockHash?: string | null): Promise<string>
+
   stop(targetNodeType: TargetNode): Promise<string>;
 
   callRpcDirect(targetNodeType: TargetNode, command: string,

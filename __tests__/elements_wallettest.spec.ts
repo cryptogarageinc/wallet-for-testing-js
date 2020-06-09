@@ -380,12 +380,9 @@ describe('wallet test', () => {
     // fedpegscript = getsidechaininfo
     const sideChainInfo = await elmWalletMgr.callRpcDirect(
         TargetNode.Elements, 'getsidechaininfo');
-    const fedpegScript: string = (typeof sideChainInfo.fedpegscript == 'string') ?
-        sideChainInfo.fedpegscript : '';
-    const peggedAsset: string = (typeof sideChainInfo.pegged_asset == 'string') ?
-        sideChainInfo.pegged_asset : '';
-    const genesisBlockHash: string = (typeof sideChainInfo.parent_blockhash == 'string') ?
-        sideChainInfo.parent_blockhash : '';
+    const fedpegScript = elmWallet1.getFedpegScript();
+    const peggedAsset = elmWallet1.getPeggedAsset();
+    const genesisBlockHash = elmWallet1.getParentBlockHash();
 
     console.log('sideChainInfo:', sideChainInfo);
     // generate btc address
@@ -414,19 +411,13 @@ describe('wallet test', () => {
 
     await btcWallet1.generate(1);
 
-    const txInfo = await btcWalletMgr.callRpcDirect(
-        TargetNode.Bitcoin, 'getrawtransaction', [sendInfo.txid]);
-    const txHex: string = (typeof txInfo == 'string') ? txInfo : '';
+    const txHex = await btcWalletMgr.getRawTransactionHex(
+        TargetNode.Bitcoin, sendInfo.txid);
 
-    const txoutProofResp = await btcWalletMgr.callRpcDirect(
-        TargetNode.Bitcoin, 'gettxoutproof', [[sendInfo.txid]]);
-    const txoutProof: string = (typeof txoutProofResp == 'string') ?
-        txoutProofResp : '';
+    const txoutProof = await btcWalletMgr.getTxOutProof(
+        TargetNode.Bitcoin, [sendInfo.txid]);
 
-    const mempoolinfo = await elmWalletMgr.callRpcDirect(
-        TargetNode.Elements, 'getmempoolinfo');
-    let minrelaytxfee: number = (typeof mempoolinfo.minrelaytxfee == 'number') ?
-        mempoolinfo.minrelaytxfee * 100000000 : 1000;
+    const minrelaytxfee = await elmWallet1.getMinRelayTxFee();
     console.log('minrelaytxfee:', minrelaytxfee);
 
     // create pegin tx (unblind)
@@ -466,7 +457,8 @@ describe('wallet test', () => {
       feeAsset: peggedAsset,
     });
     const minFee = BigInt(minrelaytxfee);
-    const updateFeeAmt = (minFee > BigInt(feeData.feeAmount)) ? minFee : BigInt(feeData.feeAmount);
+    const updateFeeAmt = (minFee > BigInt(feeData.feeAmount)) ?
+        minFee : BigInt(feeData.feeAmount);
     const updateSendAmt = BigInt(amount) - updateFeeAmt;
     const updatePeginTx = cfd.UpdateTxOutAmount({
       tx: peginTx.hex,
@@ -507,7 +499,7 @@ describe('wallet test', () => {
           TargetNode.Elements, 'gettxout', [txid, 0]);
       console.log('gettxout:', gettxout);
 
-      console.log('tx:', decTx);
+      // console.log('tx:', decTx);
 
       const balance = await elmWallet1.getBalance(1, '', '', peggedAsset);
       console.log('wallet balance:', balance);
@@ -516,6 +508,7 @@ describe('wallet test', () => {
       throw e;
     }
   });
+  // TODO: blind pegin
 
   // pegout test (low)
   // getbalance test

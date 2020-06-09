@@ -435,16 +435,57 @@ const walletManager = class WalletManager {
   };
 
   /**
-   * send transaction.
+   * get transaction hex.
    * @param {string} targetNodeType target node type
-   * @param {string} tx transaction hex
-   * @return {Promise<*>} send transaction info.
+   * @param {string} txid transaction id
+   * @param {string | null} blockHash block hash
+   * @return {Promise<string>} transaction hex.
    */
-  async sendRawTransaction(targetNodeType, tx) {
+  async getRawTransactionHex(targetNodeType, txid, blockHash = null) {
+    let tx;
     if (targetNodeType === 'bitcoin') {
-      return await this.btcClient.sendrawtransaction(tx);
+      tx = await this.btcClient.getrawtransaction(txid, false, blockHash);
     } else {
-      return await this.elmClient.sendrawtransaction(tx);
+      tx = await this.elmClient.getrawtransaction(txid, false, blockHash);
+    }
+    if (typeof tx == 'string') {
+      return tx;
+    } else {
+      throw new Error('invalid data format.');
+    }
+  };
+
+  /**
+   * get txout proof.
+   * @param {string} targetNodeType target node type
+   * @param {string[]} txids transaction id list
+   * @param {string | null} blockHash block hash
+   * @return {Promise<string>} transaction proof.
+   */
+  async getTxOutProof(targetNodeType, txids, blockHash = null) {
+    let txProof;
+    if (targetNodeType === 'bitcoin') {
+      txProof = await this.btcClient.gettxoutproof(txids, blockHash);
+    } else {
+      txProof = await this.elmClient.gettxoutproof(txids, blockHash);
+    }
+    if (typeof txProof == 'string') {
+      return txProof;
+    } else {
+      throw new Error('invalid data format.');
+    }
+  };
+
+  /**
+   * stop target node.
+   * @param {string} targetNodeType targete node type.
+   * @return {Promise<*>} response.
+   */
+  async stop(targetNodeType) {
+    if (targetNodeType === 'bitcoin') {
+      return await this.btcClient.stop();
+    } else {
+      return await this.elmClient.stop();
     }
   };
 

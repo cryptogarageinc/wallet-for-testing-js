@@ -1364,6 +1364,19 @@ module.exports = class Wallet {
   };
 
   /**
+   * get minimum relay tx fee.
+   * @return {Promise<number>} minimum relay tx fee
+   */
+  async getMinRelayTxFee() {
+    const mempoolinfo = await this.client.getmempoolinfo();
+    const minFee = (this.isElements) ? 100 : 1000;
+    const minrelaytxfee = (typeof mempoolinfo.minrelaytxfee == 'number') ?
+        mempoolinfo.minrelaytxfee * 100000000 : minFee;
+    return minrelaytxfee;
+  };
+
+
+  /**
    * get wallet transaction data.
    * @param {string} txid txid
    * @param {number} vout vout
@@ -1372,4 +1385,28 @@ module.exports = class Wallet {
   async getWalletTxData(txid, vout) {
     return await this.utxoService.getUtxoData(`${txid},${vout}`);
   };
+
+  /**
+   * get pegged asset on Elements.
+   * @return {string} pegged asset
+   */
+  getPeggedAsset() {
+    return this.assetLbtc;
+  }
+
+  /**
+   * get fedpeg script on Elements.
+   * @return {string} fedpeg script
+   */
+  getFedpegScript() {
+    return this.sidechaininfo.fedpegscript;
+  }
+
+  /**
+   * get parent block hash on Elements.
+   * @return {string} parent block hash
+   */
+  getParentBlockHash() {
+    return this.sidechaininfo.parent_blockhash;
+  }
 };

@@ -94,7 +94,7 @@ describe('wallet test', () => {
 
     await btcWallet2.generate(100, '', true); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
-    await btcWallet2.forceUpdateUtxoData();  // after nowait generate
+    await btcWallet2.forceUpdateUtxoData(); // after nowait generate
 
     btcWallet1.estimateSmartFee(6, 'ECONOMICAL');
 
@@ -239,7 +239,7 @@ describe('wallet test', () => {
 
     await btcWallet2.generate(100, '', true); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
-    await btcWallet2.forceUpdateUtxoData();  // after nowait generate
+    await btcWallet2.forceUpdateUtxoData(); // after nowait generate
 
     btcWallet1.estimateSmartFee(6, 'ECONOMICAL');
 

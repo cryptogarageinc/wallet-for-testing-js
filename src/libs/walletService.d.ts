@@ -217,5 +217,13 @@ export class Wallet {
 
   sendRawTransaction(tx: string): Promise<string>;
 
+  getMinRelayTxFee(): Promise<number>;
+
   getWalletTxData(txid: string, vout: number): Promise<UtxoData>;
+
+  getPeggedAsset(): string;
+
+  getFedpegScript(): string;
+
+  getParentBlockHash(): string;
 }

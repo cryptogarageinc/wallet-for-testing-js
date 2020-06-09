@@ -67,6 +67,12 @@ exports.BitcoinCli = function(connection) {
       txid, verbose = false, blockHash = null) {
     return await executeRpc(client, 'getrawtransaction', [txid, verbose, blockHash]);
   };
+  this.gettxoutproof = async function(txids, blockHash = null) {
+    return await executeRpc(client, 'gettxoutproof', [txids, blockHash]);
+  };
+  this.getmempoolinfo = async function() {
+    return await executeRpc(client, 'getmempoolinfo', []);
+  };
   // Generating
   this.generatetoaddress = async function(
       nblocks, address, maxtries = 1000000) {
@@ -136,11 +142,17 @@ exports.ElementsCli = function(connection) {
       txid, verbose = false, blockHash = null) {
     return await executeRpc(client, 'getrawtransaction', [txid, verbose, blockHash]);
   };
+  this.gettxoutproof = async function(txids, blockHash = null) {
+    return await executeRpc(client, 'gettxoutproof', [txids, blockHash]);
+  };
   this.getsidechaininfo = async function() {
     return await executeRpc(client, 'getsidechaininfo', []);
   };
   this.getwalletpakinfo = async function() {
     return await executeRpc(client, 'getwalletpakinfo', []);
+  };
+  this.getmempoolinfo = async function() {
+    return await executeRpc(client, 'getmempoolinfo', []);
   };
   // createblindedaddress "address" "blinding_key"
   // this.tweakfedpegscript = async function(claim_script)

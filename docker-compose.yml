@@ -2,9 +2,10 @@ version: '3.5'
 
 services:
   wallet-test:
-    image: cryptogarageinc/elements-testing:v0.18.1.3
-    container_name: 'wallet-test'
+    build:
+      context: .
+      dockerfile: Dockerfile
     volumes:
-      - "./__tests__/docker-entrypoint.sh:/root/docker-entrypoint.sh"
-      - ".:/root/wallet-test/"
+      - ./__tests__/docker-entrypoint.sh:/root/docker-entrypoint.sh
+      - .:/root/wallet-test
     entrypoint: "sh -c \"/root/docker-entrypoint.sh\""

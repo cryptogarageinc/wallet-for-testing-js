@@ -183,7 +183,7 @@ module.exports = class UtxoTable {
         return false;
       }
       if (ignoreConfidential && this.assetBlinder &&
-        assetBlinder === emptyBlinder) {
+        this.assetBlinder !== emptyBlinder) {
         return false;
       }
       return ((!this.spent) &&
@@ -205,7 +205,7 @@ module.exports = class UtxoTable {
         return false;
       }
       if (ignoreConfidential && this.assetBlinder &&
-        assetBlinder === emptyBlinder) {
+        this.assetBlinder !== emptyBlinder) {
         return false;
       }
       return ((!this.spent) &&

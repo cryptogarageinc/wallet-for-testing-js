@@ -370,9 +370,11 @@ const walletManager = class WalletManager {
         const blockData = {blockHeight: blockHeight, tx: []};
         for (let i = 0; i < block.tx.length; i++) {
           const txid = block.tx[i].txid;
+          const hex = block.tx[i].hex;
           const txVinData = ('txid' in block.tx[i].vin[0]) ? block.tx[i].vin : undefined;
           const txVout = block.tx[i].vout;
-          blockData.tx.push({txid: txid, vin: txVinData, vout: txVout});
+          blockData.tx.push({
+            txid: txid, vin: txVinData, vout: txVout, hex: hex});
         }
         blockHashList.push(blockHash);
         blockTxMap[blockHash] = blockData;

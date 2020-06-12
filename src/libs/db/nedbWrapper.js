@@ -1,3 +1,4 @@
+/* eslint-disable require-jsdoc */
 const Datastore = require('nedb-promises');
 
 // https://hajipy.net/2018/08/nedb-basic/

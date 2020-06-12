@@ -3,6 +3,8 @@ const AddressService = require('./addressService.js');
 const UtxoService = require('./utxoService.js');
 const RpcClient = require('./rpc-client/jsonrpcClient.js');
 
+const emptyBlinder = '0000000000000000000000000000000000000000000000000000000000000000';
+
 module.exports = class Wallet {
   /**
    * constructor.
@@ -58,6 +60,7 @@ module.exports = class Wallet {
       path: extPath,
     });
     this.masterXprivkey = childExtkey.extkey;
+    this.mainchainNetwork = keyNetwork;
 
     this.dbService = new DbService(this.dbName, dirPath, inMemoryDatabase);
     this.addrService = new AddressService(this.dbService, this.cfd);
@@ -66,7 +69,7 @@ module.exports = class Wallet {
     this.estimateMode = 'CONSERVATIVE';
     this.minimumFeeRate = 2.0;
     this.minimumFee = 1000;
-    this.targetConf = 6;
+    this.targetConf = (this.isElements) ? 1 : 6;
     this.gapLimit = 20;
     this.addressType = 'p2wpkh';
     this.masterBlindingKey = '';
@@ -118,6 +121,7 @@ module.exports = class Wallet {
       this.masterBlindingKey = await this.client.dumpmasterblindingkey();
       this.sidechaininfo = await this.client.getsidechaininfo();
       this.assetLbtc = this.sidechaininfo.pegged_asset;
+      await this.appendAsset(this.assetLbtc, 'bitcoin');
     }
     return true;
   };
@@ -196,9 +200,11 @@ module.exports = class Wallet {
         const blockData = {blockHeight: blockHeight, tx: []};
         for (let i = 0; i < block.tx.length; i++) {
           const txid = block.tx[i].txid;
+          const hex = block.tx[i].hex;
           const txVinData = ('txid' in block.tx[i].vin[0]) ? block.tx[i].vin : undefined;
           const txVout = block.tx[i].vout;
-          blockData.tx.push({txid: txid, vin: txVinData, vout: txVout});
+          blockData.tx.push({
+            txid: txid, vin: txVinData, vout: txVout, hex: hex});
         }
         blockHashList.push(blockHash);
         blockTxMap[blockHash] = blockData;
@@ -371,9 +377,6 @@ module.exports = class Wallet {
       feeRate = this.minimumFeeRate;
     }
 
-    if (this.isElements && (!asset)) {
-      throw new Error('Please set asset info by elements mode.');
-    }
     // FIXME save l-btc asset to configTable?
     const feeAsset = (this.isElements) ? this.assetLbtc : '';
     const txouts = [];
@@ -383,6 +386,9 @@ module.exports = class Wallet {
         amount: input.amount,
         asset: input.asset,
       });
+      if (this.isElements && (!input.asset)) {
+        throw new Error('Please set asset info by elements mode.');
+      }
     }
     let tx = this.createRawTransaction(2, 0, [], txouts,
         {asset: feeAsset, amount: 0});
@@ -397,10 +403,11 @@ module.exports = class Wallet {
           vout: utxo.vout,
           asset: utxo.asset,
           amount: utxo.amount,
-          blindFactor: utxo.amoutnBlinder,
-          assetBlindFactor: utxot.assetBlinder,
+          blindFactor: utxo.amountBlinder,
+          assetBlindFactor: utxo.assetBlinder,
         });
       }
+      // console.log('blind utxo:', inputList);
       tx = this.cfd.BlindRawTransaction({
         tx: tx.hex,
         txins: inputList,
@@ -427,14 +434,8 @@ module.exports = class Wallet {
       tx = this.cfd.ElementsCreateRawTransaction({
         'version': 2,
         'locktime': 0,
-        'txins': [],
-        'txouts': [
-          {
-            address: address,
-            amount: satoshiAmount,
-            asset: asset,
-          },
-        ],
+        'txins': txin,
+        'txouts': txout,
         'fee': fee,
       });
     } else {
@@ -682,13 +683,13 @@ module.exports = class Wallet {
     }
     const extkey = this.cfd.CreateExtkeyFromParentPath({
       extkey: this.masterXprivkey,
-      network: this.network,
+      network: this.mainchainNetwork,
       extkeyType: 'extPrivkey',
       path: childPath,
     });
     const privkey = this.cfd.GetPrivkeyFromExtkey({
       extkey: extkey.extkey,
-      network: this.network,
+      network: this.mainchainNetwork,
       wif: true,
       isCompressed: true,
     });
@@ -879,9 +880,10 @@ module.exports = class Wallet {
    * fund transaction.
    * @param {string} tx transaction hex.
    * @param {*} feeAsset fee asset
+   * @param {string[]} ignoreAssets ignore target asset.
    * @return {Promise<*>} fund data.
    */
-  async fundRawTransaction(tx, feeAsset = '') {
+  async fundRawTransaction(tx, feeAsset = '', ignoreAssets = []) {
     let feeRate;
     if (this.isElements) {
       feeRate = 0.15;
@@ -893,7 +895,7 @@ module.exports = class Wallet {
       feeRate = this.minimumFeeRate;
     }
     return this.fundRawTransactionInternal(
-        tx, feeRate, feeAsset, this.targetConf);
+        tx, feeRate, feeAsset, this.targetConf, ignoreAssets);
   }
 
   /**
@@ -902,15 +904,18 @@ module.exports = class Wallet {
    * @param {number} feeRate fee rate
    * @param {string} feeAsset fee asset
    * @param {number} targetConf target confirmation
+   * @param {string[]} ignoreAssets ignore target asset.
    * @return {Promise<*>} fund data.
    */
-  async fundRawTransactionInternal(tx, feeRate, feeAsset = '', targetConf = 6) {
+  async fundRawTransactionInternal(tx, feeRate, feeAsset = '', targetConf = 6,
+      ignoreAssets = []) {
     // Should UTXO for fishing address be given priority?
     const decTx = this.decodeRawTransaction(tx);
     let reqJson;
     let isConfidential = false;
     const responseUtxos = [];
     const selectedUtxos = [];
+    let utxos;
     if (this.isElements) {
       // vout confidential check
       for (const txout of decTx.vout) {
@@ -924,15 +929,15 @@ module.exports = class Wallet {
           }
         }
       }
-      const utxos = await this.utxoService.listUnspent(
-          targetConf, 9999999999, '', this.assetLbtc, '',
+      utxos = await this.utxoService.listUnspent(
+          targetConf, 9999999999, '', '', '',
           true, !isConfidential);
       // console.log('utxos = ', utxos);
       for (let i = 0; i < decTx.vin.length; ++i) {
         if (decTx.vin[i]) {
           const txid = decTx.vin[i].txid;
           const vout = decTx.vin[i].vout;
-          const utxoData = this.utxoService.getUtxoData(`${txid},${vout}`);
+          const utxoData = await this.utxoService.getUtxoData(`${txid},${vout}`);
           if (utxoData) {
             selectedUtxos.push({
               txid: txid,
@@ -944,7 +949,7 @@ module.exports = class Wallet {
               blindFactor: utxoData.amountBlinder,
               assetBlindFactor: utxoData.assetBlinder,
             });
-            responseUtxos.push(utxoData);
+            // responseUtxos.push(utxoData);
           }
         }
       }
@@ -952,22 +957,37 @@ module.exports = class Wallet {
       const assetList = [];
       for (let i = 0; i < decTx.vout.length; ++i) {
         if (decTx.vout[i] && ('asset' in decTx.vout[i])) {
-          assetList.push(decTx.vout[i].asset);
+          let isFind = false;
+          for (const ignoreAsset of ignoreAssets) {
+            if (decTx.vout[i].asset === ignoreAsset) {
+              isFind = true;
+              break;
+            }
+          }
+          if (!isFind) {
+            assetList.push(decTx.vout[i].asset);
+          }
         }
       }
       // create json
+      const reservedAddress = await this.addrService.getFeeAddress(
+          'p2wpkh', '', -1, this.gapLimit);
+      const reservedCtAddr = this.getConfidentialAddress(
+          reservedAddress.address);
+      const reservedAddr = (isConfidential) ?
+          reservedCtAddr : reservedAddress.address;
+      const assetMap = {};
+      assetMap[this.assetLbtc] = 1;
       reqJson = {
         utxos: utxos,
         selectUtxos: selectedUtxos,
         tx: tx,
         isElements: this.isElements,
         network: this.network,
-        targetAmount: 0,
-        reserveAddress: feeAddress,
         targets: [{
-          asset: '',
+          asset: this.assetLbtc,
           amount: 0,
-          reserveAddress: '',
+          reserveAddress: reservedAddr,
         }],
         feeInfo: {
           feeRate: feeRate,
@@ -978,19 +998,25 @@ module.exports = class Wallet {
         },
       };
       for (let i = 0; i < assetList.length; ++i) {
-        if (assetList[i]) {
+        if (assetList[i] && !(assetList[i] in assetMap)) {
           const index = (assetList.length > this.gapLimit) ? i : -1;
           const feeAddress = await this.addrService.getFeeAddress(
               'p2wpkh', '', index, this.gapLimit);
+          const chargeCtAddr = this.getConfidentialAddress(
+              feeAddress.address);
+          const reserveAddr = (isConfidential) ?
+              chargeCtAddr : feeAddress.address;
           const data = {
             asset: assetList[i],
-            reserveAddress: feeAddress.address,
+            reserveAddress: reserveAddr,
+            amount: 0,
           };
           reqJson.targets.push(data);
+          assetMap[assetList[i]] = 1;
         }
       }
     } else {
-      const utxos = await this.utxoService.listUnspent(
+      utxos = await this.utxoService.listUnspent(
           targetConf, 9999999999, '', '', '', true);
       // console.log('utxos = ', utxos);
       const feeAddress = await this.addrService.getFeeAddress(
@@ -1009,7 +1035,7 @@ module.exports = class Wallet {
               redeemScript: utxoData.lockingScript,
               descriptor: utxoData.descriptor,
             });
-            responseUtxos.push(utxoData);
+            // responseUtxos.push(utxoData);
           }
         }
       }
@@ -1029,8 +1055,24 @@ module.exports = class Wallet {
         },
       };
     }
+    // console.log('isConfidential : ', isConfidential);
     // console.log('FundRawTransaction : ', reqJson);
     const result = this.cfd.FundRawTransaction(reqJson);
+    if (result) {
+      const decTx2 = this.decodeRawTransaction(result.hex);
+      if (this.isElements) {
+        for (let i = 0; i < decTx2.vin.length; ++i) {
+          if (decTx2.vin[i]) {
+            const txid = decTx2.vin[i].txid;
+            const vout = decTx2.vin[i].vout;
+            const utxoData = await this.utxoService.getUtxoData(`${txid},${vout}`);
+            if (utxoData) {
+              responseUtxos.push(utxoData);
+            }
+          }
+        }
+      }
+    }
     return {hex: result.hex, fee: result.feeAmount,
       utxos: responseUtxos, isConfidential: isConfidential};
   }
@@ -1092,76 +1134,30 @@ module.exports = class Wallet {
         }
         // console.log('address = ', utxo.address);
         // console.log('privkey = ', privkey);
-        if (this.isElements) {
-          // TODO priority is low.
-        } else {
-          const hashtype = (addrInfo.type === 'p2sh-p2wpkh') ?
-              'p2wpkh' : addrInfo.type;
-          // calc sighash
-          const sighashRet = this.cfd.CreateSignatureHash({
-            tx: transaction,
-            txin: {
-              txid: utxo.txid,
-              vout: utxo.vout,
-              keyData: {
-                hex: addrInfo.pubkey,
-                type: 'pubkey',
-              },
-              amount: utxo.amount,
-              hashType: hashtype,
-              sighashtype: sighashtype,
-            },
+        let amountCommitment = '';
+        if (this.isElements && (utxo.amountBlinder != emptyBlinder)) {
+          const commitment = this.cfd.GetCommitment({
+            amount: utxo.amount,
+            asset: utxo.asset,
+            assetBlindFactor: utxo.assetBlinder,
+            blindFactor: utxo.amountBlinder,
           });
-          // calc signature
-          const signatureRet = this.cfd.CalculateEcSignature({
-            sighash: sighashRet.sighash,
-            privkeyData: {
-              privkey: privkey,
-              wif: true,
-              network: this.network,
-              isCompressed: true,
-            },
-          });
-          // add sign
-          const signRet = this.cfd.AddSign({
-            tx: transaction,
-            txin: {
-              txid: utxo.txid,
-              vout: utxo.vout,
-              signParam: [
-                {
-                  hex: signatureRet.signature,
-                  type: 'sign',
-                  derEncode: true,
-                  sighashtype: sighashtype,
-                },
-                {
-                  hex: addrInfo.pubkey,
-                  type: 'pubkey',
-                },
-              ],
-            },
-          });
-          transaction = signRet.hex;
-          if ((addrInfo.type === 'p2sh-p2wpkh') &&
-              ('unlockingScript' in addrInfo.extra)) {
-            const signP2shRet = this.cfd.AddSign({
-              tx: transaction,
-              txin: {
-                txid: utxo.txid,
-                vout: utxo.vout,
-                isWitness: false,
-                signParam: [
-                  {
-                    hex: addrInfo.extra['unlockingScript'],
-                    type: 'redeem_script',
-                  },
-                ],
-              },
-            });
-            transaction = signP2shRet.hex;
-          }
+          amountCommitment = commitment.amountCommitment;
         }
+        const signRet = this.cfd.SignWithPrivkey({
+          isElements: this.isElements,
+          tx: transaction,
+          txin: {
+            txid: utxo.txid,
+            vout: utxo.vout,
+            privkey: privkey,
+            amount: utxo.amount,
+            confidentialValueCommitment: amountCommitment,
+            hashType: addrInfo.type,
+            sighashtype: sighashtype,
+          },
+        });
+        transaction = signRet.hex;
         ++signedCount;
       } catch (err) {
         if (!ignoreError) throw err;
@@ -1258,49 +1254,62 @@ module.exports = class Wallet {
           }
           // console.log('address = ', utxo.address);
           // console.log('privkey = ', privkey);
-          if (this.isElements) {
-            // TODO priority is low.
-          } else {
-            let hashtype = (addrType === 'p2sh-p2wpkh') ?
-                'p2wpkh' : addrType;
-            hashtype = (addrType === 'p2sh-p2wsh') ? 'p2wsh' : addrType;
-            // calc sighash
-            const hexData =
-                (addrInfo.pubkey) ? addrInfo.pubkey : addrInfo.script;
-            const keyDataType = (addrInfo.pubkey) ? 'pubkey' : 'redeem_script';
-            const sighashRet = this.cfd.CreateSignatureHash({
-              tx: transaction,
-              txin: {
-                txid: utxo.txid,
-                vout: utxo.vout,
-                keyData: {
-                  hex: hexData,
-                  type: keyDataType,
-                },
-                amount: utxo.amount,
-                hashType: hashtype,
-                sighashtype: sighashtype,
-              },
+          let sighashRet;
+          let hashtype = (addrType === 'p2sh-p2wpkh') ?
+              'p2wpkh' : addrType;
+          hashtype = (addrType === 'p2sh-p2wsh') ? 'p2wsh' : addrType;
+          const hexData =
+              (addrInfo.pubkey) ? addrInfo.pubkey : addrInfo.script;
+          const keyDataType = (addrInfo.pubkey) ? 'pubkey' : 'redeem_script';
+          let amountCommitment = '';
+          if (this.isElements && (utxo.amountBlinder != emptyBlinder)) {
+            const commitment = this.cfd.GetCommitment({
+              amount: utxo.amount,
+              asset: utxo.asset,
+              assetBlindFactor: utxo.assetBlinder,
+              blindFactor: utxo.amountBlinder,
             });
-            // calc signature
-            const signatureRet = this.cfd.CalculateEcSignature({
-              sighash: sighashRet.sighash,
-              privkeyData: {
-                privkey: privkey,
-                wif: true,
-                network: this.network,
-                isCompressed: true,
-              },
-            });
-            // console.log('signatures add = ', pubkey, signatureRet.signature);
-            signatures.push({
-              txid: txid,
-              vout: vout,
-              pubkey: pubkey,
-              signature: signatureRet.signature,
-              sighashtype: sighashtype,
-            });
+            amountCommitment = commitment.amountCommitment;
           }
+          const sighashRequest = {
+            tx: transaction,
+            txin: {
+              txid: utxo.txid,
+              vout: utxo.vout,
+              keyData: {
+                hex: hexData,
+                type: keyDataType,
+              },
+              amount: utxo.amount,
+              confidentialValueCommitment: amountCommitment,
+              hashType: hashtype,
+              sighashtype: sighashtype,
+            },
+          };
+          // calc sighash
+          if (this.isElements) {
+            sighashRet = this.cfd.CreateElementsSignatureHash(sighashRequest);
+          } else {
+            sighashRet = this.cfd.CreateSignatureHash(sighashRequest);
+          }
+          // calc signature
+          const signatureRet = this.cfd.CalculateEcSignature({
+            sighash: sighashRet.sighash,
+            privkeyData: {
+              privkey: privkey,
+              wif: true,
+              network: this.network,
+              isCompressed: true,
+            },
+          });
+          // console.log('signatures add = ', pubkey, signatureRet.signature);
+          signatures.push({
+            txid: txid,
+            vout: vout,
+            pubkey: pubkey,
+            signature: signatureRet.signature,
+            sighashtype: sighashtype,
+          });
           ++signedCount;
         }
       } catch (err) {
@@ -1357,8 +1366,11 @@ module.exports = class Wallet {
       await this.utxoService.addUtxo(tx);
       return txid;
     } catch (err) {
-      console.log('sendtx err. tx = ', JSON.stringify(
-          this.decodeRawTransaction(tx), null, '  '));
+      const dectx = this.decodeRawTransaction(tx);
+      console.log('sendtx err. tx = ', JSON.stringify(dectx, null, '  '));
+      const gettx = await this.client.getrawtransaction(
+          dectx.vin[0].txid, true);
+      console.log('utxo[0] tx = ', JSON.stringify(gettx, null, '  '));
       throw err;
     }
   };
@@ -1375,6 +1387,97 @@ module.exports = class Wallet {
     return minrelaytxfee;
   };
 
+  /**
+   * find asset check.
+   * @param {string} asset asset id.
+   * @return {Promise<boolean>} exist asset
+   */
+  async isFindAsset(asset) {
+    const configTbl = this.dbService.getConfigTable();
+    const assetMap = await configTbl.getAssetMap();
+    if (asset in assetMap) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  /**
+   * find asset check.
+   * @param {string} assetLabel asset label.
+   * @return {Promise<boolean>} exist asset
+   */
+  async isFindAssetByLabel(assetLabel) {
+    const configTbl = this.dbService.getConfigTable();
+    const assetMap = await configTbl.getAssetMap();
+    for (const key in assetMap) {
+      if (assetMap[key].label === assetLabel) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * get asset data.
+   * @param {string} assetLabel asset label.
+   * @return {Promise<*>} asset
+   */
+  async getAssetByLabel(assetLabel) {
+    const configTbl = this.dbService.getConfigTable();
+    const assetMap = await configTbl.getAssetMap();
+    for (const key in assetMap) {
+      if (assetMap[key].label === assetLabel) {
+        return {
+          id: key,
+          label: assetMap[key].label,
+          entropy: assetMap[key].entropy,
+          isToken: assetMap[key].isToken,
+        };
+      }
+    }
+    throw new Error('asset label is empty.');
+  }
+
+  /**
+   * get asset list.
+   * @return {Promise<{}[]>} asset list.
+   */
+  async getAssetList() {
+    const configTbl = this.dbService.getConfigTable();
+    const assetMap = await configTbl.getAssetMap();
+    const list = [];
+    for (const key in assetMap) {
+      if (key) {
+        const label = assetMap[key].label;
+        list.push({[key]: label});
+      }
+    }
+    return list;
+  }
+
+  /**
+   * append asset id.
+   * @param {string} asset asset id.
+   * @param {string} assetLabel asset label.
+   * @param {string} entropy issuance entropy.
+   * @param {boolean} isToken token flag.
+   * @return {Promise<boolean>} append or not.
+   */
+  async appendAsset(asset, assetLabel, entropy = '', isToken = false) {
+    const configTbl = this.dbService.getConfigTable();
+    const assetMap = await configTbl.getAssetMap();
+    if (asset in assetMap) {
+      return false;
+    }
+    assetMap[asset] = {
+      label: assetLabel,
+      entropy: entropy,
+      isToken: isToken,
+    };
+    await configTbl.updateAssetMap(assetMap);
+    return true;
+  }
 
   /**
    * get wallet transaction data.

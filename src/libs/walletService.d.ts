@@ -89,13 +89,20 @@ export interface SendToAddressResponse extends OutPoint {
 
 export interface SendAmount {
     address: string;
-    satoshiAmount: bigint | number;
+    amount: bigint | number;
     asset: string;
 }
 
 export interface KeyPair {
     pubkey: string;
     privkey: string;
+}
+
+export interface AssetInfo {
+    id: string;
+    label: string;
+    entropy: string;
+    isToken: boolean;
 }
 
 /**
@@ -205,7 +212,7 @@ export class Wallet {
       cfdjs.ElementsDecodeRawTransactionResponse;
 
   fundRawTransaction(tx: string,
-      feeAsset?: string): Promise<FundRawTxResponse>;
+      feeAsset?: string, ignoreAssets?: string[]): Promise<FundRawTxResponse>;
 
   signRawTransactionWithWallet(tx: string, ignoreError?: boolean,
       prevtxs?: OutPoint[],
@@ -218,6 +225,17 @@ export class Wallet {
   sendRawTransaction(tx: string): Promise<string>;
 
   getMinRelayTxFee(): Promise<number>;
+
+  isFindAsset(asset: string): Promise<boolean>;
+
+  isFindAssetByLabel(assetLabel: string): Promise<boolean>;
+
+  getAssetByLabel(assetLabel: string): Promise<AssetInfo>;
+
+  getAssetList(): Promise<{[key: string]: string}>;
+
+  appendAsset(asset: string, assetLabel: string,
+    entropy?: string, isToken?: boolean): Promise<boolean>;
 
   getWalletTxData(txid: string, vout: number): Promise<UtxoData>;
 

@@ -5,7 +5,7 @@ import cfd from 'cfd-js';
 import path from 'path';
 import {assert} from 'console';
 
-const isDebug = false;
+const isDebug = true;
 
 const mainchainNetwork = NetworkType.Regtest;
 const network = NetworkType.LiquidRegtest;
@@ -678,18 +678,446 @@ describe('wallet test', () => {
 
       const balance = await elmWallet1.getBalance(1, '', '', peggedAsset);
       console.log('wallet balance:', balance);
+      await elmWallet1.generate(2);
     } catch (e) {
       console.log(e);
       throw e;
     }
   });
-  // TODO: blind pegin
 
+  it('blind sendtoaddress test', async () => {
+    const peggedAsset = elmWallet1.getPeggedAsset();
+    const elmAddr1 = await elmWallet2.getNewAddress(
+        AddressType.P2wpkh, 'addr1');
+    const elmCtAddr1 = elmWallet2.getConfidentialAddress(elmAddr1.address);
+    console.log('address1:', elmCtAddr1);
+
+    const elmAddr2 = await elmWallet1.getNewAddress(
+        AddressType.P2wpkh, 'addr1');
+    const elmCtAddr2 = elmWallet1.getConfidentialAddress(elmAddr2.address);
+    console.log('address2:', elmCtAddr2);
+
+    const beforeBalance = await elmWallet2.getBalance(1);
+    console.log('before balance:', beforeBalance);
+
+    const sendAmt = 100000;
+    const resp = await elmWallet1.sendToAddresses([{
+      address: elmCtAddr1,
+      asset: peggedAsset,
+      amount: sendAmt,
+    }, {
+      address: elmCtAddr2,
+      asset: peggedAsset,
+      amount: 100000,
+    }], '', 0.15, 1);
+    console.log('txid:', resp.txid);
+    await elmWallet1.generate(1);
+    await elmWallet2.forceUpdateUtxoData();
+    await sleep(2000);
+
+    const afterBalance = await elmWallet2.getBalance(1);
+    console.log('after balance:', afterBalance);
+    expect(afterBalance[peggedAsset]).toBe(sendAmt);
+  });
+
+  it('unblind sendtoaddress test', async () => {
+    const peggedAsset = elmWallet1.getPeggedAsset();
+    const elmAddr1 = await elmWallet2.getNewAddress(
+        AddressType.P2wpkh, 'uaddr1');
+
+    const elmAddr2 = await elmWallet1.getNewAddress(
+        AddressType.P2wpkh, 'uaddr2');
+
+    const beforeBalance = await elmWallet2.getBalance(1);
+    console.log('before balance:', beforeBalance);
+
+    const sendAmt = 100000;
+    const resp = await elmWallet1.sendToAddresses([{
+      address: elmAddr1.address,
+      asset: peggedAsset,
+      amount: sendAmt,
+    }, {
+      address: elmAddr2.address,
+      asset: peggedAsset,
+      amount: 100000,
+    }], '', 0.15, 1);
+    console.log('txid:', resp.txid);
+    await elmWallet1.generate(1);
+    await elmWallet2.forceUpdateUtxoData();
+    await sleep(2000);
+
+    const afterBalance = await elmWallet2.getBalance(1);
+    console.log('after balance:', afterBalance);
+  });
+
+  it('issuance test', async () => {
+    const peggedAsset = elmWallet1.getPeggedAsset();
+    const elmAddr1 = await elmWallet1.getNewAddress(
+        AddressType.P2wpkh, 'iaddr1');
+    const elmCtAddr1 = elmWallet1.getConfidentialAddress(elmAddr1.address);
+    console.log('address1:', elmCtAddr1);
+
+    const elmAddr2 = await elmWallet1.getNewAddress(
+        AddressType.P2wpkh, 'taddr1');
+    const elmCtAddr2 = elmWallet1.getConfidentialAddress(elmAddr2.address);
+    console.log('address1:', elmCtAddr2);
+
+    const elmAddr3 = await elmWallet1.getNewAddress(
+        AddressType.P2wpkh, 'caddr1');
+    const elmCtAddr3 = elmWallet1.getConfidentialAddress(elmAddr3.address);
+    console.log('address3:', elmCtAddr3);
+
+    const issueAmt = 1000000000;
+    const tokenAmt = 100000000;
+    const baseUtxo = await elmWallet1.listUnspent(1, 9999999, '', '', peggedAsset);
+    if (!baseUtxo) {
+      throw new Error('utxo is empty.');
+    }
+    const baseTx = cfd.ElementsCreateRawTransaction({
+      version: 2,
+      locktime: 0,
+      txins: [{
+        txid: baseUtxo[0].txid,
+        vout: baseUtxo[0].vout,
+      }],
+      txouts: [{
+        address: elmCtAddr3,
+        asset: peggedAsset,
+        amount: BigInt(baseUtxo[0].amount) - BigInt(10000),
+      }],
+      fee: {
+        amount: 10000,
+        asset: peggedAsset,
+      },
+    });
+    const issueTx = cfd.SetRawIssueAsset({
+      tx: baseTx.hex,
+      issuances: [{
+        txid: baseUtxo[0].txid,
+        vout: baseUtxo[0].vout,
+        assetAddress: elmCtAddr1,
+        assetAmount: issueAmt,
+        tokenAddress: elmCtAddr2,
+        tokenAmount: tokenAmt,
+        isBlind: false,
+      }],
+    });
+    const asset = issueTx.issuances[0].asset;
+    const token = (issueTx.issuances[0].token) ? issueTx.issuances[0].token : '';
+    console.log('SetRawIssueAsset:', issueTx);
+    const fundTx = await elmWallet1.fundRawTransaction(
+        issueTx.hex, peggedAsset, [asset, token]);
+    const blindIssuance: cfd.BlindIssuanceRequest[] = [{
+      txid: baseUtxo[0].txid,
+      vout: baseUtxo[0].vout,
+      assetBlindingKey: '',
+      tokenBlindingKey: '',
+    }];
+    const blindInput: cfd.BlindTxInRequest[] = [];
+    for (const utxo of fundTx.utxos) {
+      blindInput.push({
+        txid: utxo.txid,
+        vout: utxo.vout,
+        asset: (utxo.asset) ? utxo.asset : '',
+        blindFactor: utxo.amountBlinder,
+        assetBlindFactor: utxo.assetBlinder,
+        amount: utxo.amount,
+      });
+    }
+    // const decFundTx = cfd.ElementsDecodeRawTransaction({hex: fundTx.hex});
+    // console.log('tx:', JSON.stringify(decFundTx, null, '  '));
+    // console.log('blindInput:', blindInput);
+    const blindTx = cfd.BlindRawTransaction({
+      tx: fundTx.hex,
+      txins: blindInput,
+      issuances: blindIssuance,
+    });
+    const signTx = await elmWallet1.signRawTransactionWithWallet(blindTx.hex);
+    const decTx = cfd.ElementsDecodeRawTransaction({hex: signTx.hex});
+
+    // send tx
+    try {
+      const txid = await elmWallet1.sendRawTransaction(signTx.hex);
+      // console.log('sendRawTransaction pegin tx:', txid);
+      expect(txid).toBe(decTx.txid);
+
+      await elmWallet1.generate(1);
+      const gettxout = await elmWalletMgr.callRpcDirect(
+          TargetNode.Elements, 'gettxout', [txid, 0]);
+      console.log('gettxout:', gettxout);
+
+      // console.log('tx:', decTx);
+
+      const balance = await elmWallet1.getBalance(1, '', '');
+      console.log('wallet balance:', balance);
+      await elmWallet1.generate(2);
+
+      await elmWallet1.appendAsset(asset, 'asset1');
+      await elmWallet1.appendAsset(token, 'token1', issueTx.issuances[0].entropy, true);
+
+      const assetList = await elmWallet1.getAssetList();
+      console.log('asset list:', assetList);
+    } catch (e) {
+      console.log(e);
+      throw e;
+    }
+  });
+
+  it('reissuance test', async () => {
+    const peggedAsset = elmWallet1.getPeggedAsset();
+    const elmAddr1 = await elmWallet1.getNewAddress(
+        AddressType.P2wpkh, 'iaddr1');
+    const elmCtAddr1 = elmWallet1.getConfidentialAddress(elmAddr1.address);
+    console.log('address1:', elmCtAddr1);
+
+    const elmAddr2 = await elmWallet1.getNewAddress(
+        AddressType.P2wpkh, 'taddr1');
+    const elmCtAddr2 = elmWallet1.getConfidentialAddress(elmAddr2.address);
+    console.log('address1:', elmCtAddr2);
+
+    const elmAddr3 = await elmWallet1.getNewAddress(
+        AddressType.P2wpkh, 'caddr1');
+    const elmCtAddr3 = elmWallet1.getConfidentialAddress(elmAddr3.address);
+    console.log('address3:', elmCtAddr3);
+
+    const tokenInfo = await elmWallet1.getAssetByLabel('token1');
+    const token = tokenInfo.id;
+    const issueAmt = 1500000000;
+
+    const tokenUtxo = await elmWallet1.listUnspent(1, 9999999, '', '', token);
+    if (!tokenUtxo) {
+      throw new Error('token Utxo is empty.');
+    }
+    if (tokenUtxo[0].asset !== token) {
+      throw new Error('get listunspent asset fail.');
+    }
+    const tokenBaseTx = cfd.ElementsCreateRawTransaction({
+      version: 2,
+      locktime: 0,
+      txins: [{
+        txid: tokenUtxo[0].txid,
+        vout: tokenUtxo[0].vout,
+      }],
+      txouts: [{
+        address: elmCtAddr2,
+        asset: token,
+        amount: tokenUtxo[0].amount,
+      }],
+      fee: {
+        amount: 0,
+        asset: peggedAsset,
+      },
+    });
+    const reissueTx = cfd.SetRawReissueAsset({
+      tx: tokenBaseTx.hex,
+      issuances: [{
+        txid: tokenUtxo[0].txid,
+        vout: tokenUtxo[0].vout,
+        address: elmCtAddr1,
+        amount: issueAmt,
+        assetEntropy: tokenInfo.entropy,
+        assetBlindingNonce: (tokenUtxo[0].assetBlinder) ?
+            tokenUtxo[0].assetBlinder : '',
+      }],
+    });
+    const asset = reissueTx.issuances[0].asset;
+    const reissueFundTx = await elmWallet1.fundRawTransaction(
+        reissueTx.hex, peggedAsset, [asset, token]);
+    const blindIssuance2: cfd.BlindIssuanceRequest[] = [{
+      txid: tokenUtxo[0].txid,
+      vout: tokenUtxo[0].vout,
+      assetBlindingKey: '',
+    }];
+    const blindInput2: cfd.BlindTxInRequest[] = [];
+    for (const utxo of reissueFundTx.utxos) {
+      blindInput2.push({
+        txid: utxo.txid,
+        vout: utxo.vout,
+        asset: (utxo.asset) ? utxo.asset : '',
+        blindFactor: utxo.amountBlinder,
+        assetBlindFactor: utxo.assetBlinder,
+        amount: utxo.amount,
+      });
+    }
+    const reissueBlindTx = cfd.BlindRawTransaction({
+      tx: reissueFundTx.hex,
+      txins: blindInput2,
+      issuances: blindIssuance2,
+    });
+    const reissueSignTx = await elmWallet1.signRawTransactionWithWallet(
+        reissueBlindTx.hex);
+    const reissueDecTx = cfd.ElementsDecodeRawTransaction({
+      hex: reissueSignTx.hex});
+    // send tx
+    try {
+      const txid = await elmWallet1.sendRawTransaction(reissueSignTx.hex);
+      // console.log('sendRawTransaction pegin tx:', txid);
+      expect(txid).toBe(reissueDecTx.txid);
+
+      await elmWallet1.generate(1);
+      const gettxout = await elmWalletMgr.callRpcDirect(
+          TargetNode.Elements, 'gettxout', [txid, 0]);
+      console.log('gettxout:', gettxout);
+
+      // console.log('tx:', decTx);
+
+      const balance = await elmWallet1.getBalance(1, '', '');
+      console.log('wallet balance:', balance);
+      await elmWallet1.generate(2);
+    } catch (e) {
+      console.log(e);
+      throw e;
+    }
+  });
+
+  it('issuance2 test', async () => {
+    const peggedAsset = elmWallet1.getPeggedAsset();
+    const elmAddr1 = await elmWallet1.getNewAddress(
+        AddressType.P2wpkh, 'iaddr1');
+    const elmCtAddr1 = elmWallet1.getConfidentialAddress(elmAddr1.address);
+    console.log('address1:', elmCtAddr1);
+
+    const elmAddr2 = await elmWallet1.getNewAddress(
+        AddressType.P2wpkh, 'taddr1');
+    const elmCtAddr2 = elmWallet1.getConfidentialAddress(elmAddr2.address);
+    console.log('address1:', elmCtAddr2);
+
+    const elmAddr3 = await elmWallet1.getNewAddress(
+        AddressType.P2wpkh, 'caddr1');
+    const elmCtAddr3 = elmWallet1.getConfidentialAddress(elmAddr3.address);
+    console.log('address3:', elmCtAddr3);
+
+    const issueAmt = 1000000000;
+    const tokenAmt = 100000000;
+    const baseUtxo = await elmWallet1.listUnspent(1, 9999999, '', '', peggedAsset);
+    if (!baseUtxo) {
+      throw new Error('utxo is empty.');
+    }
+    const baseTx = cfd.ElementsCreateRawTransaction({
+      version: 2,
+      locktime: 0,
+      txins: [{
+        txid: baseUtxo[0].txid,
+        vout: baseUtxo[0].vout,
+      }],
+      txouts: [{
+        address: elmCtAddr3,
+        asset: peggedAsset,
+        amount: BigInt(baseUtxo[0].amount) - BigInt(10000),
+      }],
+      fee: {
+        amount: 10000,
+        asset: peggedAsset,
+      },
+    });
+    const issueTx = cfd.SetRawIssueAsset({
+      tx: baseTx.hex,
+      issuances: [{
+        txid: baseUtxo[0].txid,
+        vout: baseUtxo[0].vout,
+        assetAddress: elmCtAddr1,
+        assetAmount: issueAmt,
+        tokenAddress: elmCtAddr2,
+        tokenAmount: tokenAmt,
+        isBlind: false,
+      }],
+    });
+    const asset = issueTx.issuances[0].asset;
+    const token = (issueTx.issuances[0].token) ? issueTx.issuances[0].token : '';
+    console.log('SetRawIssueAsset:', issueTx);
+    const fundTx = await elmWallet1.fundRawTransaction(
+        issueTx.hex, peggedAsset, [asset, token]);
+    const blindIssuance: cfd.BlindIssuanceRequest[] = [{
+      txid: baseUtxo[0].txid,
+      vout: baseUtxo[0].vout,
+      assetBlindingKey: '',
+      tokenBlindingKey: '',
+    }];
+    const blindInput: cfd.BlindTxInRequest[] = [];
+    for (const utxo of fundTx.utxos) {
+      blindInput.push({
+        txid: utxo.txid,
+        vout: utxo.vout,
+        asset: (utxo.asset) ? utxo.asset : '',
+        blindFactor: utxo.amountBlinder,
+        assetBlindFactor: utxo.assetBlinder,
+        amount: utxo.amount,
+      });
+    }
+    // const decFundTx = cfd.ElementsDecodeRawTransaction({hex: fundTx.hex});
+    // console.log('tx:', JSON.stringify(decFundTx, null, '  '));
+    // console.log('blindInput:', blindInput);
+    const blindTx = cfd.BlindRawTransaction({
+      tx: fundTx.hex,
+      txins: blindInput,
+      issuances: blindIssuance,
+    });
+    const signTx = await elmWallet1.signRawTransactionWithWallet(blindTx.hex);
+    const decTx = cfd.ElementsDecodeRawTransaction({hex: signTx.hex});
+
+    // send tx
+    try {
+      const txid = await elmWallet1.sendRawTransaction(signTx.hex);
+      // console.log('sendRawTransaction pegin tx:', txid);
+      expect(txid).toBe(decTx.txid);
+
+      await elmWallet1.generate(1);
+      // console.log('tx:', decTx);
+
+      const balance = await elmWallet1.getBalance(1, '', '');
+      console.log('wallet balance:', balance);
+      await elmWallet1.generate(2);
+
+      await elmWallet1.appendAsset(asset, 'asset2');
+      await elmWallet1.appendAsset(token, 'token2', issueTx.issuances[0].entropy, true);
+
+      const assetList = await elmWallet1.getAssetList();
+      console.log('asset list:', assetList);
+    } catch (e) {
+      console.log(e);
+      throw e;
+    }
+  });
+
+  it('multi asset sendtoaddress test', async () => {
+    const asset1Info = await elmWallet1.getAssetByLabel('asset1');
+    const asset2Info = await elmWallet1.getAssetByLabel('asset2');
+
+    const elmAddr1 = await elmWallet2.getNewAddress(
+        AddressType.P2wpkh, 'addr1');
+    const elmCtAddr1 = elmWallet2.getConfidentialAddress(elmAddr1.address);
+    console.log('address1:', elmCtAddr1);
+
+    const elmAddr2 = await elmWallet2.getNewAddress(
+        AddressType.P2wpkh, 'addr2');
+    const elmCtAddr2 = elmWallet2.getConfidentialAddress(elmAddr2.address);
+    console.log('address2:', elmCtAddr2);
+
+    const beforeBalance = await elmWallet2.getBalance(1);
+    console.log('before balance:', beforeBalance);
+
+    const asset1Amt = 200000000;
+    const asset2Amt = 100000000;
+    const resp = await elmWallet1.sendToAddresses([{
+      address: elmCtAddr1,
+      asset: asset1Info.id,
+      amount: asset1Amt,
+    }, {
+      address: elmCtAddr2,
+      asset: asset2Info.id,
+      amount: asset2Amt,
+    }], '', 0.15, 1);
+    console.log('txid:', resp.txid);
+    await elmWallet1.generate(1);
+    await elmWallet2.forceUpdateUtxoData();
+    await sleep(2000);
+
+    const afterBalance = await elmWallet2.getBalance(1);
+    console.log('after balance:', afterBalance);
+    expect(afterBalance[asset1Info.id]).toBe(asset1Amt);
+    expect(afterBalance[asset2Info.id]).toBe(asset2Amt);
+  });
+
+  // destroyAmount test
   // pegout test (low)
-  // getbalance test
-  // lbtc sendtoaddress test
-  // lbtc blind/unblind test
-  // issuance / reissuance test
-  // asset sendtoaddress test
-  // asset blind/unblind test
 });

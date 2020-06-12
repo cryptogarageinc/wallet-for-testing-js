@@ -1,3 +1,4 @@
+/* eslint-disable require-jsdoc */
 module.exports = class AddressService {
   constructor(databaseService, cfdObject) {
     this.databaseService = databaseService;

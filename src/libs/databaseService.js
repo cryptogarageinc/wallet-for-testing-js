@@ -1,3 +1,4 @@
+/* eslint-disable require-jsdoc */
 const ConfigTable = require('./db/configTable.js');
 const AddressTable = require('./db/addressTable.js');
 const ConfidentialKeyTable = require('./db/confidentialKeyTable.js');

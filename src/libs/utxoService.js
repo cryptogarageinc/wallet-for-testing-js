@@ -18,7 +18,7 @@ module.exports = class UtxoService {
     this.mainchainNetwork = network;
     this.masterXprivkey = masterXprivkey;
     if ((network === 'mainnet') || (network === 'testnet') || (network === 'regtest')) {
-      this.isElements = false;
+      // do nothing
     } else {
       if (network === 'liquidv1') {
         this.mainchainNetwork = 'mainnet';
@@ -26,7 +26,6 @@ module.exports = class UtxoService {
         this.mainchainNetwork = 'regtest';
         this.network = 'regtest';
       }
-      this.isElements = true;
     }
     return true;
   };
@@ -34,7 +33,7 @@ module.exports = class UtxoService {
   async generate(address, count) {
     const lockingScript = this.cfd.GetAddressInfo({
       address: address,
-      isElements: this.isElements,
+      isElements: this.parent.isElements,
     }).lockingScript;
     const descriptor = await this.addressService.getDescriptor(address);
     // console.log('  descriptor = ', descriptor);
@@ -55,20 +54,70 @@ module.exports = class UtxoService {
         let alreadyRegisted = false;
         if (i === 0) {
           // coinbase
+          const solvable = true;
+          const extend = {};
           for (let j = 0; j < txData.vout.length; j++) {
             if (txData.vout[j].scriptPubKey.hex === lockingScript) {
-              const amount = txData.vout[j].value;
-              const satoshi = Math.ceil(amount * 100000000);
-              totalMining = totalMining + satoshi;
-              // console.log(`  utxo[${txid},${j}] amount = ${amount}`);
-              // console.log('  tx = ', txData.vout[j]);
-              const ret = await this.utxoTable.addUtxo(
-                  txid, j, satoshi, address, descriptor, lockingScript,
-                  true, blockHash, blockHeight, coinbase);
-              if (ret === false) {
-                // console.info('addUtxo: addUtxo fail. (already registed)\n',
-                //     `txid=${txid}, vout=${j}`);
-                alreadyRegisted = true;
+              let confidentialKey = '';
+              if (this.parent.isElements && ('value' in txData.vout[j])) {
+                const value = Math.ceil(txData.vout[j].value * 100000000);
+                const asset = txData.vout[j].asset;
+                const assetBlinder = emptyBlinder;
+                const amountBlinder = emptyBlinder;
+                totalMining = totalMining + value;
+                const ret = await this.utxoTable.addUtxo(txid, j,
+                    value, address,
+                    descriptor, lockingScript, solvable,
+                    blockHash, blockHeight, coinbase, asset,
+                    confidentialKey, assetBlinder, amountBlinder, extend);
+                if (ret === false) {
+                  // console.info('addUtxo: addUtxo fail. (already registed)\n',
+                  //     `txid=${txid}, vout=${j}`);
+                  alreadyRegisted = true;
+                }
+              } else if (this.parent.isElements) {
+                const blindingKey = this.parent.getBlindingKey(address);
+                confidentialKey = blindingKey.pubkey;
+                const unblindData = this.cfd.UnblindRawTransaction({
+                  tx: txData.hex,
+                  txouts: [{
+                    index: j,
+                    blindingKey: blindingKey.privkey,
+                  }],
+                });
+                if (unblindData.outputs[0]) {
+                  const assetBlinder =
+                    unblindData.outputs[0].assetBlindFactor;
+                  const amountBlinder = unblindData.outputs[0].blindFactor;
+                  const asset = unblindData.outputs[0].asset;
+                  const value = unblindData.outputs[0].amount;
+                  const ret = await this.utxoTable.addUtxo(txid, j,
+                      value, address,
+                      descriptor, lockingScript, solvable,
+                      blockHash, blockHeight, coinbase, asset,
+                      confidentialKey, assetBlinder, amountBlinder, extend);
+                  if (ret === false) {
+                    // console.info('addUtxo: addUtxo fail. (already registed)\n',
+                    //     `txid=${txid}, vout=${j}`);
+                    alreadyRegisted = true;
+                  }
+                } else {
+                  throw new error('unblind fail.');
+                }
+              } else {
+                const amount = txData.vout[j].value;
+                const satoshi = Math.ceil(amount * 100000000);
+                totalMining = totalMining + satoshi;
+                // console.log(`  utxo[${txid},${j}] amount = ${amount}`);
+                // console.log('  tx = ', txData.vout[j]);
+                const ret = await this.utxoTable.addUtxo(
+                    txid, j, satoshi, address, descriptor, lockingScript,
+                    true, blockHash, blockHeight, coinbase);
+                if (ret === false) {
+                  // console.info('addUtxo: addUtxo fail. (already registed)\n',
+                  //     `txid=${txid}, vout=${j}`);
+                  alreadyRegisted = true;
+                }
               }
             }
           }
@@ -102,13 +151,60 @@ module.exports = class UtxoService {
                   .getAddressInfoByLockingScript(lockingScript);
               // console.log('addr = ', addr);
               if (addr) {
+                const blockHash = '';
+                const blockHeight = -1;
+                const coinbase = false;
+                let confidentialKey = '';
+                const extend = {};
                 const solvable = (!addr.script && addr.path !== '') ? true : false;
-                const satoshi = Math.ceil(vout[j].value * 100000000);
-                const ret = await this.utxoTable.addUtxo(txid, j,
-                    satoshi, addr.address,
-                    addr.descriptor, lockingScript, solvable);
-                if (ret === false) {
-                  throw Error('addUtxo: addUtxo fail.');
+                if (this.parent.isElements && ('value' in vout[j])) {
+                  const value = Math.ceil(vout[j].value * 100000000);
+                  const asset = vout[j].asset;
+                  const assetBlinder = emptyBlinder;
+                  const amountBlinder = emptyBlinder;
+                  const ret = await this.utxoTable.addUtxo(txid, j,
+                      value, addr.address,
+                      addr.descriptor, lockingScript, solvable,
+                      blockHash, blockHeight, coinbase, asset,
+                      confidentialKey, assetBlinder, amountBlinder, extend);
+                  if (ret === false) {
+                    throw Error('addUtxo: addUtxo fail.');
+                  }
+                } else if (this.parent.isElements) {
+                  const blindingKey = this.parent.getBlindingKey(addr.address);
+                  confidentialKey = blindingKey.pubkey;
+                  const unblindData = this.cfd.UnblindRawTransaction({
+                    tx: txData.hex,
+                    txouts: [{
+                      index: j,
+                      blindingKey: blindingKey.privkey,
+                    }],
+                  });
+                  if (unblindData.outputs[0]) {
+                    const assetBlinder =
+                      unblindData.outputs[0].assetBlindFactor;
+                    const amountBlinder = unblindData.outputs[0].blindFactor;
+                    const asset = unblindData.outputs[0].asset;
+                    const value = unblindData.outputs[0].amount;
+                    const ret = await this.utxoTable.addUtxo(txid, j,
+                        value, addr.address,
+                        addr.descriptor, lockingScript, solvable,
+                        blockHash, blockHeight, coinbase, asset,
+                        confidentialKey, assetBlinder, amountBlinder, extend);
+                    if (ret === false) {
+                      throw Error('addUtxo: addUtxo fail.');
+                    }
+                  } else {
+                    throw new error('unblind fail.');
+                  }
+                } else {
+                  const satoshi = Math.ceil(vout[j].value * 100000000);
+                  const ret = await this.utxoTable.addUtxo(txid, j,
+                      satoshi, addr.address,
+                      addr.descriptor, lockingScript, solvable);
+                  if (ret === false) {
+                    throw Error('addUtxo: addUtxo fail.');
+                  }
                 }
               }
             }
@@ -226,14 +322,67 @@ module.exports = class UtxoService {
                 .getAddressInfoByLockingScript(lockingScript);
             // console.log('addr = ', addr);
             if (addr) {
+              const blockHash = '';
+              const blockHeight = -1;
+              const coinbase = false;
+              let confidentialKey = '';
+              const extend = {};
               const solvable = (!addr.script && addr.path !== '') ? true : false;
-              const satoshi = Math.ceil(vout[j].value * 100000000);
-              const ret = await this.utxoTable.addUtxo(txid, j,
-                  satoshi, addr.address,
-                  addr.descriptor, lockingScript, solvable);
-              if (ret === false) {
-                console.log('addUtxo: addUtxo fail.');
-                // throw Error('addUtxo: addUtxo fail.');
+              if (this.parent.isElements && ('value' in vout[j])) {
+                const assetBlinder = emptyBlinder;
+                const amountBlinder = emptyBlinder;
+                const satoshi = Math.ceil(vout[j].value * 100000000);
+                const ret = await this.utxoTable.addUtxo(txid, j,
+                    satoshi, addr.address,
+                    addr.descriptor, lockingScript, solvable,
+                    blockHash, blockHeight, coinbase, vout[j].asset,
+                    confidentialKey, assetBlinder, amountBlinder, extend);
+                if (ret === false) {
+                  console.log('addUtxo: addUtxo fail.');
+                  // throw Error('addUtxo: addUtxo fail.');
+                }
+              } else if (this.parent.isElements) {
+                const blindingKey = this.parent.getBlindingKey(addr.address);
+                confidentialKey = blindingKey.pubkey;
+                try {
+                  const unblindData = this.cfd.UnblindRawTransaction({
+                    tx: blockData.tx[i].hex,
+                    txouts: [{
+                      index: j,
+                      blindingKey: blindingKey.privkey,
+                    }],
+                  });
+                  if (unblindData.outputs[0]) {
+                    const assetBlinder =
+                        unblindData.outputs[0].assetBlindFactor;
+                    const amountBlinder = unblindData.outputs[0].blindFactor;
+                    const asset = unblindData.outputs[0].asset;
+                    const value = unblindData.outputs[0].amount;
+                    const ret = await this.utxoTable.addUtxo(txid, j,
+                        value, addr.address,
+                        addr.descriptor, lockingScript, solvable,
+                        blockHash, blockHeight, coinbase, asset,
+                        confidentialKey, assetBlinder, amountBlinder, extend);
+                    if (ret === false) {
+                      console.log('addUtxo: addUtxo fail.');
+                      // throw Error('addUtxo: addUtxo fail.');
+                    }
+                  } else {
+                    throw new error('unblind fail.');
+                  }
+                } catch (e) {
+                  console.log('unblind error tx:', blockData.tx[i].hex);
+                  throw e;
+                }
+              } else {
+                const satoshi = Math.ceil(vout[j].value * 100000000);
+                const ret = await this.utxoTable.addUtxo(txid, j,
+                    satoshi, addr.address,
+                    addr.descriptor, lockingScript, solvable);
+                if (ret === false) {
+                  console.log('addUtxo: addUtxo fail.');
+                  // throw Error('addUtxo: addUtxo fail.');
+                }
               }
             }
           }
@@ -285,6 +434,8 @@ module.exports = class UtxoService {
                 amountBlinder = unblindData.outputs[0].blindFactor;
                 asset = unblindData.outputs[0].asset;
                 value = unblindData.outputs[0].amount;
+              } else {
+                throw new error('unblind fail.');
               }
             } else {
               asset = decTx.vout[i].asset;
@@ -394,7 +545,7 @@ module.exports = class UtxoService {
       } else if ((address !== '') && (utxos[i].address !== address)) {
         // do nothing
         // console.log(`skip address. [${address}]`);
-      } else if ((asset !== '') && (asset in utxos[i]) && (utxos[i].asset !== asset)) {
+      } else if ((asset !== '') && ('asset' in utxos[i]) && (utxos[i].asset !== asset)) {
         // do nothing
       } else if ((path !== '') && (utxos[i].descriptor.indexOf(path) === -1)) {
         // do nothing

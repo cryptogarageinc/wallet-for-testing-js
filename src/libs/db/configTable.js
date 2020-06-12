@@ -1,9 +1,11 @@
+/* eslint-disable require-jsdoc */
 const NedbWrapper = require('./nedbWrapper.js');
 const KeyNetworkType = 'network';
 const KeyBip32Count = 'bip32Count';
 const KeyBip32FeeCount = 'bip32FeeCount';
 const KeyBlindCount = 'blindCount';
 const KeyTipBlockHeight = 'tipBlockHeight';
+const KeyAssetMap = 'assetMap';
 
 module.exports = class ConfigTable {
   constructor(name = 'db', dirPath = './', inMemoryOnly = true) {
@@ -41,6 +43,11 @@ module.exports = class ConfigTable {
     }
     ret = await this.database.insert(
         {key: KeyTipBlockHeight, value: 0}, {key: KeyTipBlockHeight});
+    if (ret === false) {
+      return false;
+    }
+    ret = await this.database.insert(
+        {key: KeyAssetMap, value: {}}, {key: KeyAssetMap});
     if (ret === false) {
       return false;
     }
@@ -82,6 +89,15 @@ module.exports = class ConfigTable {
         {key: KeyTipBlockHeight}, {$set: {value: count}});
   };
 
+  async updateAssetMap(assetMap) {
+    if (assetMap === undefined) {
+      console.trace();
+      return false;
+    }
+    return await this.database.update(
+        {key: KeyAssetMap}, {$set: {value: assetMap}});
+  };
+
 
   async getNetworkType() {
     const ret = await this.database.findOne({key: KeyNetworkType});
@@ -117,6 +133,14 @@ module.exports = class ConfigTable {
 
   async getTipBlockHeight() {
     const ret = await this.database.findOne({key: KeyTipBlockHeight});
+    if (!ret) {
+      return false;
+    }
+    return ret.value;
+  };
+
+  async getAssetMap() {
+    const ret = await this.database.findOne({key: KeyAssetMap});
     if (!ret) {
       return false;
     }

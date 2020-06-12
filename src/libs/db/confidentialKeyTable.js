@@ -1,3 +1,4 @@
+/* eslint-disable require-jsdoc */
 const NedbWrapper = require('./nedbWrapper.js');
 
 module.exports = class ConfidentialKeyTable {

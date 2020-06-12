@@ -930,8 +930,7 @@ module.exports = class Wallet {
         }
       }
       utxos = await this.utxoService.listUnspent(
-          targetConf, 9999999999, '', '', '',
-          true, !isConfidential);
+          targetConf, 9999999999, '', '', '', true, !isConfidential);
       // console.log('utxos = ', utxos);
       for (let i = 0; i < decTx.vin.length; ++i) {
         if (decTx.vin[i]) {

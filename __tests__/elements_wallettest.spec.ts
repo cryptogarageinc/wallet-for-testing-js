@@ -1122,6 +1122,80 @@ describe('wallet test', () => {
     expect(afterBalance[asset2Info.id]).toBe(asset2Amt);
   });
 
-  // destroyAmount test
+  it('destroy amount test', async () => {
+    const asset1Info = await elmWallet1.getAssetByLabel('asset1');
+    const peggedAsset = elmWallet1.getPeggedAsset();
+
+    const elmAddr1 = await elmWallet1.getNewAddress(
+        AddressType.P2wpkh, 'addr1');
+    const elmCtAddr1 = elmWallet1.getConfidentialAddress(elmAddr1.address);
+    console.log('address1:', elmCtAddr1);
+
+    const beforeBalance = await elmWallet1.getBalance(1);
+    console.log('before balance:', beforeBalance);
+
+    const asset1Amt = 100000000;
+    const keyPair = cfd.CreateKeyPair({
+      wif: false,
+      isCompressed: true,
+    });
+
+    const OP_RETURN = '6a';
+    const destroyTxBase = cfd.CreateDestroyAmount({
+      version: 2,
+      locktime: 0,
+      txouts: [{
+        asset: asset1Info.id,
+        amount: 0,
+        address: '',
+        directLockingScript: OP_RETURN,
+        directNonce: keyPair.pubkey,
+      }],
+      destroy: {
+        amount: asset1Amt,
+        asset: asset1Info.id,
+      },
+    });
+    const fundTx = await elmWallet1.fundRawTransaction(
+        destroyTxBase.hex, peggedAsset);
+    const blindInput: cfd.BlindTxInRequest[] = [];
+    for (const utxo of fundTx.utxos) {
+      blindInput.push({
+        txid: utxo.txid,
+        vout: utxo.vout,
+        asset: (utxo.asset) ? utxo.asset : '',
+        blindFactor: utxo.amountBlinder,
+        assetBlindFactor: utxo.assetBlinder,
+        amount: utxo.amount,
+      });
+    }
+    // const decFundTx = cfd.ElementsDecodeRawTransaction({hex: fundTx.hex});
+    // console.log('tx:', JSON.stringify(decFundTx, null, '  '));
+    // console.log('blindInput:', blindInput);
+    const blindTx = cfd.BlindRawTransaction({
+      tx: fundTx.hex,
+      txins: blindInput,
+    });
+    const signTx = await elmWallet1.signRawTransactionWithWallet(blindTx.hex);
+    const decTx = cfd.ElementsDecodeRawTransaction({hex: signTx.hex});
+
+    // send tx
+    try {
+      const txid = await elmWallet1.sendRawTransaction(signTx.hex);
+      // console.log('sendRawTransaction pegin tx:', txid);
+      expect(txid).toBe(decTx.txid);
+
+      await elmWallet1.generate(1);
+      // console.log('tx:', decTx);
+
+      const balance = await elmWallet1.getBalance(1, '', '');
+      console.log('wallet balance:', balance);
+      await elmWallet1.generate(2);
+    } catch (e) {
+      console.log(e);
+      throw e;
+    }
+  });
+
   // pegout test (low)
 });

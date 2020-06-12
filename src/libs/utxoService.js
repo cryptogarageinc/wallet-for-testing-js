@@ -272,12 +272,7 @@ module.exports = class UtxoService {
             if ('valuecommitment' in decTx.vout[i]) {
               // get blinder
               const blindingKey = this.parent.getBlindingKey(addr.address);
-              const ctAddr = this.cfd.GetConfidentialAddress({
-                unblindedAddress: address,
-                key: blindingKey.pubkey,
-              });
               confidentialKey = blindingKey.pubkey;
-              extend.push({'confidentialAddress': ctAddr.confidentialAddress});
               const unblindData = this.cfd.UnblindRawTransaction({
                 tx: tx,
                 txouts: [{

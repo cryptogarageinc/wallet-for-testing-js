@@ -135,20 +135,9 @@ console.log(multisigSign.hex);
 console.log('-------------------------------------------------------------------');
 console.log('-- large output tx --');
 
-const feeOutputNum = 100;
-const feeUtxo = {
-  txid: '0000000000000000000000000000000000000000000000000000000000000001',
-  vout: 1,
-  amount: 100000000,
-  asset: '5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225',
-  blindFactor: '0000000000000000000000000000000000000000000000000000000000000000',
-  assetBlindFactor: '0000000000000000000000000000000000000000000000000000000000000000',
-  privkey: 'cU4KjNUT7GjHm7CkjRjG46SzLrXHXoH3ekXmqa2jTCFPMkQ64sw1',
-};
 const networkType = 'liquidv1';
 const mainchainNetworkType = 'mainnet';
 const masterBlindingKey = '28054244faf0d4a04fc9dd3012443fc126c4a353f48d0277d3c57f69164adf87';
-const txFeeAmount = 13000; // feerate: 0.148
 // dust laptop safe error tent soon fragile skill pear alley awkward vague stomach duck future
 // xprv9s21ZrQH143K39sCCERa3w6NuVmYLMxHKH1PjEnuiaq2RB9iHhEwncTGpbx1WANWJZzFFbFdBi7BKECLg3HnFgajeRi5Go6YxD1K2nZtpDB/44h/1776h/1h
 const baseXpubkey = 'xpub6CADKiKYZrFrmFbPAQPSrzKMRohBHNmYM7GHNngAaaVHqNhC3apR1aNKJkigUjBDU7HwciQSRjeBK42vZUMZGNEjZkPjDWDawKVxTLGhNVE';
@@ -156,49 +145,56 @@ const minimumBits = 36;
 
 // ----
 
-const feeAmount = parseInt((feeUtxo.amount - txFeeAmount) / (feeOutputNum + 1));
+const utxoTxHex = '';
+const utxoTxid = '';
+const utxoVout = 0;
+
+const ctAddrList = [
+];
+
+const feeOutputNum = 49;
+const txFeeAmount = 4476; // feerate: 0.148
+const feeRate = 0.100;
+
+const unblindData = cfdjs.UnblindRawTransaction({
+  tx: utxoTxHex,
+  txouts: [{
+    index: 0,
+    blindingKey: '',
+  }],
+});
+
+console.log(unblindData);
+const utxoData = unblindData.outputs[0];
+
+const feeUtxo = {
+  txid: utxoTxid,
+  vout: utxoVout,
+  amount: utxoData.amount,
+  asset: utxoData.asset,
+  blindFactor: utxoData.blindFactor,
+  assetBlindFactor: utxoData.assetBlindFactor,
+  privkey: '',
+};
+
+
+// const feeAmount = parseInt((feeUtxo.amount - txFeeAmount) / (feeOutputNum + 1));
+const feeAmount = 100000;
 const changeAmount = feeUtxo.amount - txFeeAmount - (feeAmount * feeOutputNum);
+const isBlind = true;
 
 const txoutList = [];
-const ctAddrList = [];
+
 for (let i = 0; i <= feeOutputNum; ++i) {
-  const child = cfdjs.CreateExtkeyFromParentPath({
-    extkey: baseXpubkey,
-    network: mainchainNetworkType,
-    extkeyType: 'extPubkey',
-    path: `0/${i}`,
-  });
-  const pubkeyRet = cfdjs.GetPubkeyFromExtkey({
-    extkey: child.extkey,
-    network: mainchainNetworkType,
-  });
-  const addrInfo = cfdjs.CreateAddress({
-    isElements: true,
-    keyData: {
-      hex: pubkeyRet.pubkey,
-      type: 'pubkey',
-    },
-    network: networkType,
-    hashType: 'p2wpkh',
-  });
-  const blindingKey = cfdjs.GetDefaultBlindingKey({
-    masterBlindingKey: masterBlindingKey,
-    address: addrInfo.address,
-  });
-  const ctKey = cfdjs.GetPubkeyFromPrivkey({
-    privkey: blindingKey.blindingKey,
-  });
-  const ctAddr = cfdjs.GetConfidentialAddress({
-    unblindedAddress: addrInfo.address,
-    key: ctKey.pubkey,
-  });
+  const ctAddr = ctAddrList[i];
   const amount = (i === feeOutputNum) ? changeAmount : feeAmount;
   txoutList.push({
-    address: ctAddr.confidentialAddress,
+    // address: ctAddr.confidentialAddress,
+    address: ctAddr,
     asset: feeUtxo.asset,
     amount: amount,
   });
-  ctAddrList.push(ctAddr.confidentialAddress);
+  // ctAddrList.push(ctAddr.confidentialAddress);
 }
 
 const feeTxdata = cfdjs.ElementsCreateRawTransaction({
@@ -216,20 +212,27 @@ const feeTxdata = cfdjs.ElementsCreateRawTransaction({
   },
 });
 
-const feeBlindTx = cfdjs.BlindRawTransaction({
-  tx: feeTxdata.hex,
-  txins: [{
-    txid: feeUtxo.txid,
-    vout: feeUtxo.vout,
-    asset: feeUtxo.asset,
-    amount: feeUtxo.amount,
-    blindFactor: feeUtxo.blindFactor,
-    assetBlindFactor: feeUtxo.assetBlindFactor,
-  },
-  ],
-  txoutConfidentialAddresses: ctAddrList,
-  minimumBits: minimumBits,
-});
+let blindTxHex = feeTxdata.hex;
+if (isBlind) {
+  const basetx = cfdjs.ElementsDecodeRawTransaction({hex: feeTxdata.hex});
+  console.log(basetx);
+  const feeBlindTx = cfdjs.BlindRawTransaction({
+    tx: feeTxdata.hex,
+    txins: [{
+      txid: feeUtxo.txid,
+      vout: feeUtxo.vout,
+      asset: feeUtxo.asset,
+      amount: feeUtxo.amount,
+      blindFactor: feeUtxo.blindFactor,
+      assetBlindFactor: feeUtxo.assetBlindFactor,
+    },
+    ],
+    txoutConfidentialAddresses: ctAddrList,
+    minimumBits: minimumBits,
+  });
+  blindTxHex = feeBlindTx.hex;
+}
+
 
 const commitment = cfdjs.GetCommitment({
   amount: feeUtxo.amount,
@@ -240,7 +243,7 @@ const commitment = cfdjs.GetCommitment({
 
 // privkey sign (calc sighash + get ecSig + add Signature)
 const feeSignTx = cfdjs.SignWithPrivkey({
-  tx: feeBlindTx.hex,
+  tx: blindTxHex,
   isElements: true,
   txin: {
     txid: feeUtxo.txid,
@@ -257,6 +260,7 @@ const dectx = cfdjs.ElementsDecodeRawTransaction({hex: feeSignTx.hex});
 console.log(feeSignTx.hex);
 console.log(`Amount:${feeAmount}, changeAmount:${changeAmount}`);
 console.log(`vsize: ${dectx.vsize}`);
+console.log(`dectx:`, dectx);
 
 const estimateFeeResult = cfdjs.EstimateFee({
   selectUtxos: [{
@@ -266,7 +270,7 @@ const estimateFeeResult = cfdjs.EstimateFee({
     asset: feeUtxo.asset,
     descriptor: 'wpkh([e3c39d64/0\'/1\'/14\']02c7822c824258258d8d16b6fd25317b60b4374ca4f5ce1a69b810615e0c5497a8)',
   }],
-  feeRate: 0.147,
+  feeRate: feeRate,
   tx: feeSignTx.hex,
   isElements: true,
   feeAsset: feeUtxo.asset,

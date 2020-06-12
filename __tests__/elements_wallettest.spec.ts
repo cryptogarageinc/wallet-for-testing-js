@@ -773,6 +773,8 @@ describe('wallet test', () => {
     if (!baseUtxo) {
       throw new Error('utxo is empty.');
     }
+    const sendAmt = (BigInt(baseUtxo[0].amount) > BigInt(10000)) ?
+      BigInt(baseUtxo[0].amount) - BigInt(10000) : BigInt(baseUtxo[0].amount);
     const baseTx = cfd.ElementsCreateRawTransaction({
       version: 2,
       locktime: 0,
@@ -783,10 +785,10 @@ describe('wallet test', () => {
       txouts: [{
         address: elmCtAddr3,
         asset: peggedAsset,
-        amount: BigInt(baseUtxo[0].amount) - BigInt(10000),
+        amount: sendAmt,
       }],
       fee: {
-        amount: 10000,
+        amount: 0,
         asset: peggedAsset,
       },
     });
@@ -993,6 +995,8 @@ describe('wallet test', () => {
     if (!baseUtxo) {
       throw new Error('utxo is empty.');
     }
+    const sendAmt = (BigInt(baseUtxo[0].amount) > BigInt(10000)) ?
+      BigInt(baseUtxo[0].amount) - BigInt(10000) : BigInt(baseUtxo[0].amount);
     const baseTx = cfd.ElementsCreateRawTransaction({
       version: 2,
       locktime: 0,
@@ -1003,10 +1007,10 @@ describe('wallet test', () => {
       txouts: [{
         address: elmCtAddr3,
         asset: peggedAsset,
-        amount: BigInt(baseUtxo[0].amount) - BigInt(10000),
+        amount: sendAmt,
       }],
       fee: {
-        amount: 10000,
+        amount: 0,
         asset: peggedAsset,
       },
     });

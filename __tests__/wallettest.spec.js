@@ -323,4 +323,143 @@ describe('wallet test', () => {
 
     expect(wData12.spent).toBe(true);
   });
+
+  it('send thresh scriptaddress test', async () => {
+    jest.setTimeout(15000);
+
+    await btcWallet2.generate(100, '', true); // for using coinbase utxo
+    await btcWallet1.forceUpdateUtxoData();
+    await btcWallet2.forceUpdateUtxoData(); // after nowait generate
+
+    btcWallet1.estimateSmartFee(6, 'ECONOMICAL');
+
+    const keyPairs = [
+      {
+        pubkey: '034c329fdb9c60d651df46873d5db1368d1dbd5ece78e5683ddf372f3bdfd43b02',
+        privkey: '8e5fa27d30871a0c3ea70a9aeedfe0e6801f0c0be51da864e5d523814f547c3d',
+      },
+      {
+        pubkey: '03954535ab1534d66d2a39ab9d1834dbf7cc3ec4c92cd234aa31f9b4717d01af7f',
+        privkey: 'e53ac96cd9deb9d8800794c563a7d5799b1373d826a465a626d6b36aa343e981',
+      },
+    ];
+    const addr1 = await btcWallet1.getNewAddress('p2wpkh', 'label1-1');
+    const pubkey1 = addr1.pubkey;
+    const pubkey2 = keyPairs[0].pubkey;
+    const pubkey3 = keyPairs[1].pubkey;
+    const miniscript = `thresh(2,c:pk_k(${pubkey1}),sc:pk_k(${pubkey2}),sc:pk_k(${pubkey3}))`;
+
+    // const pubkeyHash = addr1.lockingScript.substring(2);
+    const desc = cfd.ParseDescriptor({
+      descriptor: `wsh(${miniscript})`,
+      network: network,
+    });
+    const redeemScript = (desc.redeemScript) ? desc.redeemScript : '';
+    console.log('[script] redeemScript -> ', redeemScript);
+    const addr = await btcWallet1.getScriptAddress(redeemScript, 'p2wsh', 'label2', [addr1.pubkey]);
+    // send to 1BTC
+    const amount1 = 100000000;
+    const txout1 = {address: addr.address, amount: amount1};
+    let tx1 = btcWallet1.createRawTransaction(2, 0, [], [txout1]);
+    tx1 = await btcWallet1.fundRawTransaction(tx1.hex);
+    tx1 = await btcWallet1.signRawTransactionWithWallet(tx1.hex, false);
+    const txid1 = await btcWallet1.sendRawTransaction(tx1.hex);
+    const decTx1 = btcWallet1.decodeRawTransaction(tx1.hex);
+    console.log('[script] sendRawTransaction1 -> ', {txid: txid1, hex: tx1.hex});
+    expect(decTx1.vout[0].value).toBe(amount1);
+
+    await btcWallet2.generate(1); // for using coinbase utxo
+    await btcWallet1.forceUpdateUtxoData();
+
+    const wData11 = await btcWallet1.getWalletTxData(txid1, 0);
+    expect(wData11.spent).toBe(false);
+
+    const txin2 = {txid: txid1, vout: 0};
+    const txout2 = {address: addr1.address, amount: amount1};
+    let tx2 = btcWallet1.createRawTransaction(2, 0, [txin2], [txout2]);
+    tx2 = await btcWallet1.fundRawTransaction(tx2.hex);
+    const decTx = btcWallet1.decodeRawTransaction(tx2.hex);
+    const prevtxs = [];
+    for (let i = 0; i < decTx.vin.length; ++i) {
+      if (decTx.vin[i]) {
+        const tempTxid = decTx.vin[i].txid;
+        const tempVout = decTx.vin[i].vout;
+        if (tempTxid === txid1 && tempVout === 0) {
+          continue;
+        }
+        prevtxs.push({txid: tempTxid, vout: tempVout});
+      }
+    }
+    tx2 = await btcWallet1.signRawTransactionWithWallet(
+        tx2.hex, false, prevtxs);
+    const sigs1 = await btcWallet1.getSignatures(
+        tx2.hex, false, [{txid: txid1, vout: 0}]);
+    console.log('[multi] sigs1 -> ', sigs1);
+    // console.log('[multi] sigs2 -> ', sigs2);
+    const sighash = cfd.CreateSignatureHash({
+      tx: tx2.hex,
+      txin: {
+        txid: txid1,
+        vout: 0,
+        hashType: 'p2wsh',
+        keyData: {
+          hex: redeemScript,
+          type: 'redeem_script',
+        },
+        amount: amount1,
+        sighashType: 'all',
+      },
+    });
+    const sig2 = cfd.CalculateEcSignature({
+      sighash: sighash.sighash,
+      privkeyData: {
+        privkey: keyPairs[1].privkey,
+        wif: false,
+      },
+    });
+
+    tx2 = cfd.AddSign({
+      tx: tx2.hex,
+      txin: {
+        txid: txid1,
+        vout: 0,
+        isWitness: true,
+        signParam: [
+          { // keyPairs[1] signature
+            hex: sig2.signature,
+            type: 'sign',
+            derEncode: true,
+            sighashType: 'all',
+          },
+          { // keyPairs[0] signature
+            hex: '',
+            type: 'binary',
+            derEncode: false,
+          },
+          {
+            hex: sigs1.signatures[0].signature,
+            type: 'sign',
+            derEncode: true,
+            sighashType: 'all',
+          },
+          {
+            hex: redeemScript,
+            type: 'redeem_script',
+          },
+        ],
+        clearStack: true,
+      },
+    });
+    const txid2 = await btcWallet1.sendRawTransaction(tx2.hex);
+    console.log('[multi] sendRawTransaction2 -> ', {txid: txid2, hex: tx2.hex});
+
+    await btcWallet2.generate(1); // for using coinbase utxo
+    await btcWallet1.forceUpdateUtxoData();
+
+    const wData12 = await btcWallet1.getWalletTxData(txid1, 0);
+    // console.log('[multi] wData12 -> ', wData12);
+    // console.log('[multi] wData22 -> ', wData22);
+
+    expect(wData12.spent).toBe(true);
+  });
 });

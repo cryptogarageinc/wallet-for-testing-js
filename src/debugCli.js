@@ -759,7 +759,7 @@ const mnemonictoseed = async function() {
     mnemonic: mnemonicItems,
     passphrase: passphrase,
     // eslint-disable-next-line @typescript-eslint/camelcase
-    strict_check: true,
+    strictCheck: true,
     language: 'en',
   });
   console.log(`seed = ${result.seed}`);

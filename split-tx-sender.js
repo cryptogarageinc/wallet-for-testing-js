@@ -347,7 +347,7 @@ const sendSplitTx = async function(utxoTxid, utxoVout, sendAddrListFile,
   } else {
     const postFormData = { tx: txHex };
     const postUrl = `https://blockstream.info/${prefix}/tx`;
-    // await callPost(postUrl, postFormData, 'text/plain');
+    await callPost(postUrl, postFormData, 'text/plain');
   }
 }
 

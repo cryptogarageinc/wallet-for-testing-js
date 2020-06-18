@@ -1,6 +1,7 @@
+/* eslint-disable require-jsdoc */
 // UTF-8
 'use strict';
-const fs = require('fs')
+const fs = require('fs');
 // const ini = require('ini')
 const readline = require('readline-sync');
 const zlib = require('zlib');
@@ -13,48 +14,50 @@ const commandData = {
   gettx: {
     name: 'gettx',
     alias: undefined,
-    parameter: '[txid]'
+    parameter: '[txid]',
   },
   tgettx: {
     name: 'tgettx',
     alias: undefined,
-    parameter: '[txid]'
+    parameter: '[txid]',
   },
-}
+};
 
 const helpDump = function(nameObj) {
   if (!nameObj.parameter) {
-    console.log('  ' + nameObj.name)
+    console.log('  ' + nameObj.name);
   } else {
-    console.log('  ' + nameObj.name + ' ' + nameObj.parameter)
+    console.log('  ' + nameObj.name + ' ' + nameObj.parameter);
   }
   if (nameObj.alias) {
-    console.log('    - alias: ' + nameObj.alias)
+    console.log('    - alias: ' + nameObj.alias);
   }
-}
+};
 
 const help = function() {
-  console.log('usage:')
+  console.log('usage:');
   for (const key in commandData) {
-    helpDump(commandData[key])
+    if (commandData[key]) {
+      helpDump(commandData[key]);
+    }
   }
-}
+};
 
 const readLineData = function(index, message) {
   let value;
   if (process.argv.length <= index) {
     value = readline.question(`${message} > `);
   } else {
-    value = process.argv[index]
+    value = process.argv[index];
   }
   return value;
-}
+};
 
 function doRequest(options, postData = undefined) {
-  return new Promise(function (resolve, reject) {
+  return new Promise(function(resolve, reject) {
     try {
-      const func = function (error, res, body) {
-        if (!error && res && res["statusCode"] && (res.statusCode === 200)) {
+      const func = function(error, res, body) {
+        if (!error && res && res['statusCode'] && (res.statusCode === 200)) {
           const statusCode = res.statusCode;
           resolve({statusCode: statusCode, data: body, headers: res});
         } else if (!error && res && body) {
@@ -75,48 +78,48 @@ function doRequest(options, postData = undefined) {
 }
 
 const callGet = async function(url, dumpName = '') {
-  console.log(`url = ${url}`)
+  console.log(`url = ${url}`);
   const reqHeaders = {
   };
   const requestOptions = {
     url: url,
-    method: "GET",
+    method: 'GET',
     headers: reqHeaders,
-    gzip: true
+    gzip: true,
   };
-  const { statusCode, data, headers } = await doRequest(requestOptions)
-  console.log(`status = ${statusCode}`)
+  const {statusCode, data, headers} = await doRequest(requestOptions);
+  console.log(`status = ${statusCode}`);
   if ((statusCode >= 200) && (statusCode < 300)) {
     // console.log(`headers = ${headers}`)
-    let result = data
+    let result = data;
     try {
       result = zlib.gunzipSync(data);
       if (dumpName) {
-        console.log(`${dumpName}(unzip): ${result}`)
+        console.log(`${dumpName}(unzip): ${result}`);
       }
       return result;
     } catch (error) {
       // do nothing
     }
     try {
-      let jsonData = JSON.parse(data)
+      const jsonData = JSON.parse(data);
       if (dumpName) {
-        console.log(`${dumpName}:`, JSON.stringify(jsonData, null, 2))
+        console.log(`${dumpName}:`, JSON.stringify(jsonData, null, 2));
       }
       return jsonData;
     } catch (error) {
       if (dumpName) {
-        console.log(`${dumpName}:`, data)
+        console.log(`${dumpName}:`, data);
       }
       return data;
     }
   } else {
     throw new Error(`statusCode: ${statusCode}`);
   }
-}
+};
 
 const callPost = async function(url, formData, contextType) {
-  console.log(`url = ${url}`)
+  console.log(`url = ${url}`);
   const reqHeaders = {
     'content-type': contextType,
   };
@@ -129,12 +132,12 @@ const callPost = async function(url, formData, contextType) {
   const resp = await doRequest(requestOptions, formData.tx);
   try {
     // console.log(`response:`, resp)
-    const { statusCode, data, headers } = resp;
-    console.log(`status = ${statusCode}`)
+    const {statusCode, data, headers} = resp;
+    console.log(`status = ${statusCode}`);
     if ((statusCode >= 200) && (statusCode < 300)) {
       // console.log(`headers = ${headers}`)
-      let result = data
-      console.log('data =', result)
+      const result = data;
+      console.log('data =', result);
       return result;
     } else {
       throw new Error(`statusCode: ${statusCode}`);
@@ -143,9 +146,10 @@ const callPost = async function(url, formData, contextType) {
     console.log('post fail: ', e);
     throw e;
   }
-}
+};
 
-const createSplitTx = function(utxoTxHex, targetVout, ctAddrList, addrInfo, feeAmount, feeSplitNum, feeRate) {
+const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
+    addrInfo, feeAmount, feeSplitNum, feeRate) {
   const minimumBits = 36;
   const decUtxoTx = cfdjs.ElementsDecodeRawTransaction({hex: utxoTxHex});
   const utxoTxid = decUtxoTx.txid;
@@ -153,7 +157,7 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList, addrInfo, feeA
 
   // const feeOutputNum = 49;
   const feeOutputNum = feeSplitNum - 1;
-  let txFeeAmount = 140 * feeSplitNum; // fee rate: 0.148
+  const txFeeAmount = 140 * feeSplitNum; // fee rate: 0.148
   // const feeRate = 0.100;
 
   const unblindData = cfdjs.UnblindRawTransaction({
@@ -185,10 +189,12 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList, addrInfo, feeA
   if (feeAmount < 1000) {
     throw new Error(`feeAmount is low. feeAmount=${feeAmount}`);
   }
-  if ((feeAmount > (feeUtxo.amount - checkAmount)) || ((feeAmount * 2) > feeUtxo.amount)) {
+  if ((feeAmount > (feeUtxo.amount - checkAmount)) ||
+      ((feeAmount * 2) > feeUtxo.amount)) {
     throw new Error(`feeAmount is higher. utxoAmount=${feeUtxo.amount}`);
   }
-  const changeAmount = feeUtxo.amount - txFeeAmount - (feeAmount * feeOutputNum);
+  const changeAmount = feeUtxo.amount - txFeeAmount -
+      (feeAmount * feeOutputNum);
   if (changeAmount < 0) {
     throw new Error(`feeAmount is higher. splitNum=${feeOutputNum}`);
   }
@@ -241,7 +247,9 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList, addrInfo, feeA
   });
   console.log(`EstimateFee:`, estimateFeeResult);
 
-  const changeAmount2 = BigInt(feeUtxo.amount) - BigInt(estimateFeeResult.feeAmount) - (BigInt(feeAmount) * BigInt(feeOutputNum));
+  const changeAmount2 = BigInt(feeUtxo.amount) -
+      BigInt(estimateFeeResult.feeAmount) -
+      (BigInt(feeAmount) * BigInt(feeOutputNum));
   if (changeAmount2 < 200) {
     throw new Error(`changeAmount is low. changeAmount=${changeAmount}`);
   }
@@ -305,7 +313,7 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList, addrInfo, feeA
   console.log(`vsize:`, decodeTx.vsize);
   // console.log(`decode:`, decodeTx);
   return feeSignTx.hex;
-}
+};
 
 const sendSplitTx = async function(utxoTxid, utxoVout, sendAddrListFile,
     privkey, blindingKey, splitAmount, splitNum, quickly, ignoreSend) {
@@ -337,7 +345,7 @@ const sendSplitTx = async function(utxoTxid, utxoVout, sendAddrListFile,
   if (quickly) {
     const feeUrl = `https://blockstream.info/${prefix}/fee-estimates`;
     const feeRateList = await callGet(feeUrl, 'feeRate');
-    feeRate = feeRateList["1"];
+    feeRate = feeRateList['1'];
   }
 
   const txHex = createSplitTx(utxoTxHex, utxoVout, sendAddrList,
@@ -345,11 +353,11 @@ const sendSplitTx = async function(utxoTxid, utxoVout, sendAddrListFile,
   if (ignoreSend) {
     console.log('set ignoreSend=true');
   } else {
-    const postFormData = { tx: txHex };
+    const postFormData = {tx: txHex};
     const postUrl = `https://blockstream.info/${prefix}/tx`;
     await callPost(postUrl, postFormData, 'text/plain');
   }
-}
+};
 
 // -----------------------------------------------------------------------------
 
@@ -357,39 +365,35 @@ const main = async () =>{
   try {
     if (process.argv.length <= 2) {
       for (let i = 0; i < process.argv.length; i++) {
-        console.log("argv[" + i + "] = " + process.argv[i]);
+        console.log('argv[' + i + '] = ' + process.argv[i]);
       }
-      help()
-    }
-    else if (process.argv[2] === "lsendtx") {
+      help();
+    } else if (process.argv[2] === 'lsendtx') {
       const filePath = readLineData(3, 'txFilePath');
       const hex = fs.readFileSync(filePath, 'utf-8').toString().trim();
       if (hex == '') {
-        console.log("fail tx hex.\n")
-        return
+        console.log('fail tx hex.\n');
+        return;
       }
-      const formData = { tx: hex };
+      const formData = {tx: hex};
       console.log('formData =', formData);
-      let prefix = 'liquid/api';
+      const prefix = 'liquid/api';
       const url = `https://blockstream.info/${prefix}/tx`;
       await callPost(url, formData, 'text/plain');
-    }
-    else if (process.argv[2] === "lgetfee") {
-      let prefix = 'liquid/api';
-      let url = `https://blockstream.info/${prefix}/fee-estimates`
-      await callGet(url, 'fee-estimates')
-    }
-    else if (process.argv[2] === "lgettxhex") {
+    } else if (process.argv[2] === 'lgetfee') {
+      const prefix = 'liquid/api';
+      const url = `https://blockstream.info/${prefix}/fee-estimates`;
+      await callGet(url, 'fee-estimates');
+    } else if (process.argv[2] === 'lgettxhex') {
       const txid = readLineData(3, 'txid');
       if (txid == '') {
-        console.log("fail txid.\n")
-        return
+        console.log('fail txid.\n');
+        return;
       }
-      let prefix = 'liquid/api';
-      const url = `https://blockstream.info/${prefix}/tx/${txid}/hex`
-      await callGet(url, 'txHex')
-    }
-    else if (process.argv[2] === "sendsplittx") {
+      const prefix = 'liquid/api';
+      const url = `https://blockstream.info/${prefix}/tx/${txid}/hex`;
+      await callGet(url, 'txHex');
+    } else if (process.argv[2] === 'sendsplittx') {
       const txid = readLineData(3, 'utxoTxid');
       const vout = readLineData(4, 'utxoVout');
       const sendAddrListFile = readLineData(5, 'sendAddressFilePath');
@@ -401,20 +405,21 @@ const main = async () =>{
       const ignoreSend = readLineData(11, 'ignoreSend');
 
       await sendSplitTx(txid, vout, sendAddrListFile,
-        privkey, blindingKey, parseInt(splitAmount), parseInt(splitNum),
-        (quickly === 'true'), (ignoreSend === 'true'));
-    }
-    else {
-      for (let i = 0;i < process.argv.length; i++){
-        console.log("argv[" + i + "] = " + process.argv[i]);
+          privkey, blindingKey, parseInt(splitAmount), parseInt(splitNum),
+          (quickly === 'true'), (ignoreSend === 'true'));
+    } else {
+      for (let i = 0; i < process.argv.length; i++) {
+        if (process.argv[i]) {
+          console.log('argv[' + i + '] = ' + process.argv[i]);
+        }
       }
-      help()
+      help();
     }
   } catch (error) {
     console.log('cause exception:', error);
     return 1;
   }
-  return 0
-}
-main()
+  return 0;
+};
+main();
 

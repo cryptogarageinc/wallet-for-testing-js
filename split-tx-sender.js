@@ -7,8 +7,30 @@ const readline = require('readline-sync');
 const zlib = require('zlib');
 const needle = require('needle');
 const cfdjs = require('cfd-js');
+const RpcClient = require('node-json-rpc2').Client;
 
 // -----------------------------------------------------------------------------
+
+const executeRpc = async function(client, method, params) {
+  const promise = client.callPromise(method, params, 1.0);
+  const res = await promise;
+  if (res && ('error' in res) && (res['error'])) {
+    throw Error('method: ' + res.error);
+  } else return res.result;
+};
+
+/*
+const createConnection = function(host, port, id, password) {
+  const config = {
+    host: host,
+    user: id,
+    password: password,
+    port: port,
+    id: 'elements-rpc',
+  };
+  return config;
+};
+*/
 
 const commandData = {
   gettx: {
@@ -21,6 +43,56 @@ const commandData = {
     alias: undefined,
     parameter: '[txid]',
   },
+};
+
+const ElementsCli = function(connection) {
+  const config = {
+    protocol: 'http',
+    method: 'POST',
+    host: connection.host,
+    port: connection.port,
+    user: connection.user,
+    password: connection.password,
+  };
+  const client = new RpcClient(config);
+
+  // Blockchain
+  this.getblockchaininfo = function() {
+    return executeRpc(client, 'getblockchaininfo', []);
+  };
+  this.getsidechaininfo = function() {
+    return executeRpc(client, 'getsidechaininfo', []);
+  };
+  this.getwalletpakinfo = function() {
+    return executeRpc(client, 'getwalletpakinfo', []);
+  };
+  this.getrawtransaction = async function(
+      txid, verbose = false, blockHash = null) {
+    return await executeRpc(client, 'getrawtransaction', [txid, verbose, blockHash]);
+  };
+  // ---- bitcoin command ----
+  // Generating
+  this.generatetoaddress = function(nblocks, address) {
+    return executeRpc(client, 'generatetoaddress', [nblocks, address]);
+  };
+  // Rawtransactions
+  this.sendrawtransaction = function(hexstring, allowhighfees = false) {
+    return executeRpc(client, 'sendrawtransaction', [hexstring, allowhighfees]);
+  };
+  // Wallet
+  this.dumpassetlabels = function() {
+    return executeRpc(client, 'dumpassetlabels', []);
+  };
+  this.dumpmasterblindingkey = function() {
+    return executeRpc(client, 'dumpmasterblindingkey', []);
+  };
+  this.estimatesmartfee = function(confTarget = 1, estimateMode = 'CONSERVATIVE') {
+    return executeRpc(client, 'estimatesmartfee', [confTarget, estimateMode]);
+  };
+  // util
+  this.directExecute = function(method, params) {
+    return executeRpc(client, method, params);
+  };
 };
 
 const helpDump = function(nameObj) {
@@ -43,10 +115,12 @@ const help = function() {
   }
 };
 
-const readLineData = function(index, message) {
+const readLineData = function(index, message, ignoreInput = false) {
   let value;
   if (process.argv.length <= index) {
-    value = readline.question(`${message} > `);
+    if (!ignoreInput) {
+      value = readline.question(`${message} > `);
+    }
   } else {
     value = process.argv[index];
   }
@@ -87,7 +161,8 @@ const callGet = async function(url, dumpName = '') {
     headers: reqHeaders,
     gzip: true,
   };
-  const {statusCode, data, headers} = await doRequest(requestOptions);
+  // const {statusCode, data, headers}
+  const {statusCode, data} = await doRequest(requestOptions);
   console.log(`status = ${statusCode}`);
   if ((statusCode >= 200) && (statusCode < 300)) {
     // console.log(`headers = ${headers}`)
@@ -118,11 +193,13 @@ const callGet = async function(url, dumpName = '') {
   }
 };
 
-const callPost = async function(url, formData, contextType) {
+const callPost = async function(url, formData) {
   console.log(`url = ${url}`);
+  /*
   const reqHeaders = {
     'content-type': contextType,
   };
+  */
   const requestOptions = {
     url: url,
     method: 'POST',
@@ -132,7 +209,8 @@ const callPost = async function(url, formData, contextType) {
   const resp = await doRequest(requestOptions, formData.tx);
   try {
     // console.log(`response:`, resp)
-    const {statusCode, data, headers} = resp;
+    // const {statusCode, data, headers}
+    const {statusCode, data} = resp;
     console.log(`status = ${statusCode}`);
     if ((statusCode >= 200) && (statusCode < 300)) {
       // console.log(`headers = ${headers}`)
@@ -149,7 +227,7 @@ const callPost = async function(url, formData, contextType) {
 };
 
 const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
-    addrInfo, feeAmount, feeSplitNum, feeRate) {
+    addrInfo, feeAmount, feeSplitNum, feeRate, isRegtest) {
   const minimumBits = 36;
   const decUtxoTx = cfdjs.ElementsDecodeRawTransaction({hex: utxoTxHex});
   const utxoTxid = decUtxoTx.txid;
@@ -268,7 +346,10 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
   let blindTxHex = updatedTx.hex;
 
   if (isBlind) {
-    const baseTx = cfdjs.ElementsDecodeRawTransaction({hex: blindTxHex});
+    const baseTx = cfdjs.ElementsDecodeRawTransaction({
+      hex: blindTxHex,
+      network: (isRegtest) ? 'regtest' : 'liquidv1',
+    });
     console.log(JSON.stringify(baseTx, null, 2));
     const feeBlindTx = cfdjs.BlindRawTransaction({
       tx: blindTxHex,
@@ -315,9 +396,43 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
   return feeSignTx.hex;
 };
 
-const sendSplitTx = async function(utxoTxid, utxoVout, sendAddrListFile,
-    privkey, blindingKey, splitAmount, splitNum, quickly, ignoreSend) {
-  const prefix = 'liquid/api';
+const prefix = 'liquid/api';
+
+const getUtxoTxHex = async function(rpcInfo, utxoTxid) {
+  if (rpcInfo) {
+    const cli = new ElementsCli(rpcInfo);
+    return await cli.getrawtransaction(utxoTxid, false);
+  } else {
+    const getTxHexUrl = `https://blockstream.info/${prefix}/tx/${utxoTxid}/hex`;
+    return await callGet(getTxHexUrl);
+  }
+};
+
+const getFeeRate = async function(rpcInfo) {
+  if (rpcInfo) {
+    // Since fee calculation requires the creation of a signed block, it is omitted here.
+    return 1;
+  } else {
+    const feeUrl = `https://blockstream.info/${prefix}/fee-estimates`;
+    const feeRateList = await callGet(feeUrl, 'feeRate');
+    return feeRateList['1'];
+  }
+};
+
+const sendTransaction = async function(rpcInfo, txHex) {
+  if (rpcInfo) {
+    const cli = new ElementsCli(rpcInfo);
+    return await cli.sendrawtransaction(txHex);
+  } else {
+    const postFormData = {tx: txHex};
+    const postUrl = `https://blockstream.info/${prefix}/tx`;
+    return await callPost(postUrl, postFormData);
+  }
+};
+
+const sendSplitTx = async function(rpcInfo, utxoTxid, utxoVout,
+    sendAddrListFile, privkey, blindingKey, splitAmount,
+    splitNum, quickly, ignoreSend) {
   const addrInfo = {
     privkey: privkey,
     blindingKey: blindingKey,
@@ -338,24 +453,20 @@ const sendSplitTx = async function(utxoTxid, utxoVout, sendAddrListFile,
     throw new Error('few send address num. Please reduce the split number.');
   }
 
-  const getTxHexUrl = `https://blockstream.info/${prefix}/tx/${utxoTxid}/hex`;
-  const utxoTxHex = await callGet(getTxHexUrl);
+  const utxoTxHex = await getUtxoTxHex(rpcInfo, utxoTxid);
 
   let feeRate = 0.1;
   if (quickly) {
-    const feeUrl = `https://blockstream.info/${prefix}/fee-estimates`;
-    const feeRateList = await callGet(feeUrl, 'feeRate');
-    feeRate = feeRateList['1'];
+    feeRate = await getFeeRate(rpcInfo);
   }
 
   const txHex = createSplitTx(utxoTxHex, utxoVout, sendAddrList,
-      addrInfo, splitAmount, splitNum, feeRate);
+      addrInfo, splitAmount, splitNum, feeRate, !rpcInfo);
   if (ignoreSend) {
     console.log('set ignoreSend=true');
   } else {
-    const postFormData = {tx: txHex};
-    const postUrl = `https://blockstream.info/${prefix}/tx`;
-    await callPost(postUrl, postFormData, 'text/plain');
+    const txid = await sendTransaction(rpcInfo, txHex);
+    console.log('sending txid:', txid);
   }
 };
 
@@ -394,17 +505,19 @@ const main = async () =>{
       const url = `https://blockstream.info/${prefix}/tx/${txid}/hex`;
       await callGet(url, 'txHex');
     } else if (process.argv[2] === 'sendsplittx') {
-      const txid = readLineData(3, 'utxoTxid');
-      const vout = readLineData(4, 'utxoVout');
+      const privkey = readLineData(3, 'privkey');
+      const blindingKey = readLineData(4, 'blindingKey');
       const sendAddrListFile = readLineData(5, 'sendAddressFilePath');
-      const privkey = readLineData(6, 'privkey');
-      const blindingKey = readLineData(7, 'blindingKey');
+      const txid = readLineData(6, 'utxoTxid');
+      const vout = readLineData(7, 'utxoVout');
       const splitAmount = readLineData(8, 'splitAmount');
       const splitNum = readLineData(9, 'splitNum');
       const quickly = readLineData(10, 'quickly');
       const ignoreSend = readLineData(11, 'ignoreSend');
+      const rpcInfoStr = readLineData(12, 'rpcConnectInfo', true);
+      const rpcInfo = (!rpcInfoStr) ? undefined : JSON.parse(rpcInfoStr);
 
-      await sendSplitTx(txid, vout, sendAddrListFile,
+      await sendSplitTx(rpcInfo, txid, vout, sendAddrListFile,
           privkey, blindingKey, parseInt(splitAmount), parseInt(splitNum),
           (quickly === 'true'), (ignoreSend === 'true'));
     } else {

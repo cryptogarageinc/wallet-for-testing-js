@@ -18,7 +18,7 @@
     "ini": "*",
     "nedb-promises": "^4.0.1",
     "needle": "^2.5.0",
-    "node-json-rpc2": "ko-matsu/node-json-rpc2#async_minimum",
+    "node-json-rpc2": "git+https://github.com/ko-matsu/node-json-rpc2#async_minimum",
     "readline-sync": "*",
     "zlib": "*"
   },

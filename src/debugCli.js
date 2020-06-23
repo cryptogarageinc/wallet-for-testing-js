@@ -737,6 +737,36 @@ const parsedescriptors = async function() {
   console.log(JSON.stringify(descriptors, null, 2));
 };
 
+const generatemnemonic = async function() {
+  let lang;
+  if (process.argv.length < 4) {
+    // lang = await readInput('language(en es fr it jp zhs zht) > ');
+    console.log('language: en');
+  } else {
+    lang = process.argv[3];
+  }
+  if (!lang) lang = 'en';
+
+  for (let idx = 0; idx < 100; ++idx) {
+    try {
+      const keypair = cfdjs.CreateKeyPair({wif: false});
+      const entropy = keypair.privkey;
+
+      const result = cfdjs.ConvertEntropyToMnemonic({
+        entropy: entropy,
+        language: lang,
+      });
+      const mnemonic = result.mnemonic.join(' ');
+      console.log(mnemonic);
+      return;
+    } catch (e) {
+      if ((idx + 1) == 100) {
+        console.log(e);
+      }
+    }
+  }
+};
+
 const mnemonictoseed = async function() {
   let mnemonic = '';
   if (process.argv.length < 4) {
@@ -1660,6 +1690,12 @@ const commandData = {
     alias: 'pdescs',
     parameter: '<network(mainnet,testnet,regtest,liquidv1,liquidregtest)> <descriptor> <minValue> <maxValue> [<viewType(all/address/lockingScript)>]',
     function: parsedescriptors,
+  },
+  generatemnemonic: {
+    name: 'generatemnemonic',
+    alias: 'genmnemonic',
+    parameter: '[<language(en es fr it jp zhs zht)>]',
+    function: generatemnemonic,
   },
   mnemonictoseed: {
     name: 'mnemonictoseed',

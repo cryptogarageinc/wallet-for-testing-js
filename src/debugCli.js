@@ -757,7 +757,7 @@ const generatemnemonic = async function() {
         language: lang,
       });
       const mnemonic = result.mnemonic.join(' ');
-      console.log(mnemonic);
+      console.log(`"${mnemonic}"`);
       return;
     } catch (e) {
       if ((idx + 1) == 100) {
@@ -765,81 +765,6 @@ const generatemnemonic = async function() {
       }
     }
   }
-};
-
-const mnemonictoseed = async function() {
-  let mnemonic = '';
-  if (process.argv.length < 4) {
-    mnemonic = await readInput('mnemonic > ');
-  } else {
-    mnemonic = process.argv[3];
-  }
-  let passphrase = '';
-  if (process.argv.length < 5) {
-    passphrase = await readInput('passphrase > ');
-  } else {
-    passphrase = process.argv[4];
-  }
-
-  const mnemonicItems = mnemonic.split(' ');
-  console.log(`mnemonic = `, mnemonicItems);
-  console.log(`passphrase = [${passphrase}]`);
-
-  const result = cfdjs.ConvertMnemonicToSeed({
-    mnemonic: mnemonicItems,
-    passphrase: passphrase,
-    // eslint-disable-next-line @typescript-eslint/camelcase
-    strictCheck: true,
-    language: 'en',
-  });
-  console.log(`seed = ${result.seed}`);
-};
-
-const getprivkeyinfo = async function() {
-  let network = 'regtest';
-  if (process.argv.length < 4) {
-    network = await readInput('network > ');
-  } else {
-    network = process.argv[3];
-  }
-  let isCompressKeyStr = 'true';
-  if (process.argv.length < 5) {
-    isCompressKeyStr = await readInput('isCompressed > ');
-  } else {
-    isCompressKeyStr = process.argv[4];
-  }
-  const isCompressed = (isCompressKeyStr !== 'false');
-  let privkey = '';
-  if (process.argv.length < 6) {
-    privkey = await readInput('privkey > ');
-  } else {
-    privkey = process.argv[5];
-  }
-
-  const pubkey = cfdjs.GetPubkeyFromPrivkey({
-    privkey: privkey,
-    isCompressed: isCompressed,
-  });
-
-  try {
-    const privkeyData = cfdjs.GetPrivkeyFromWif({
-      wif: privkey,
-    });
-    privkeyData['wif'] = privkey;
-    privkeyData['pubkey'] = pubkey.pubkey;
-    console.log(privkeyData);
-    return;
-  } catch (err) {
-  }
-
-  const privkeyData = cfdjs.GetPrivkeyWif({
-    hex: privkey,
-    network: network,
-    isCompressed: isCompressed,
-  });
-  privkeyData['hex'] = privkey;
-  privkeyData['pubkey'] = pubkey.pubkey;
-  console.log(privkeyData);
 };
 
 const getKeyInfo = function(extkey, network, isCompressKey) {
@@ -892,6 +817,151 @@ const getKeyInfo = function(extkey, network, isCompressKey) {
     extkeyInfo['pubkey'] = pubkey.pubkey;
   }
   return extkeyInfo;
+};
+
+const mnemonictoseed = async function() {
+  let mnemonic = '';
+  if (process.argv.length < 4) {
+    mnemonic = await readInput('mnemonic > ');
+  } else {
+    mnemonic = process.argv[3];
+  }
+  let passphrase = '';
+  if (process.argv.length < 5) {
+    passphrase = await readInput('passphrase > ');
+  } else {
+    passphrase = process.argv[4];
+  }
+
+  let network = '';
+  if (process.argv.length >= 6) {
+    network = process.argv[5];
+  }
+  let path = '';
+  if (process.argv.length >= 7) {
+    path = process.argv[6];
+  }
+  if ((path.length > 2) && (path.charAt(0) === '\'') &&
+      (path.charAt(path.length - 1) === '\'')) {
+    path = path.substring(1, path.length - 1);
+  }
+
+  const mnemonicItems = mnemonic.split(' ');
+  console.log(`mnemonic = `, mnemonicItems);
+  console.log(`passphrase = [${passphrase}]`);
+
+  const result = cfdjs.ConvertMnemonicToSeed({
+    mnemonic: mnemonicItems,
+    passphrase: passphrase,
+    // eslint-disable-next-line @typescript-eslint/camelcase
+    strictCheck: true,
+    language: 'en',
+  });
+  console.log(`seed = ${result.seed}`);
+
+  if (network) {
+    // seed
+    const extkeyInfo = cfdjs.CreateExtkeyFromSeed({
+      seed: result.seed,
+      network: network,
+      extkeyType: 'extPrivkey',
+    });
+    const basekey = extkeyInfo.extkey;
+
+    let child = undefined;
+    let parentFingerprint = '';
+    if (path !== '') {
+      try {
+        child = cfdjs.CreateExtkeyFromParentPath({
+          extkey: basekey,
+          network: network,
+          extkeyType: 'extPrivkey',
+          path: path,
+        });
+      } catch (err) {
+        console.log(err);
+        child = cfdjs.CreateExtkeyFromParentPath({
+          extkey: basekey,
+          network: network,
+          extkeyType: 'extPubkey',
+          path: path,
+        });
+      }
+      const tempChild = cfdjs.CreateExtkeyFromParentPath({
+        extkey: basekey,
+        network: network,
+        extkeyType: 'extPubkey',
+        path: '0',
+      });
+      const keyInfo = cfdjs.GetExtkeyInfo({
+        extkey: tempChild.extkey,
+      });
+      parentFingerprint = keyInfo.fingerprint;
+    }
+
+    const dumpInfo = {};
+    dumpInfo.key = (child !== undefined) ? child.extkey : basekey;
+    const keyInfo = getKeyInfo(dumpInfo.key, network, true);
+    if (child !== undefined) {
+      let splitPath = path;
+      if (splitPath.startsWith('m/')) {
+        splitPath = splitPath.substring(2);
+      }
+      dumpInfo.path = path;
+      dumpInfo.keyOriginInfo = `[${parentFingerprint}/${splitPath}]`;
+    } else {
+      dumpInfo.path = 'm';
+    }
+    dumpInfo.info = keyInfo;
+    console.log(JSON.stringify(dumpInfo, null, 2));
+  }
+};
+
+const getprivkeyinfo = async function() {
+  let network = 'regtest';
+  if (process.argv.length < 4) {
+    network = await readInput('network > ');
+  } else {
+    network = process.argv[3];
+  }
+  let isCompressKeyStr = 'true';
+  if (process.argv.length < 5) {
+    isCompressKeyStr = await readInput('isCompressed > ');
+  } else {
+    isCompressKeyStr = process.argv[4];
+  }
+  const isCompressed = (isCompressKeyStr !== 'false');
+  let privkey = '';
+  if (process.argv.length < 6) {
+    privkey = await readInput('privkey > ');
+  } else {
+    privkey = process.argv[5];
+  }
+
+  const pubkey = cfdjs.GetPubkeyFromPrivkey({
+    privkey: privkey,
+    isCompressed: isCompressed,
+  });
+
+  try {
+    const privkeyData = cfdjs.GetPrivkeyFromWif({
+      wif: privkey,
+    });
+    privkeyData['wif'] = privkey;
+    privkeyData['pubkey'] = pubkey.pubkey;
+    console.log(privkeyData);
+    return;
+  } catch (err) {
+  }
+
+  const privkeyData = cfdjs.GetPrivkeyWif({
+    hex: privkey,
+    network: network,
+    isCompressed: isCompressed,
+  });
+  privkeyData['hex'] = privkey;
+  privkeyData['pubkey'] = pubkey.pubkey;
+  console.log(privkeyData);
 };
 
 const getextkeyinfo = async function() {
@@ -1694,13 +1764,13 @@ const commandData = {
   generatemnemonic: {
     name: 'generatemnemonic',
     alias: 'genmnemonic',
-    parameter: '[<language(en es fr it jp zhs zht)>]',
+    parameter: '[<language(en es fr it jp zhs zht)>] [<passphrase> <network> <bip32path>]',
     function: generatemnemonic,
   },
   mnemonictoseed: {
     name: 'mnemonictoseed',
     alias: 'mnemonic',
-    parameter: '<mnemonic> <passphrase>',
+    parameter: '<mnemonic> <passphrase> [<network> <bip32path>]',
     function: mnemonictoseed,
   },
   getprivkeyinfo: {

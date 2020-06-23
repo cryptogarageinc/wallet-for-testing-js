@@ -747,10 +747,18 @@ const generatemnemonic = async function() {
   }
   if (!lang) lang = 'en';
 
+  let inputEntropy = '';
+  if (process.argv.length >= 5) {
+    inputEntropy = process.argv[4];
+  }
+
   for (let idx = 0; idx < 100; ++idx) {
     try {
-      const keypair = cfdjs.CreateKeyPair({wif: false});
-      const entropy = keypair.privkey;
+      let entropy = inputEntropy;
+      if (!inputEntropy) {
+        const keypair = cfdjs.CreateKeyPair({wif: false});
+        entropy = keypair.privkey;
+      }
 
       const result = cfdjs.ConvertEntropyToMnemonic({
         entropy: entropy,
@@ -758,6 +766,15 @@ const generatemnemonic = async function() {
       });
       const mnemonic = result.mnemonic.join(' ');
       console.log(`"${mnemonic}"`);
+
+      if (!inputEntropy) {
+        const seed = cfdjs.ConvertMnemonicToSeed({
+          mnemonic: result.mnemonic,
+          passphrase: '',
+          language: lang,
+        });
+        console.log(`entropy: ${seed.entropy}`);
+      }
       return;
     } catch (e) {
       if ((idx + 1) == 100) {
@@ -1764,7 +1781,7 @@ const commandData = {
   generatemnemonic: {
     name: 'generatemnemonic',
     alias: 'genmnemonic',
-    parameter: '[<language(en es fr it jp zhs zht)>] [<passphrase> <network> <bip32path>]',
+    parameter: '[<language(en es fr it jp zhs zht)>] [<entropy>]',
     function: generatemnemonic,
   },
   mnemonictoseed: {

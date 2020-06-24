@@ -1,5 +1,5 @@
 import {WalletManager, TargetNode, AddressType, AddressKind, NodeConfigurationData, BlockData, NetworkType} from '../src/walletManager';
-import {Wallet, OutPoint} from '../src/libs/walletService';
+import {Wallet, OutPoint, SendAmount} from '../src/libs/walletService';
 import fs from 'fs';
 import cfd from 'cfd-js';
 import path from 'path';
@@ -371,129 +371,26 @@ describe('wallet test', () => {
   it('pegin test', async () => {
     jest.setTimeout(60000);
 
-    // 10 LBTC
-    const amount = 1000000000;
-    await btcWallet1.generateFund(amount, true);
-    await btcWallet1.generate(100, '', true);
-    await btcWallet1.generate(1);
-
-    // fedpegscript = getsidechaininfo
-    const sideChainInfo = await elmWalletMgr.callRpcDirect(
-        TargetNode.Elements, 'getsidechaininfo');
-    const fedpegScript = elmWallet1.getFedpegScript();
-    const peggedAsset = elmWallet1.getPeggedAsset();
-    const genesisBlockHash = elmWallet1.getParentBlockHash();
-
-    console.log('sideChainInfo:', sideChainInfo);
-    // generate btc address
-    // TODO: Is it necessary to install it in the wallet?
-    const peginKeys = cfd.CreateKeyPair({
-      network: mainchainNetwork,
-      wif: false,
-      isCompressed: true,
-    });
-    const peginAddr = cfd.CreatePegInAddress({
-      fedpegscript: fedpegScript,
-      pubkey: peginKeys.pubkey,
-      hashType: 'p2sh-p2wsh', // if dynafed, can use p2wsh
-      network: mainchainNetwork,
-    });
+    const peginAmount = 1000000000;
 
     // create elements address (unblind)
     const elmAddr1 = await elmWallet1.getNewAddress(
         AddressType.P2wpkh, 'peginAddr');
-    console.log('btc pegin address:', peginAddr);
+    console.log('btc pegin address1:', elmAddr1.address);
 
-    // send btc pegin address
-    const sendInfo = await btcWallet1.sendToAddress(
-        peginAddr.mainchainAddress, amount);
-    console.log('send btc pegin tx:', sendInfo);
-
-    await btcWallet1.generate(1);
-
-    const txHex = await btcWalletMgr.getRawTransactionHex(
-        TargetNode.Bitcoin, sendInfo.txid);
-
-    const txoutProof = await btcWalletMgr.getTxOutProof(
-        TargetNode.Bitcoin, [sendInfo.txid]);
-
-    const minrelaytxfee = await elmWallet1.getMinRelayTxFee();
-    console.log('minrelaytxfee:', minrelaytxfee);
-
-    // create pegin tx (unblind)
-    const feeAmt = 10000;
-    const sendAmt = amount - feeAmt;
-    const peginTx = cfd.CreateRawPegin({
-      version: 2,
-      locktime: 0,
-      txins: [{
-        txid: sendInfo.txid,
-        vout: sendInfo.vout,
-        isPegin: true,
-        peginwitness: {
-          amount: amount,
-          asset: peggedAsset,
-          claimScript: peginAddr.claimScript,
-          mainchainGenesisBlockHash: genesisBlockHash,
-          mainchainRawTransaction: txHex,
-          mainchainTxoutproof: txoutProof,
-        },
-      }],
-      txouts: [{
+    const sendTargetList: SendAmount[] = [
+      {
         address: elmAddr1.address,
-        amount: sendAmt,
-        asset: peggedAsset,
-      }],
-      fee: {
-        amount: feeAmt,
-        asset: peggedAsset,
+        amount: 900000000,
       },
-    });
-    const feeData = cfd.EstimateFee({
-      tx: peginTx.hex,
-      feeRate: 0.15,
-      isElements: true,
-      isBlind: false,
-      feeAsset: peggedAsset,
-    });
-    const minFee = BigInt(minrelaytxfee);
-    const updateFeeAmt = (minFee > BigInt(feeData.feeAmount)) ?
-        minFee : BigInt(feeData.feeAmount);
-    const updateSendAmt = BigInt(amount) - updateFeeAmt;
-    const updatePeginTx = cfd.UpdateTxOutAmount({
-      tx: peginTx.hex,
-      isElements: true,
-      txouts: [
-        {
-          index: 0,
-          amount: updateSendAmt,
-        }, {
-          index: 1,
-          amount: updateFeeAmt,
-        },
-      ],
-    });
-    const signTx = cfd.SignWithPrivkey({
-      tx: updatePeginTx.hex,
-      isElements: true,
-      txin: {
-        txid: sendInfo.txid,
-        vout: sendInfo.vout,
-        hashType: 'p2wpkh',
-        amount: amount,
-        privkey: peginKeys.privkey,
-        pubkey: peginKeys.pubkey,
-        sighashType: 'all',
-      },
-    });
-    const decTx = cfd.ElementsDecodeRawTransaction({hex: signTx.hex});
+    ];
+
+    const txid = await elmWalletMgr.peginFromBitcoin(
+        btcWallet1, elmWallet1, peginAmount, sendTargetList);
+    console.log('pegin tx:', txid);
 
     // send pegin tx
     try {
-      const txid = await elmWallet1.sendRawTransaction(signTx.hex);
-      // console.log('sendRawTransaction pegin tx:', txid);
-      expect(txid).toBe(decTx.txid);
-
       await elmWallet1.generate(1);
       const gettxout = await elmWalletMgr.callRpcDirect(
           TargetNode.Elements, 'gettxout', [txid, 0]);
@@ -501,8 +398,10 @@ describe('wallet test', () => {
 
       // console.log('tx:', decTx);
 
-      const balance = await elmWallet1.getBalance(1, '', '', peggedAsset);
+      const balance = await elmWallet1.getBalance(1, '', '',
+          elmWallet1.getPeggedAsset());
       console.log('wallet balance:', balance);
+      await elmWallet1.generate(2);
     } catch (e) {
       console.log(e);
       throw e;
@@ -512,35 +411,9 @@ describe('wallet test', () => {
   it('blind pegin test', async () => {
     jest.setTimeout(60000);
 
-    // 10 LBTC
-    const amount = 1000000000;
-    await btcWallet1.generateFund(amount, true);
-    await btcWallet1.generate(100, '', true);
-    await btcWallet1.generate(1);
+    const peginAmount = 1000000000;
 
-    // fedpegscript = getsidechaininfo
-    const sideChainInfo = await elmWalletMgr.callRpcDirect(
-        TargetNode.Elements, 'getsidechaininfo');
-    const fedpegScript = elmWallet1.getFedpegScript();
-    const peggedAsset = elmWallet1.getPeggedAsset();
-    const genesisBlockHash = elmWallet1.getParentBlockHash();
-
-    console.log('sideChainInfo:', sideChainInfo);
-    // generate btc address
-    // TODO: Is it necessary to install it in the wallet?
-    const peginKeys = cfd.CreateKeyPair({
-      network: mainchainNetwork,
-      wif: false,
-      isCompressed: true,
-    });
-    const peginAddr = cfd.CreatePegInAddress({
-      fedpegscript: fedpegScript,
-      pubkey: peginKeys.pubkey,
-      hashType: 'p2sh-p2wsh', // if dynafed, can use p2wsh
-      network: mainchainNetwork,
-    });
-
-    // create elements address (unblind)
+    // create elements address (blind)
     const elmAddr1 = await elmWallet1.getNewAddress(
         AddressType.P2wpkh, 'peginAddr');
     const elmCtAddr1 = elmWallet1.getConfidentialAddress(elmAddr1.address);
@@ -551,124 +424,23 @@ describe('wallet test', () => {
     const elmCtAddr2 = elmWallet1.getConfidentialAddress(elmAddr2.address);
     console.log('btc pegin address2:', elmCtAddr2);
 
-    // send btc pegin address
-    const sendInfo = await btcWallet1.sendToAddress(
-        peginAddr.mainchainAddress, amount);
-    console.log('send btc pegin tx:', sendInfo);
-
-    await btcWallet1.generate(1);
-
-    const txHex = await btcWalletMgr.getRawTransactionHex(
-        TargetNode.Bitcoin, sendInfo.txid);
-
-    const txoutProof = await btcWalletMgr.getTxOutProof(
-        TargetNode.Bitcoin, [sendInfo.txid]);
-
-    const minrelaytxfee = await elmWallet1.getMinRelayTxFee();
-    console.log('minrelaytxfee:', minrelaytxfee);
-
-    // create pegin tx (blind)
-    const feeAmt = 10000;
-    const sendAmt1 = amount / 2;
-    const sendAmt2 = amount - sendAmt1 - feeAmt;
-    const peginTx = cfd.CreateRawPegin({
-      version: 2,
-      locktime: 0,
-      txins: [{
-        txid: sendInfo.txid,
-        vout: sendInfo.vout,
-        isPegin: true,
-        peginwitness: {
-          amount: amount,
-          asset: peggedAsset,
-          claimScript: peginAddr.claimScript,
-          mainchainGenesisBlockHash: genesisBlockHash,
-          mainchainRawTransaction: txHex,
-          mainchainTxoutproof: txoutProof,
-        },
-      }],
-      txouts: [{
+    const sendTargetList: SendAmount[] = [
+      {
         address: elmCtAddr1,
-        amount: sendAmt1,
-        asset: peggedAsset,
-      }, {
+        amount: 500000000,
+      },
+      {
         address: elmCtAddr2,
-        amount: sendAmt2,
-        asset: peggedAsset,
-      }],
-      fee: {
-        amount: feeAmt,
-        asset: peggedAsset,
+        amount: 300000000,
       },
-    });
-    const blindTx1 = cfd.BlindRawTransaction({
-      tx: peginTx.hex,
-      txins: [{
-        txid: sendInfo.txid,
-        vout: sendInfo.vout,
-        amount: amount,
-        asset: peggedAsset,
-        assetBlindFactor: '0000000000000000000000000000000000000000000000000000000000000000',
-        blindFactor: '0000000000000000000000000000000000000000000000000000000000000000',
-      }],
-    });
-    const feeData = cfd.EstimateFee({
-      tx: blindTx1.hex,
-      feeRate: 0.15,
-      isElements: true,
-      isBlind: false,
-      feeAsset: peggedAsset,
-    });
-    const minFee = BigInt(minrelaytxfee);
-    const updateFeeAmt = (minFee > BigInt(feeData.feeAmount)) ?
-        minFee : BigInt(feeData.feeAmount);
-    const workAmt = sendAmt2 + feeAmt;
-    const updateSendAmt = BigInt(workAmt) - updateFeeAmt;
-    const updatePeginTx = cfd.UpdateTxOutAmount({
-      tx: peginTx.hex,
-      isElements: true,
-      txouts: [
-        {
-          index: 1,
-          amount: updateSendAmt,
-        }, {
-          index: 2,
-          amount: updateFeeAmt,
-        },
-      ],
-    });
-    const blindTx2 = cfd.BlindRawTransaction({
-      tx: updatePeginTx.hex,
-      txins: [{
-        txid: sendInfo.txid,
-        vout: sendInfo.vout,
-        amount: amount,
-        asset: peggedAsset,
-        assetBlindFactor: '0000000000000000000000000000000000000000000000000000000000000000',
-        blindFactor: '0000000000000000000000000000000000000000000000000000000000000000',
-      }],
-    });
-    const signTx = cfd.SignWithPrivkey({
-      tx: blindTx2.hex,
-      isElements: true,
-      txin: {
-        txid: sendInfo.txid,
-        vout: sendInfo.vout,
-        hashType: 'p2wpkh',
-        amount: amount,
-        privkey: peginKeys.privkey,
-        pubkey: peginKeys.pubkey,
-        sighashType: 'all',
-      },
-    });
-    const decTx = cfd.ElementsDecodeRawTransaction({hex: signTx.hex});
+    ];
+
+    const txid = await elmWalletMgr.peginFromBitcoin(
+        btcWallet1, elmWallet1, peginAmount, sendTargetList);
+    console.log('pegin tx:', txid);
 
     // send pegin tx
     try {
-      const txid = await elmWallet1.sendRawTransaction(signTx.hex);
-      // console.log('sendRawTransaction pegin tx:', txid);
-      expect(txid).toBe(decTx.txid);
-
       await elmWallet1.generate(1);
       const gettxout = await elmWalletMgr.callRpcDirect(
           TargetNode.Elements, 'gettxout', [txid, 0]);
@@ -676,7 +448,8 @@ describe('wallet test', () => {
 
       // console.log('tx:', decTx);
 
-      const balance = await elmWallet1.getBalance(1, '', '', peggedAsset);
+      const balance = await elmWallet1.getBalance(1, '', '',
+          elmWallet1.getPeggedAsset());
       console.log('wallet balance:', balance);
       await elmWallet1.generate(2);
     } catch (e) {

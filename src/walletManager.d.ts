@@ -1,4 +1,4 @@
-import {Wallet} from './libs/walletService.d';
+import {Wallet, SendAmount} from './libs/walletService.d';
 import * as cfdjs from 'cfd-js/index.d';
 
 // definition (need export)
@@ -91,9 +91,6 @@ export class WalletManager {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       cfdObject?: any);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getCfd(): any;
-
   initialize(targetNodeType?: TargetNode): Promise<boolean>;
 
   shutdown(): void;
@@ -132,4 +129,8 @@ export class WalletManager {
   callRpcDirect(targetNodeType: TargetNode, command: string,
       parameters?: (string | number | boolean | string[])[]):
         Promise<{[key: string]: string | number | boolean}>;
+
+  peginFromBitcoin(bitcoinWallet: Wallet, elementsWallet: Wallet,
+      peginAmount: number | bigint, sendTxoutList: SendAmount[]):
+        Promise<string>;
 }

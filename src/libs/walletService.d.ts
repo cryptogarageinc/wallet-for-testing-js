@@ -90,7 +90,7 @@ export interface SendToAddressResponse extends OutPoint {
 export interface SendAmount {
     address: string;
     amount: bigint | number;
-    asset: string;
+    asset?: string;
 }
 
 export interface KeyPair {
@@ -124,9 +124,6 @@ export class Wallet {
       network: string, masterXprivkey: string,
       nodeConfig: NodeConfigurationData, manager: WalletManager,
       inMemoryDatabase: boolean);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getCfd(): any;
 
   initialize(): Promise<boolean>;
 
@@ -239,9 +236,15 @@ export class Wallet {
 
   getWalletTxData(txid: string, vout: number): Promise<UtxoData>;
 
+  getNetworkType(): string;
+
+  getMainchainNetworkType(): string;
+
   getPeggedAsset(): string;
 
   getFedpegScript(): string;
 
   getParentBlockHash(): string;
+
+  getPeginConfirmationDepth(): number;
 }

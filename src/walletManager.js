@@ -3,16 +3,18 @@ const RpcClient = require('./libs/rpc-client/jsonrpcClient.js');
 const path = require('path');
 const fs = require('fs');
 const ini = require('ini');
+const define = require('./libs/definition');
 
+const emptyBlinder = define.emptyBlinder;
 
 // --------------------------------------------------------------------------------------
 // private
 // --------------------------------------------------------------------------------------
 const analyzeBitcoinConfigureFile = function(file, network) {
-  let textdata = fs.readFileSync(file, 'utf-8');
+  let textData = fs.readFileSync(file, 'utf-8');
   // replace option (testnet and regtest)
-  textdata = textdata.replace(`${network}=1`, '');
-  const config = ini.parse(textdata);
+  textData = textData.replace(`${network}=1`, '');
+  const config = ini.parse(textData);
   const data = {
     bitcoin: {
       host: ('rpcbind' in config) ? config.rpcbind : 'localhost',
@@ -518,6 +520,238 @@ const walletManager = class WalletManager {
       return await this.elmClient.directExecute(command, parameters);
     }
   };
+
+  /**
+   * send pegin tx from bitcoin.
+   * @param {Wallet} bitcoinWallet bitcoin wallet.
+   * @param {Wallet} elementsWallet bitcoin wallet.
+   * @param {number | bigint} peginAmount pegin amount.
+   * @param {*[]} sendTxoutList txout list.
+   * @return {Promise<string>} txid.
+   */
+  async peginFromBitcoin(bitcoinWallet, elementsWallet,
+      peginAmount, sendTxoutList) {
+    const fedpegScript = elementsWallet.getFedpegScript();
+    const peggedAsset = elementsWallet.getPeggedAsset();
+    const genesisBlockHash = elementsWallet.getParentBlockHash();
+    const peginConfirmationDepth = elementsWallet.getPeginConfirmationDepth();
+
+    let totalAmount = BigInt(0);
+    let isBlind = false;
+    let blindCount = 0;
+    const sendTargetList = [];
+    for (const txout of sendTxoutList) {
+      if (txout) {
+        totalAmount += BigInt(txout.amount);
+        try {
+          const ctAddr = this.cfd.GetUnblindedAddress({
+            confidentialAddress: txout.address,
+          });
+          if (ctAddr.confidentialKey) {
+            isBlind = true;
+            ++blindCount;
+          }
+        } catch (e) {
+          // do nothing
+        }
+        sendTargetList.push({
+          address: txout.address,
+          amount: txout.amount,
+          asset: (txout.asset) ? txout.asset : peggedAsset,
+        });
+      }
+    }
+    if (BigInt(peginAmount) < totalAmount) {
+      throw new Error('peginAmount is less than the amount sent.');
+    }
+    if (sendTargetList.length == 0) {
+      const amount = BigInt(peginAmount) - BigInt(2000);
+      const elmAddr1 = await elmWallet1.getNewAddress(
+          AddressType.P2wpkh, 'peginAddr');
+      sendTargetList.push({
+        address: elmAddr1.address,
+        amount: amount,
+        asset: peggedAsset,
+      });
+      totalAmount += amount;
+    }
+    if (totalAmount == BigInt(0)) {
+      totalAmount = BigInt(peginAmount) - BigInt(2000);
+      sendTargetList[0].amount = totalAmount;
+    }
+    const feeAmt = BigInt(peginAmount) - totalAmount;
+
+    // generate
+    await bitcoinWallet.generateFund(peginAmount, true);
+    await bitcoinWallet.generate(100, '', true);
+    await bitcoinWallet.generate(1);
+
+    // generate btc address
+    // TODO: Is it necessary to install it in the wallet?
+    const peginKeys = this.cfd.CreateKeyPair({
+      network: bitcoinWallet.getNetworkType(),
+      wif: false,
+      isCompressed: true,
+    });
+    const peginAddr = this.cfd.CreatePegInAddress({
+      fedpegscript: fedpegScript,
+      pubkey: peginKeys.pubkey,
+      hashType: 'p2sh-p2wsh', // if dynafed, can use p2wsh
+      network: bitcoinWallet.getNetworkType(),
+    });
+
+    // dummy txout nonce
+    const blindNonce = this.cfd.CreateKeyPair({
+      network: bitcoinWallet.getNetworkType(),
+      wif: false,
+      isCompressed: true,
+    });
+
+    // send btc pegin address
+    const sendInfo = await bitcoinWallet.sendToAddress(
+        peginAddr.mainchainAddress, peginAmount);
+    // console.log('send btc pegin tx:', sendInfo);
+
+    await bitcoinWallet.generate(peginConfirmationDepth);
+
+    const txHex = await this.getRawTransactionHex(
+        targetNodeDefine.Bitcoin, sendInfo.txid);
+
+    const txoutProof = await this.getTxOutProof(
+        targetNodeDefine.Bitcoin, [sendInfo.txid]);
+
+    const minrelaytxfee = await elementsWallet.getMinRelayTxFee();
+    // console.log('minrelaytxfee:', minrelaytxfee);
+
+    // create pegin tx (blind)
+    const peginTx = this.cfd.CreateRawPegin({
+      version: 2,
+      locktime: 0,
+      txins: [{
+        txid: sendInfo.txid,
+        vout: sendInfo.vout,
+        isPegin: true,
+        peginwitness: {
+          amount: peginAmount,
+          asset: peggedAsset,
+          claimScript: peginAddr.claimScript,
+          mainchainGenesisBlockHash: genesisBlockHash,
+          mainchainRawTransaction: txHex,
+          mainchainTxoutproof: txoutProof,
+        },
+      }],
+      txouts: sendTargetList,
+      fee: {
+        amount: feeAmt,
+        asset: peggedAsset,
+      },
+    });
+    let peginTxHex = peginTx.hex;
+    if (isBlind) {
+      if (blindCount == 1) {
+        const appendTx1 = this.cfd.ElementsAddRawTransaction({
+          tx: peginTxHex,
+          txouts: [{
+            address: '',
+            amount: 0,
+            asset: peggedAsset,
+            directNonce: blindNonce.privkey,
+          }],
+        });
+        peginTxHex = appendTx1.hex;
+      }
+      const blindTx1 = this.cfd.BlindRawTransaction({
+        tx: peginTxHex,
+        txins: [{
+          txid: sendInfo.txid,
+          vout: sendInfo.vout,
+          amount: peginAmount,
+          asset: peggedAsset,
+          assetBlindFactor: emptyBlinder,
+          blindFactor: emptyBlinder,
+        }],
+      });
+      peginTxHex = blindTx1.hex;
+    }
+    const feeData = this.cfd.EstimateFee({
+      tx: peginTxHex,
+      feeRate: 0.15,
+      isElements: true,
+      isBlind: isBlind,
+      feeAsset: peggedAsset,
+    });
+    const lastSendAmount = sendTargetList[sendTargetList.length - 1].amount;
+    const minFee = BigInt(minrelaytxfee);
+    const updateFeeAmt = (minFee > BigInt(feeData.feeAmount)) ?
+        minFee : BigInt(feeData.feeAmount);
+    const workAmt = BigInt(lastSendAmount) + BigInt(feeAmt);
+    const updateSendAmt = workAmt - updateFeeAmt;
+    const updatePeginTx = this.cfd.UpdateTxOutAmount({
+      tx: peginTx.hex,
+      isElements: true,
+      txouts: [
+        {
+          index: sendTargetList.length - 1,
+          amount: updateSendAmt,
+        }, {
+          index: sendTargetList.length,
+          amount: updateFeeAmt,
+        },
+      ],
+    });
+    peginTxHex = updatePeginTx.hex;
+    if (isBlind) {
+      if (blindCount == 1) {
+        const appendTx2 = this.cfd.ElementsAddRawTransaction({
+          tx: peginTxHex,
+          txouts: [{
+            address: '',
+            amount: 0,
+            asset: peggedAsset,
+            directNonce: blindNonce.privkey,
+          }],
+        });
+        peginTxHex = appendTx2.hex;
+      }
+      const decodeTx = this.cfd.ElementsDecodeRawTransaction({
+        hex: peginTxHex,
+      });
+      console.log(decodeTx);
+      const blindTx2 = this.cfd.BlindRawTransaction({
+        tx: peginTxHex,
+        txins: [{
+          txid: sendInfo.txid,
+          vout: sendInfo.vout,
+          amount: peginAmount,
+          asset: peggedAsset,
+          assetBlindFactor: emptyBlinder,
+          blindFactor: emptyBlinder,
+        }],
+      });
+      peginTxHex = blindTx2.hex;
+    }
+    const signTx = this.cfd.SignWithPrivkey({
+      tx: peginTxHex,
+      isElements: true,
+      txin: {
+        txid: sendInfo.txid,
+        vout: sendInfo.vout,
+        hashType: 'p2wpkh',
+        amount: peginAmount,
+        privkey: peginKeys.privkey,
+        pubkey: peginKeys.pubkey,
+        sighashType: 'all',
+      },
+    });
+
+    // send pegin tx
+    try {
+      return await elementsWallet.sendRawTransaction(signTx.hex);
+    } catch (e) {
+      console.log(e);
+      throw e;
+    }
+  }
 };
 
 // export

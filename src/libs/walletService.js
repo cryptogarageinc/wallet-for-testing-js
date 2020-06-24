@@ -2,8 +2,9 @@ const DbService = require('./databaseService.js');
 const AddressService = require('./addressService.js');
 const UtxoService = require('./utxoService.js');
 const RpcClient = require('./rpc-client/jsonrpcClient.js');
+const define = require('./definition');
 
-const emptyBlinder = '0000000000000000000000000000000000000000000000000000000000000000';
+const emptyBlinder = define.emptyBlinder;
 
 module.exports = class Wallet {
   /**
@@ -1489,6 +1490,22 @@ module.exports = class Wallet {
   };
 
   /**
+   * get network type.
+   * @return {string} mainchain network type.
+   */
+  getNetworkType() {
+    return this.network;
+  }
+
+  /**
+   * get mainchain network on Elements.
+   * @return {string} mainchain network type.
+   */
+  getMainchainNetworkType() {
+    return this.mainchainNetwork;
+  }
+
+  /**
    * get pegged asset on Elements.
    * @return {string} pegged asset
    */
@@ -1510,5 +1527,13 @@ module.exports = class Wallet {
    */
   getParentBlockHash() {
     return this.sidechaininfo.parent_blockhash;
+  }
+
+  /**
+   * get pegin confirmation depth on Elements.
+   * @return {number} confirmation
+   */
+  getPeginConfirmationDepth() {
+    return this.sidechaininfo.pegin_confirmation_depth;
   }
 };

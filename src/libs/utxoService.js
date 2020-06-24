@@ -1,6 +1,7 @@
 /* eslint-disable require-jsdoc */
+const define = require('./definition');
 
-const emptyBlinder = '0000000000000000000000000000000000000000000000000000000000000000';
+const emptyBlinder = define.emptyBlinder;
 
 module.exports = class UtxoService {
   constructor(databaseService, addressService, client, parent) {

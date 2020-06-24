@@ -1,7 +1,8 @@
 /* eslint-disable require-jsdoc */
 const NedbWrapper = require('./nedbWrapper.js');
+const define = require('../definition');
 
-const emptyBlinder = '0000000000000000000000000000000000000000000000000000000000000000';
+const emptyBlinder = define.emptyBlinder;
 
 module.exports = class UtxoTable {
   constructor(name = 'db', dirPath = './', inMemoryOnly = true) {

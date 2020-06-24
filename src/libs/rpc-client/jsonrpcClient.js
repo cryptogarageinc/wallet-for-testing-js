@@ -83,8 +83,8 @@ exports.BitcoinCli = function(connection) {
     return await executeRpc(client, 'getnewaddress', [label, type]);
   };
   // Rawtransactions
-  this.sendrawtransaction = async function(hexstring, allowhighfees = false) {
-    return await executeRpc(client, 'sendrawtransaction', [hexstring, allowhighfees]);
+  this.sendrawtransaction = async function(hexstring) {
+    return await executeRpc(client, 'sendrawtransaction', [hexstring]);
   };
 
   // wallet
@@ -182,8 +182,8 @@ exports.ElementsCli = function(connection) {
   this.rawreissueasset = async function(transaction, reissuances) {
     return await executeRpc(client, 'rawreissueasset', [transaction, reissuances]);
   };
-  this.sendrawtransaction = async function(hexstring, allowhighfees = false) {
-    return await executeRpc(client, 'sendrawtransaction', [hexstring, allowhighfees]);
+  this.sendrawtransaction = async function(hexstring) {
+    return await executeRpc(client, 'sendrawtransaction', [hexstring]);
   };
   // Wallet
   this.blindrawtransaction = async function(

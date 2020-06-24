@@ -152,9 +152,6 @@ module.exports = class UtxoService {
                   .getAddressInfoByLockingScript(lockingScript);
               // console.log('addr = ', addr);
               if (addr) {
-                const blockHash = '';
-                const blockHeight = -1;
-                const coinbase = false;
                 let confidentialKey = '';
                 const extend = {};
                 const solvable = (!addr.script && addr.path !== '') ? true : false;
@@ -202,7 +199,8 @@ module.exports = class UtxoService {
                   const satoshi = Math.ceil(vout[j].value * 100000000);
                   const ret = await this.utxoTable.addUtxo(txid, j,
                       satoshi, addr.address,
-                      addr.descriptor, lockingScript, solvable);
+                      addr.descriptor, lockingScript, solvable,
+                      blockHash, blockHeight);
                   if (ret === false) {
                     throw Error('addUtxo: addUtxo fail.');
                   }
@@ -323,8 +321,6 @@ module.exports = class UtxoService {
                 .getAddressInfoByLockingScript(lockingScript);
             // console.log('addr = ', addr);
             if (addr) {
-              const blockHash = '';
-              const blockHeight = -1;
               const coinbase = false;
               let confidentialKey = '';
               const extend = {};
@@ -379,7 +375,8 @@ module.exports = class UtxoService {
                 const satoshi = Math.ceil(vout[j].value * 100000000);
                 const ret = await this.utxoTable.addUtxo(txid, j,
                     satoshi, addr.address,
-                    addr.descriptor, lockingScript, solvable);
+                    addr.descriptor, lockingScript, solvable,
+                    blockHash, blockHeight);
                 if (ret === false) {
                   console.log('addUtxo: addUtxo fail.');
                   // throw Error('addUtxo: addUtxo fail.');

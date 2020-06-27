@@ -1,0 +1,23 @@
+name: check-version
+
+on: 
+  push:
+    tags:
+    - 'v*'
+
+jobs:
+  check-version:
+    name: check-version
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+      shell: bash
+    - name: check package.json version
+      env:
+        version: ${{ steps.get_version.outputs.VERSION }}
+      run: node ./tools/checker.js version ${version}

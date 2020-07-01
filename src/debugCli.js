@@ -487,11 +487,23 @@ const verifysign = async function() {
     const value = arr[2];
     const amount = (isElements && (value.length === 66)) ? 0 : parseInt(value);
     const valuecommitment = (isElements && (value.length === 66)) ? value : '';
-    const descriptor = arr[3];
+    let descriptor = '';
+    let address = '';
+    if (arr[3].indexOf('(') == -1) {
+      address = arr[3];
+    } else {
+      cfdjs.ParseDescriptor({
+        isElements: isElements,
+        descriptor: arr[3],
+        network: (isElements) ? 'liquidv1' : 'mainnet',
+      });
+      descriptor = arr[3];
+    }
     txins.push({
       txid: txid,
       vout: vout,
       amount: amount,
+      address: address,
       confidentialValueCommitment: valuecommitment,
       descriptor: descriptor,
     });

@@ -14,7 +14,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "cfd-js": "github:cryptogarageinc/cfd-js#semver:^0.1.9",
+    "cfd-js": "github:cryptogarageinc/cfd-js#semver:^0.1.12",
     "ini": "*",
     "nedb-promises": "^4.0.1",
     "needle": "^2.5.0",

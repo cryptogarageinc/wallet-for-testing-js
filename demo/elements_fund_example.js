@@ -303,8 +303,8 @@ const main = async () => {
       console.log(
           '--------------------------------------------------------------------------------');
     } else if (checkString(command, 'cfd_fundrawtx')) {
-      const assets = process.argv[3];
-      const targetAssets = process.argv[4];
+      let assets = process.argv[3];
+      let targetAssets = process.argv[4];
       const feeRate = Number(process.argv[5]);
       let minChange = -1;
       if (process.argv.length >= 7) {
@@ -319,6 +319,9 @@ const main = async () => {
         throw Error('bitcoin label not found.');
       }
       // console.log(`bitcoin asset id = ${assetlabels.bitcoin}`)
+
+      if (!assets) assets = assetlabels.bitcoin;
+      if (!targetAssets) targetAssets = assetlabels.bitcoin;
 
       // parse assets
       const assetArray = assets.split(',');
@@ -420,7 +423,7 @@ const main = async () => {
         const newAddress = await elementsCli.getnewaddress();
         targets.push({
           'reserveAddress': newAddress,
-          'amount': 0,
+          'amount': 1,
           'asset': assetlabels.bitcoin,
         });
       }
@@ -433,14 +436,15 @@ const main = async () => {
         targets: targets,
         feeInfo: {
           feeRate: feeRate,
-          longTermFeeRate: feeRate,
+          longTermFeeRate: (feeRate > 2.0) ? 2.0 : feeRate,
           knapsackMinChange: minChange,
           feeAsset: assetlabels.bitcoin,
           isBlindEstimateFee: true,
+          dustFeeRate: 0.1,
         },
       };
-      console.log('SelectUtxo start. utxos = ' + utxos.length);
-      console.log('Req = ' + JSON.stringify(FundTxJson, null, 2));
+      // console.log('SelectUtxo start. utxos = ' + utxos.length);
+      // console.log('Req = ' + JSON.stringify(FundTxJson, null, 2));
       const fundRawRet = cfdjs.FundRawTransaction(FundTxJson);
       console.log('SelectUtxo =>\n', fundRawRet);
       const fundHex = fundRawRet.hex;

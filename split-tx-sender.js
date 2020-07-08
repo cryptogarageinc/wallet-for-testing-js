@@ -237,16 +237,28 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
   const feeOutputNum = feeSplitNum - 1;
   const txFeeAmount = 140 * feeSplitNum; // fee rate: 0.148
   // const feeRate = 0.100;
+  const emptyByte = '0000000000000000000000000000000000000000000000000000000000000000';
 
-  const unblindData = cfdjs.UnblindRawTransaction({
-    tx: utxoTxHex,
-    txouts: [{
-      index: utxoVout,
-      blindingKey: addrInfo.blindingKey,
-    }],
-  });
-  console.log('unblind:', unblindData.outputs);
-  const utxoData = unblindData.outputs[0];
+  let utxoData;
+  if (!addrInfo.blindingKey || addrInfo.blindingKey == emptyByte) {
+    const voutData = decUtxoTx.vout[utxoVout];
+    utxoData = {
+      amount: voutData.value,
+      asset: voutData.asset,
+      blindFactor: emptyByte,
+      assetBlindFactor: emptyByte,
+    };
+  } else {
+    const unblindData = cfdjs.UnblindRawTransaction({
+      tx: utxoTxHex,
+      txouts: [{
+        index: utxoVout,
+        blindingKey: addrInfo.blindingKey,
+      }],
+    });
+    console.log('unblind:', unblindData.outputs);
+    utxoData = unblindData.outputs[0];
+  }
 
   const feeUtxo = {
     txid: utxoTxid,
@@ -257,6 +269,13 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
     assetBlindFactor: utxoData.assetBlindFactor,
     privkey: addrInfo.privkey,
   };
+  const addr = decUtxoTx.vout[utxoVout].scriptPubKey.addresses[0];
+  const inputAddrInfo = cfdjs.GetAddressInfo({
+    address: addr,
+    isElements: true,
+  });
+  const hashType = (inputAddrInfo.hashType === 'p2sh') ?
+    'p2sh-p2wpkh' : inputAddrInfo.hashType;
 
   // const feeAmount = parseInt((feeUtxo.amount - txFeeAmount) / (feeOutputNum + 1));
   const checkAmount = 10000;
@@ -367,26 +386,43 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
     blindTxHex = feeBlindTx.hex;
   }
 
-  const commitment = cfdjs.GetCommitment({
-    amount: feeUtxo.amount,
-    asset: feeUtxo.asset,
-    assetBlindFactor: feeUtxo.assetBlindFactor,
-    blindFactor: feeUtxo.blindFactor,
-  });
+  let feeSignTx;
+  if (feeUtxo.blindFactor == emptyByte) {
+    // privkey sign (calc sighash + get ecSig + add Signature)
+    feeSignTx = cfdjs.SignWithPrivkey({
+      tx: blindTxHex,
+      isElements: true,
+      txin: {
+        txid: feeUtxo.txid,
+        vout: feeUtxo.vout,
+        privkey: feeUtxo.privkey,
+        hashType: hashType,
+        sighashType: 'all',
+        amount: feeUtxo.amount,
+      },
+    });
+  } else {
+    const commitment = cfdjs.GetCommitment({
+      amount: feeUtxo.amount,
+      asset: feeUtxo.asset,
+      assetBlindFactor: feeUtxo.assetBlindFactor,
+      blindFactor: feeUtxo.blindFactor,
+    });
 
-  // privkey sign (calc sighash + get ecSig + add Signature)
-  const feeSignTx = cfdjs.SignWithPrivkey({
-    tx: blindTxHex,
-    isElements: true,
-    txin: {
-      txid: feeUtxo.txid,
-      vout: feeUtxo.vout,
-      privkey: feeUtxo.privkey,
-      hashType: 'p2wpkh',
-      sighashType: 'all',
-      confidentialValueCommitment: commitment.amountCommitment,
-    },
-  });
+    // privkey sign (calc sighash + get ecSig + add Signature)
+    feeSignTx = cfdjs.SignWithPrivkey({
+      tx: blindTxHex,
+      isElements: true,
+      txin: {
+        txid: feeUtxo.txid,
+        vout: feeUtxo.vout,
+        privkey: feeUtxo.privkey,
+        hashType: hashType,
+        sighashType: 'all',
+        confidentialValueCommitment: commitment.amountCommitment,
+      },
+    });
+  }
 
   // console.log(feeSignTx.hex);
   console.log(`Amount:${feeAmount}, changeAmount:${changeAmount}`);

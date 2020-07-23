@@ -1,10 +1,10 @@
 // UTF-8
 'use strict';
-const cfdjs = require('cfd-js');
-const cfdjsUtil = require('cfd-js/cfdjs_util');
+const cfdjsWasm = require('cfd-js-wasm');
 const fs = require('fs');
 
-// const toSatoshiAmount = function(amount) {
+let cfdjs;
+// const toSatoshiAmount  = async function(amount) {
 //   return Number(amount * 100000000);
 // };
 
@@ -28,8 +28,8 @@ function readInput(question) {
   });
 }
 
-const GenerateKeyPair = function(network = 'regtest', wif = true, isCompressed = true) {
-  const result = cfdjs.CreateKeyPair({
+const GenerateKeyPair = async function(network = 'regtest', wif = true, isCompressed = true) {
+  const result = await cfdjs.CreateKeyPair({
     wif: wif,
     network: network,
     isCompressed: isCompressed,
@@ -38,8 +38,8 @@ const GenerateKeyPair = function(network = 'regtest', wif = true, isCompressed =
 };
 
 /*
-const CreatePubkeyAddress = function(pubkey, network = 'regtest', hashType = 'p2wpkh') {
-  const result = cfdjs.CreateAddress({
+const CreatePubkeyAddress  = async function(pubkey, network = 'regtest', hashType = 'p2wpkh') {
+  const result = await cfdjs.CreateAddress({
     'keyData': {
       'hex': pubkey,
       'type': 'pubkey',
@@ -51,9 +51,9 @@ const CreatePubkeyAddress = function(pubkey, network = 'regtest', hashType = 'p2
   return result.address;
 };
 
-const CreateConfidentialPubkeyAddress = function(pubkey, confidentialKey, network = 'regtest', hashType = 'p2wpkh') {
-  const addr = CreatePubkeyAddress(pubkey, network, hashType);
-  const result = cfdjs.GetConfidentialAddress({
+const CreateConfidentialPubkeyAddress  = async function(pubkey, confidentialKey, network = 'regtest', hashType = 'p2wpkh') {
+  const addr = await CreatePubkeyAddress(pubkey, network, hashType);
+  const result = await cfdjs.GetConfidentialAddress({
     'unblindedAddress': addr,
     'key': confidentialKey,
   });
@@ -61,14 +61,22 @@ const CreateConfidentialPubkeyAddress = function(pubkey, confidentialKey, networ
 };
 */
 
-const checkString = function(arg, matchText, alias = undefined) {
+// eslint-disable-next-line valid-jsdoc
+/**
+ * check string value.
+ * @param {string} arg argument.
+ * @param {string} matchText match text.
+ * @param {string} alias alias.
+ * @return true/false match or not.
+ */
+function checkString(arg, matchText, alias = undefined) {
   if (arg == matchText) {
     return true;
   } else if ((alias) && (arg == alias)) {
     return true;
   }
   return false;
-};
+}
 
 // -----------------------------------------------------------------------------
 /**
@@ -79,7 +87,7 @@ const checkString = function(arg, matchText, alias = undefined) {
 function strToBool(boolStr) {
   return (boolStr == 'true') ? true : false;
 }
-// const toBigInt = function(n) {
+// const toBigInt  = async function(n) {
 //   let s = bigInt(n).toString(16);
 //   while (s.length < 16) s = '0' + s;
 //   return new Uint8Array(Buffer.from(s, 'hex'));
@@ -94,7 +102,7 @@ const generatekey = async function() {
   if (process.argv.length > 3) network = process.argv[3];
   if (process.argv.length > 4) wif = strToBool(process.argv[4]);
   if (process.argv.length > 5) isCompressed = strToBool(process.argv[5]);
-  const result = GenerateKeyPair(network, wif, isCompressed);
+  const result = await GenerateKeyPair(network, wif, isCompressed);
   console.log(result);
 };
 
@@ -128,7 +136,7 @@ const getcommitment = async function() {
     asset = process.argv[6];
   }
 
-  const result = cfdjs.GetCommitment({
+  const result = await cfdjs.GetCommitment({
     amount: amount,
     asset: asset,
     assetBlindFactor: assetBlinder,
@@ -155,7 +163,7 @@ const decodedersignature = async function() {
     sighashAnyoneCanPay = (process.argv[5] === 'true');
   }
 
-  const result = cfdjs.DecodeDerSignatureToRaw({
+  const result = await cfdjs.DecodeDerSignatureToRaw({
     signature: signature,
     sighashType: sighashType,
     sighashAnyoneCanPay: sighashAnyoneCanPay,
@@ -191,7 +199,7 @@ const decoderawtransactionFromFile = async function() {
   try {
     const liquidNetwork = ((network === 'regtest') || (network === 'testnet')) ?
         'regtest' : 'liquidv1';
-    decTx = cfdjs.ElementsDecodeRawTransaction({
+    decTx = await cfdjs.ElementsDecodeRawTransaction({
       hex: tx,
       mainchainNetwork: network,
       network: liquidNetwork,
@@ -202,7 +210,7 @@ const decoderawtransactionFromFile = async function() {
   } catch (err) {
   }
   try {
-    decTx = cfdjs.DecodeRawTransaction({
+    decTx = await cfdjs.DecodeRawTransaction({
       hex: tx,
       network: network,
     });
@@ -233,7 +241,7 @@ const decoderawtransaction = async function() {
   try {
     const liquidNetwork = ((network === 'regtest') || (network === 'testnet')) ?
         'regtest' : 'liquidv1';
-    decTx = cfdjs.ElementsDecodeRawTransaction({
+    decTx = await cfdjs.ElementsDecodeRawTransaction({
       hex: tx,
       mainchainNetwork: network,
       network: liquidNetwork,
@@ -243,7 +251,7 @@ const decoderawtransaction = async function() {
   } catch (err) {
   }
   try {
-    decTx = cfdjs.DecodeRawTransaction({
+    decTx = await cfdjs.DecodeRawTransaction({
       hex: tx,
       network: network,
     });
@@ -261,7 +269,7 @@ const decodesignature = async function() {
   } else {
     signature = process.argv[4];
   }
-  const sig = cfdjs.DecodeDerSignatureToRaw({
+  const sig = await cfdjs.DecodeDerSignatureToRaw({
     signature: signature,
   }).signature;
   console.log(sig);
@@ -335,7 +343,7 @@ const verifysignature = async function() {
   let isElements = false;
   let decTx = '';
   try {
-    decTx = cfdjs.ElementsDecodeRawTransaction({
+    decTx = await cfdjs.ElementsDecodeRawTransaction({
       hex: tx,
       mainchainNetwork: 'mainnet',
       network: 'liquidv1',
@@ -345,7 +353,7 @@ const verifysignature = async function() {
   }
   if (!decTx) {
     try {
-      decTx = cfdjs.DecodeRawTransaction({
+      decTx = await cfdjs.DecodeRawTransaction({
         hex: tx,
         network: network,
       });
@@ -356,14 +364,14 @@ const verifysignature = async function() {
     try {
       tx = fs.readFileSync(tx, 'utf-8').toString().trim();
       try {
-        decTx = cfdjs.ElementsDecodeRawTransaction({
+        decTx = await cfdjs.ElementsDecodeRawTransaction({
           hex: tx,
           mainchainNetwork: 'mainnet',
           network: 'liquidv1',
         });
         isElements = true;
       } catch (err2) {
-        decTx = cfdjs.DecodeRawTransaction({
+        decTx = await cfdjs.DecodeRawTransaction({
           hex: tx,
           network: network,
         });
@@ -376,7 +384,7 @@ const verifysignature = async function() {
   }
   let sig = signature;
   if (sig.length >= 136) {
-    sig = cfdjs.DecodeDerSignatureToRaw({
+    sig = await cfdjs.DecodeDerSignatureToRaw({
       signature: signature,
     }).signature;
   }
@@ -434,7 +442,7 @@ const verifysign = async function() {
   let isElements = false;
   let decTx = '';
   try {
-    decTx = cfdjs.ElementsDecodeRawTransaction({
+    decTx = await cfdjs.ElementsDecodeRawTransaction({
       hex: tx,
       mainchainNetwork: 'mainnet',
       network: 'liquidv1',
@@ -444,7 +452,7 @@ const verifysign = async function() {
   }
   if (!decTx) {
     try {
-      decTx = cfdjs.DecodeRawTransaction({
+      decTx = await cfdjs.DecodeRawTransaction({
         hex: tx,
         network: network,
       });
@@ -455,14 +463,14 @@ const verifysign = async function() {
     try {
       tx = fs.readFileSync(tx, 'utf-8').toString().trim();
       try {
-        decTx = cfdjs.ElementsDecodeRawTransaction({
+        decTx = await cfdjs.ElementsDecodeRawTransaction({
           hex: tx,
           mainchainNetwork: 'mainnet',
           network: 'liquidv1',
         });
         isElements = true;
       } catch (err2) {
-        decTx = cfdjs.DecodeRawTransaction({
+        decTx = await cfdjs.DecodeRawTransaction({
           hex: tx,
           network: network,
         });
@@ -515,7 +523,7 @@ const verifysign = async function() {
     txins: txins,
   };
   console.log('verifyInput: ', verifyInput.txins);
-  const result = cfdjs.VerifySign(verifyInput);
+  const result = await cfdjs.VerifySign(verifyInput);
   if (result.success) {
     console.log('VerifySign success.');
   } else {
@@ -533,7 +541,7 @@ const getaddressinfo = async function() {
   let confidentialKey = '';
   let unblindedAddress = '';
   try {
-    const ckey = cfdjs.GetUnblindedAddress({
+    const ckey = await cfdjs.GetUnblindedAddress({
       confidentialAddress: address,
     });
     confidentialKey = ckey.confidentialKey;
@@ -544,7 +552,7 @@ const getaddressinfo = async function() {
   }
 
   try {
-    const addrinfo = cfdjs.GetAddressInfo({
+    const addrinfo = await cfdjs.GetAddressInfo({
       address: address,
       isElements: true,
     });
@@ -558,7 +566,7 @@ const getaddressinfo = async function() {
     // console.log(err);
   }
 
-  const addrinfo = cfdjs.GetAddressInfo({
+  const addrinfo = await cfdjs.GetAddressInfo({
     address: address,
     isElements: false,
   });
@@ -577,7 +585,7 @@ const decodescript = async function() {
     dumpString = (process.argv[4] === 'true');
   }
 
-  const scriptinfo = cfdjs.ParseScript({
+  const scriptinfo = await cfdjs.ParseScript({
     script: script,
   });
   if (dumpString) {
@@ -604,7 +612,7 @@ const convertscript = async function() {
   }
 
   const items = script.split(' ');
-  const scriptinfo = cfdjs.CreateScript({
+  const scriptinfo = await cfdjs.CreateScript({
     items: items,
   });
   console.log('\n', 'script: ', scriptinfo.hex);
@@ -642,7 +650,7 @@ const parsedescriptor = async function() {
     path = process.argv[5];
   }
 
-  const descriptorInfo = cfdjs.ParseDescriptor({
+  const descriptorInfo = await cfdjs.ParseDescriptor({
     isElements: isElements,
     descriptor: descriptor,
     network: network,
@@ -665,7 +673,7 @@ const parsedescriptor = async function() {
         hashType = 'p2sh';
       }
     }
-    const addrInfo = cfdjs.CreateAddress({
+    const addrInfo = await cfdjs.CreateAddress({
       isElements: isElements,
       keyData: {
         hex: value,
@@ -732,7 +740,7 @@ const parsedescriptors = async function() {
 
   const descriptors = [];
   for (let index = minValue; index <= maxValue; ++index) {
-    const descriptorInfo = cfdjs.ParseDescriptor({
+    const descriptorInfo = await cfdjs.ParseDescriptor({
       isElements: isElements,
       descriptor: descriptor,
       network: network,
@@ -768,11 +776,11 @@ const generatemnemonic = async function() {
     try {
       let entropy = inputEntropy;
       if (!inputEntropy) {
-        const keypair = cfdjs.CreateKeyPair({wif: false});
+        const keypair = await cfdjs.CreateKeyPair({wif: false});
         entropy = keypair.privkey;
       }
 
-      const result = cfdjs.ConvertEntropyToMnemonic({
+      const result = await cfdjs.ConvertEntropyToMnemonic({
         entropy: entropy,
         language: lang,
       });
@@ -780,7 +788,7 @@ const generatemnemonic = async function() {
       console.log(`"${mnemonic}"`);
 
       if (!inputEntropy) {
-        const seed = cfdjs.ConvertMnemonicToSeed({
+        const seed = await cfdjs.ConvertMnemonicToSeed({
           mnemonic: result.mnemonic,
           passphrase: '',
           language: lang,
@@ -796,20 +804,20 @@ const generatemnemonic = async function() {
   }
 };
 
-const getKeyInfo = function(extkey, network, isCompressKey) {
-  const extkeyInfo = cfdjs.GetExtkeyInfo({
+const getKeyInfo = async function(extkey, network, isCompressKey) {
+  const extkeyInfo = await cfdjs.GetExtkeyInfo({
     extkey: extkey,
   });
 
   let privkey = undefined;
   try {
-    privkey = cfdjs.GetPrivkeyFromExtkey({
+    privkey = await cfdjs.GetPrivkeyFromExtkey({
       extkey: extkey,
       network: network,
       wif: true,
       isCompressed: isCompressKey,
     });
-    const privkeyHex = cfdjs.GetPrivkeyFromExtkey({
+    const privkeyHex = await cfdjs.GetPrivkeyFromExtkey({
       extkey: extkey,
       network: network,
       wif: false,
@@ -822,12 +830,12 @@ const getKeyInfo = function(extkey, network, isCompressKey) {
   let pubkey = undefined;
   try {
     if (privkey !== undefined) {
-      pubkey = cfdjs.GetPubkeyFromPrivkey({
+      pubkey = await cfdjs.GetPubkeyFromPrivkey({
         privkey: privkey['hex'],
         isCompressed: isCompressKey,
       });
     } else {
-      pubkey = cfdjs.GetPubkeyFromExtkey({
+      pubkey = await cfdjs.GetPubkeyFromExtkey({
         extkey: extkey,
         network: network,
       });
@@ -836,7 +844,7 @@ const getKeyInfo = function(extkey, network, isCompressKey) {
   }
 
   if (privkey !== undefined) {
-    extkeyInfo['extpubkey'] = cfdjs.CreateExtPubkey({
+    extkeyInfo['extpubkey'] = await cfdjs.CreateExtPubkey({
       extkey: extkey,
       network: network,
     }).extkey;
@@ -879,7 +887,7 @@ const mnemonictoseed = async function() {
   console.log(`mnemonic = `, mnemonicItems);
   console.log(`passphrase = [${passphrase}]`);
 
-  const result = cfdjs.ConvertMnemonicToSeed({
+  const result = await cfdjs.ConvertMnemonicToSeed({
     mnemonic: mnemonicItems,
     passphrase: passphrase,
     // eslint-disable-next-line @typescript-eslint/camelcase
@@ -890,7 +898,7 @@ const mnemonictoseed = async function() {
 
   if (network) {
     // seed
-    const extkeyInfo = cfdjs.CreateExtkeyFromSeed({
+    const extkeyInfo = await cfdjs.CreateExtkeyFromSeed({
       seed: result.seed,
       network: network,
       extkeyType: 'extPrivkey',
@@ -901,7 +909,7 @@ const mnemonictoseed = async function() {
     let parentFingerprint = '';
     if (path !== '') {
       try {
-        child = cfdjs.CreateExtkeyFromParentPath({
+        child = await cfdjs.CreateExtkeyFromParentPath({
           extkey: basekey,
           network: network,
           extkeyType: 'extPrivkey',
@@ -909,20 +917,20 @@ const mnemonictoseed = async function() {
         });
       } catch (err) {
         console.log(err);
-        child = cfdjs.CreateExtkeyFromParentPath({
+        child = await cfdjs.CreateExtkeyFromParentPath({
           extkey: basekey,
           network: network,
           extkeyType: 'extPubkey',
           path: path,
         });
       }
-      const tempChild = cfdjs.CreateExtkeyFromParentPath({
+      const tempChild = await cfdjs.CreateExtkeyFromParentPath({
         extkey: basekey,
         network: network,
         extkeyType: 'extPubkey',
         path: '0',
       });
-      const keyInfo = cfdjs.GetExtkeyInfo({
+      const keyInfo = await cfdjs.GetExtkeyInfo({
         extkey: tempChild.extkey,
       });
       parentFingerprint = keyInfo.fingerprint;
@@ -930,7 +938,7 @@ const mnemonictoseed = async function() {
 
     const dumpInfo = {};
     dumpInfo.key = (child !== undefined) ? child.extkey : basekey;
-    const keyInfo = getKeyInfo(dumpInfo.key, network, true);
+    const keyInfo = await getKeyInfo(dumpInfo.key, network, true);
     if (child !== undefined) {
       let splitPath = path;
       if (splitPath.startsWith('m/')) {
@@ -967,13 +975,13 @@ const getprivkeyinfo = async function() {
     privkey = process.argv[5];
   }
 
-  const pubkey = cfdjs.GetPubkeyFromPrivkey({
+  const pubkey = await cfdjs.GetPubkeyFromPrivkey({
     privkey: privkey,
     isCompressed: isCompressed,
   });
 
   try {
-    const privkeyData = cfdjs.GetPrivkeyFromWif({
+    const privkeyData = await cfdjs.GetPrivkeyFromWif({
       wif: privkey,
     });
     privkeyData['wif'] = privkey;
@@ -983,7 +991,7 @@ const getprivkeyinfo = async function() {
   } catch (err) {
   }
 
-  const privkeyData = cfdjs.GetPrivkeyWif({
+  const privkeyData = await cfdjs.GetPrivkeyWif({
     hex: privkey,
     network: network,
     isCompressed: isCompressed,
@@ -1016,7 +1024,7 @@ const getextkeyinfo = async function() {
   }
   const isCompressKey = (isCompressKeyStr !== 'false');
 
-  const extkeyInfo = getKeyInfo(extkey, network, isCompressKey);
+  const extkeyInfo = await getKeyInfo(extkey, network, isCompressKey);
   console.log(JSON.stringify(extkeyInfo, null, 2));
 };
 
@@ -1044,7 +1052,7 @@ const createextkey = async function() {
   let inputNetwork = 'regtest';
   let hasExtkey = false;
   try {
-    const keyInfo = cfdjs.GetExtkeyInfo({
+    const keyInfo = await cfdjs.GetExtkeyInfo({
       extkey: basekey,
     });
     hasExtkey = true;
@@ -1073,7 +1081,7 @@ const createextkey = async function() {
 
   if (!hasExtkey) {
     // seed
-    const extkeyInfo = cfdjs.CreateExtkeyFromSeed({
+    const extkeyInfo = await cfdjs.CreateExtkeyFromSeed({
       seed: basekey,
       network: network,
       extkeyType: 'extPrivkey',
@@ -1085,7 +1093,7 @@ const createextkey = async function() {
   let parentFingerprint = '';
   if (path !== '') {
     try {
-      child = cfdjs.CreateExtkeyFromParentPath({
+      child = await cfdjs.CreateExtkeyFromParentPath({
         extkey: basekey,
         network: network,
         extkeyType: 'extPrivkey',
@@ -1093,25 +1101,25 @@ const createextkey = async function() {
       });
     } catch (err) {
       console.log(err);
-      child = cfdjs.CreateExtkeyFromParentPath({
+      child = await cfdjs.CreateExtkeyFromParentPath({
         extkey: basekey,
         network: network,
         extkeyType: 'extPubkey',
         path: path,
       });
     }
-    const tempChild = cfdjs.CreateExtkeyFromParentPath({
+    const tempChild = await cfdjs.CreateExtkeyFromParentPath({
       extkey: basekey,
       network: network,
       extkeyType: 'extPubkey',
       path: '0',
     });
-    const keyInfo = cfdjs.GetExtkeyInfo({
+    const keyInfo = await cfdjs.GetExtkeyInfo({
       extkey: tempChild.extkey,
     });
     parentFingerprint = keyInfo.fingerprint;
   } else if (network !== inputNetwork) {
-    const keyInfo = cfdjs.GetExtkeyInfo({
+    const keyInfo = await cfdjs.GetExtkeyInfo({
       extkey: basekey,
     });
     let keyType = 'extPubkey';
@@ -1119,7 +1127,7 @@ const createextkey = async function() {
     if ((keyInfo.version === '0488ade4') || (keyInfo.version === '04358394')) {
       // privkey
       keyType = 'extPrivkey';
-      const privkeyRet = cfdjs.GetPrivkeyFromExtkey({
+      const privkeyRet = await cfdjs.GetPrivkeyFromExtkey({
         extkey: basekey,
         network: network,
         wif: false,
@@ -1127,13 +1135,13 @@ const createextkey = async function() {
       });
       key = privkeyRet.privkey;
     } else {
-      const pubkeyRet = cfdjs.GetPubkeyFromExtkey({
+      const pubkeyRet = await cfdjs.GetPubkeyFromExtkey({
         extkey: basekey,
         network: network,
       });
       key = pubkeyRet.pubkey;
     }
-    const newExtkey = cfdjs.CreateExtkey({
+    const newExtkey = await cfdjs.CreateExtkey({
       network: inputNetwork,
       extkeyType: keyType,
       parentFingerprint: keyInfo.fingerprint,
@@ -1152,14 +1160,14 @@ const createextkey = async function() {
     if (splitPath.startsWith('m/')) {
       splitPath = splitPath.substring(2);
     }
-    const keyInfo = getKeyInfo(child.extkey, network, true);
+    const keyInfo = await getKeyInfo(child.extkey, network, true);
     dumpInfo.key = child.extkey;
     dumpInfo.path = path;
     dumpInfo.keyOriginInfo = `[${parentFingerprint}/${splitPath}]`;
     dumpInfo.info = keyInfo;
     console.log(JSON.stringify(dumpInfo, null, 2));
   } else {
-    const keyInfo = getKeyInfo(basekey, network, true);
+    const keyInfo = await getKeyInfo(basekey, network, true);
     dumpInfo.key = basekey;
     if (keyInfo.depth === 0) {
       dumpInfo.path = 'm';
@@ -1212,10 +1220,6 @@ const checkextkey = async function() {
       (childPath.charAt(path.length - 1) === '\'')) {
     childPath = childPath.substring(1, childPath.length - 1);
   }
-
-  const isSuccess = cfdjsUtil.HasChildExtkey(
-      basekey, path, childkey, childPath);
-  console.log(`HasChildExtkey ${isSuccess}.`);
 };
 
 const estimatefee = async function() {
@@ -1245,7 +1249,7 @@ const estimatefee = async function() {
   }
 
   try {
-    const feeInfo = cfdjs.EstimateFee({
+    const feeInfo = await cfdjs.EstimateFee({
       feeRate: feeRate,
       tx: tx,
       isElements: false,
@@ -1256,7 +1260,7 @@ const estimatefee = async function() {
     // do nothing
   }
 
-  const feeInfo = cfdjs.EstimateFee({
+  const feeInfo = await cfdjs.EstimateFee({
     feeRate: feeRate,
     tx: tx,
     isElements: true,
@@ -1288,7 +1292,7 @@ const getissuanceblindingkey = async function() {
   }
   const vout = parseInt(voutStr);
 
-  const keyInfo = cfdjs.GetIssuanceBlindingKey({
+  const keyInfo = await cfdjs.GetIssuanceBlindingKey({
     masterBlindingKey: masterBlindingKey,
     txid: txid,
     vout: vout,
@@ -1311,14 +1315,14 @@ const getblindingkey = async function() {
     address = process.argv[4];
   }
 
-  const keyInfo = cfdjs.GetDefaultBlindingKey({
+  const keyInfo = await cfdjs.GetDefaultBlindingKey({
     masterBlindingKey: masterBlindingKey,
     address: address,
   });
-  const ctKey = cfdjs.GetPubkeyFromPrivkey({
+  const ctKey = await cfdjs.GetPubkeyFromPrivkey({
     privkey: keyInfo.blindingKey,
   });
-  const addrInfo = cfdjs.GetConfidentialAddress({
+  const addrInfo = await cfdjs.GetConfidentialAddress({
     unblindedAddress: address,
     key: ctKey.pubkey,
   });
@@ -1363,12 +1367,12 @@ const getpubkeyaddress = async function() {
     // pubkey
   } else {
     // privkey
-    pubkey = cfdjs.GetPubkeyFromPrivkey({
+    pubkey = await cfdjs.GetPubkeyFromPrivkey({
       privkey: key,
     }).pubkey;
   }
 
-  const addrInfo = cfdjs.CreateAddress({
+  const addrInfo = await cfdjs.CreateAddress({
     isElements: isElements,
     keyData: {
       hex: pubkey,
@@ -1411,7 +1415,7 @@ const getscriptaddress = async function() {
     script = process.argv[5];
   }
 
-  const addrInfo = cfdjs.CreateAddress({
+  const addrInfo = await cfdjs.CreateAddress({
     isElements: isElements,
     keyData: {
       hex: script,
@@ -1442,12 +1446,12 @@ const getconfidentialaddress = async function() {
     // pubkey
   } else {
     // privkey
-    cKey = cfdjs.GetPubkeyFromPrivkey({
+    cKey = await cfdjs.GetPubkeyFromPrivkey({
       privkey: key,
     }).pubkey;
   }
 
-  const ctAddrInfo = cfdjs.GetConfidentialAddress({
+  const ctAddrInfo = await cfdjs.GetConfidentialAddress({
     unblindedAddress: address,
     key: cKey,
   });
@@ -1500,14 +1504,14 @@ const generatekeywithmnemonic = async function() {
     mnemonic = mnemonicList[idx];
     const mnemonicItems = mnemonic.split(' ');
 
-    const seed = cfdjs.ConvertMnemonicToSeed({
+    const seed = await cfdjs.ConvertMnemonicToSeed({
       mnemonic: mnemonicItems,
       passphrase: passphrase,
       // eslint-disable-next-line @typescript-eslint/camelcase
       strict_check: true,
       language: 'en',
     });
-    const masterxpriv = cfdjs.CreateExtkeyFromSeed({
+    const masterxpriv = await cfdjs.CreateExtkeyFromSeed({
       seed: seed.seed,
       network: network,
       extkeyType: 'extPrivkey',
@@ -1517,13 +1521,13 @@ const generatekeywithmnemonic = async function() {
     // console.log(`masterXpriv = ${masterxpriv.extkey}`);
     if (derivePathList.length > 1) {
       for (const path of derivePathList) {
-        const rootxpriv = cfdjs.CreateExtkeyFromParentPath({
+        const rootxpriv = await cfdjs.CreateExtkeyFromParentPath({
           extkey: masterxpriv.extkey,
           network: network,
           extkeyType: 'extPrivkey',
           path: path,
         });
-        const rootxpub = cfdjs.CreateExtPubkey({
+        const rootxpub = await cfdjs.CreateExtPubkey({
           extkey: rootxpriv.extkey,
           network: network,
         });
@@ -1531,13 +1535,13 @@ const generatekeywithmnemonic = async function() {
         console.log(`Xpub (${path}) = ${rootxpub.extkey}`);
       }
     } else {
-      const rootxpriv = cfdjs.CreateExtkeyFromParentPath({
+      const rootxpriv = await cfdjs.CreateExtkeyFromParentPath({
         extkey: masterxpriv.extkey,
         network: network,
         extkeyType: 'extPrivkey',
         path: derivePath,
       });
-      const rootxpub = cfdjs.CreateExtPubkey({
+      const rootxpub = await cfdjs.CreateExtPubkey({
         extkey: rootxpriv.extkey,
         network: network,
       });
@@ -1596,14 +1600,14 @@ const mnemonictoblindtx = async function() {
   }
 
   const lqNetwork = (network === 'mainnet') ? 'liquidv1' : 'regtest';
-  const seed = cfdjs.ConvertMnemonicToSeed({
+  const seed = await cfdjs.ConvertMnemonicToSeed({
     mnemonic: mnemonicArgList,
     passphrase: passphrase,
     // eslint-disable-next-line @typescript-eslint/camelcase
     strict_check: true,
     language: 'en',
   });
-  const masterxpriv = cfdjs.CreateExtkeyFromSeed({
+  const masterxpriv = await cfdjs.CreateExtkeyFromSeed({
     seed: seed.seed,
     network: network,
     extkeyType: 'extPrivkey',
@@ -1617,41 +1621,41 @@ const mnemonictoblindtx = async function() {
   const ctadrs = [];
   for (let i = 0; i < 4; ++i) {
     for (let j = 0; j < 2; ++j) {
-      const xpriv = cfdjs.CreateExtkeyFromParentPath({
+      const xpriv = await cfdjs.CreateExtkeyFromParentPath({
         extkey: masterxpriv.extkey,
         network: network,
         extkeyType: 'extPrivkey',
         path: derivePath + '/' + j + '/' + i,
       });
-      const priv = cfdjs.GetPrivkeyFromExtkey({
+      const priv = await cfdjs.GetPrivkeyFromExtkey({
         extkey: xpriv.extkey,
         network: network,
         wif: true,
         isCompressed: false,
       });
-      const priv3 = cfdjs.GetPrivkeyFromExtkey({
+      const priv3 = await cfdjs.GetPrivkeyFromExtkey({
         extkey: xpriv.extkey,
         network: network,
         wif: true,
         isCompressed: true,
       });
-      const pub = cfdjs.GetPubkeyFromPrivkey({
+      const pub = await cfdjs.GetPubkeyFromPrivkey({
         privkey: priv.privkey,
         isCompressed: false,
       });
-      const privkeyHex = cfdjs.GetPrivkeyFromWif({
+      const privkeyHex = await cfdjs.GetPrivkeyFromWif({
         wif: priv.privkey,
       });
-      const pub2 = cfdjs.GetPubkeyFromPrivkey({
+      const pub2 = await cfdjs.GetPubkeyFromPrivkey({
         privkey: priv3.privkey,
         isCompressed: true,
       });
-      // const priv2 = cfdjs.GetPrivkeyWif({
+      // const priv2 = await cfdjs.GetPrivkeyWif({
       //   hex: privkeyHex.hex,
       //   network: 'testnet',
       //   isCompressed: false,
       // });
-      const addr1 = cfdjs.CreateAddress({
+      const addr1 = await cfdjs.CreateAddress({
         keyData: {
           hex: pub.pubkey,
           type: 'pubkey',
@@ -1660,7 +1664,7 @@ const mnemonictoblindtx = async function() {
         hashType: 'p2pkh',
         isElements: true,
       });
-      const addr2 = cfdjs.CreateAddress({
+      const addr2 = await cfdjs.CreateAddress({
         keyData: {
           hex: pub.pubkey,
           type: 'pubkey',
@@ -1669,7 +1673,7 @@ const mnemonictoblindtx = async function() {
         hashType: 'p2sh-p2wpkh',
         isElements: true,
       });
-      const addr3 = cfdjs.CreateAddress({
+      const addr3 = await cfdjs.CreateAddress({
         keyData: {
           hex: pub.pubkey,
           type: 'pubkey',
@@ -1702,15 +1706,15 @@ const mnemonictoblindtx = async function() {
         ctBlindKey.push(privkeyHex.hex);
         ctKey.push(pub.pubkey);
 
-        const ctadr1 = cfdjs.GetConfidentialAddress({
+        const ctadr1 = await cfdjs.GetConfidentialAddress({
           unblindedAddress: addrs[i].legacy,
           key: pub2.pubkey,
         });
-        const ctadr2 = cfdjs.GetConfidentialAddress({
+        const ctadr2 = await cfdjs.GetConfidentialAddress({
           unblindedAddress: addrs[i].segwit,
           key: pub2.pubkey,
         });
-        const ctadr3 = cfdjs.GetConfidentialAddress({
+        const ctadr3 = await cfdjs.GetConfidentialAddress({
           unblindedAddress: addrs[i].bech32,
           key: pub2.pubkey,
         });
@@ -1894,7 +1898,7 @@ const commandData = {
   },
 };
 
-const helpDump = function(nameobj) {
+const helpDump = async function(nameobj) {
   if (!nameobj.parameter) {
     console.log('  ' + nameobj.name);
   } else {
@@ -1905,7 +1909,7 @@ const helpDump = function(nameobj) {
   }
 };
 
-const help = function() {
+const help = async function() {
   console.log('usage:');
   for (const key in commandData) {
     if (commandData[key]) helpDump(commandData[key]);
@@ -1914,6 +1918,7 @@ const help = function() {
 
 // -----------------------------------------------------------------------------
 const main = async () =>{
+  cfdjs = cfdjsWasm.getCfd();
   try {
     if (process.argv.length > 2) {
       const cmd = process.argv[2].trim();
@@ -1921,7 +1926,7 @@ const main = async () =>{
         if (commandData[key]) {
           const cmdData = commandData[key];
           if (checkString(cmd, cmdData.name, cmdData.alias)) {
-            cmdData.function();
+            await cmdData.function();
             return 0;
           }
         }
@@ -1937,4 +1942,5 @@ const main = async () =>{
   }
   return 1;
 };
-main();
+
+cfdjsWasm.addInitializedListener(main);

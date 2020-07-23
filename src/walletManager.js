@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const ini = require('ini');
 const define = require('./libs/definition');
+const cfdjsWasm = require('cfd-js-wasm');
 
 const emptyBlinder = define.emptyBlinder;
 
@@ -113,26 +114,19 @@ const walletManager = class WalletManager {
    * @param {string} nodeConfigFile node configration file path.
    * @param {string} dirPath directory path.
    * @param {NetworkType} network network type.
-   * @param {string} seed master seed.
-   * @param {string} masterXprivkey master xprivkey (ignore seed).
-   * @param {string} englishMnemonic mnemonic by english.
-   * @param {string} passphrase passphrase.
-   * @param {number} domainIndex domain index no.
    * @param {cfdjs} cfdObject cfd-js object.
    */
   constructor(nodeConfigFile, dirPath = './', network = 'regtest',
-      seed = '', masterXprivkey = '', englishMnemonic = '', passphrase = '',
-      domainIndex = -1, cfdObject = undefined) {
-    this.cfd = (!cfdObject) ? require('cfd-js') : cfdObject;
+      cfdObject = undefined) {
+    this.cfd = (!cfdObject) ? cfdjsWasm.getCfd() : cfdObject;
     this.dirName = dirPath;
     this.walletList = {};
-    this.masterXprivkey = masterXprivkey;
     this.network = network;
-    this.xprivkey = masterXprivkey; // conv to m/44'/(nettype)
-    this.seed = seed;
     this.nodeConfigMap = analyzeConfigureFile(nodeConfigFile, network);
     // console.log('configmap = ', this.nodeConfigMap);
-    let keyNetwork = network;
+    this.bitcoinTipHeightCache = -1;
+    this.elementsTipHeightCache = -1;
+    this.isShutdown = false;
     if ((network === 'mainnet') || (network === 'testnet') || (network === 'regtest')) {
       this.btcClient = new RpcClient.BitcoinCli(
           RpcClient.createConnection(this.nodeConfigMap.bitcoin.host,
@@ -149,25 +143,32 @@ const walletManager = class WalletManager {
               this.nodeConfigMap.elements.port,
               this.nodeConfigMap.elements.user,
               this.nodeConfigMap.elements.pass, this.dbName));
+    }
+  }
+
+  /**
+   * set wallet private key.
+   * @param {string} seed master seed.
+   * @param {string} masterXprivkey master xprivkey (ignore seed).
+   * @param {string} englishMnemonic mnemonic by english.
+   * @param {string} passphrase passphrase.
+   * @param {number} domainIndex domain index no.
+   * @return {Promise<void>} async.
+   */
+  async setMasterPrivkey(seed, masterXprivkey = '', englishMnemonic = '',
+      passphrase = '', domainIndex = -1) {
+    this.masterXprivkey = masterXprivkey;
+    this.xprivkey = masterXprivkey; // conv to m/44'/(nettype)
+    let keyNetwork = this.network;
+    if ((this.network === 'mainnet') || (this.network === 'testnet') ||
+        (this.network === 'regtest')) {
+      // do nothing
+    } else {
       if (keyNetwork === 'liquidv1') {
         keyNetwork = 'mainnet';
       } else {
         keyNetwork = 'regtest';
       }
-    }
-    if (this.seed === '' && englishMnemonic !== '') {
-      this.seed = this.cfd.ConvertMnemonicToSeed({
-        mnemonic: englishMnemonic.mnemonic,
-        language: 'en',
-        passphrase: passphrase,
-      }).seed;
-    }
-    if (this.xprivkey === '') {
-      this.xprivkey = this.cfd.CreateExtkeyFromSeed({
-        seed: seed,
-        network: keyNetwork,
-        extkeyType: 'extPrivkey',
-      }).extkey;
     }
     let nettypeIndex = 0;
     if (domainIndex !== -1) {
@@ -183,17 +184,35 @@ const walletManager = class WalletManager {
     }
     const extPath = `44h/${nettypeIndex}h`;
     // console.log(`bip44 = ${bip44}, nettypeIndex = ${nettypeIndexStr}`);
-    const childExtkey = this.cfd.CreateExtkeyFromParentPath({
+    if (this.xprivkey === '') {
+      let tempSeed = seed;
+      if (englishMnemonic !== '') {
+        const mnemonicRet = await this.cfd.ConvertMnemonicToSeed({
+          mnemonic: englishMnemonic.split(' '),
+          language: 'en',
+          passphrase: passphrase,
+        });
+        tempSeed = mnemonicRet.seed;
+      }
+      if (tempSeed !== '') {
+        const seedRet = await this.cfd.CreateExtkeyFromSeed({
+          seed: tempSeed,
+          network: keyNetwork,
+          extkeyType: 'extPrivkey',
+        });
+        this.xprivkey = seedRet.extkey;
+      }
+    }
+    if (this.xprivkey === '') {
+      throw new Error('master xprivkey is empty.');
+    }
+    const deriveRet = await this.cfd.CreateExtkeyFromParentPath({
       extkey: this.xprivkey,
       network: keyNetwork,
       extkeyType: 'extPrivkey',
       path: extPath,
     });
-    this.xprivkey = childExtkey.extkey;
-    this.bitcoinTipHeightCache = -1;
-    this.elementsTipHeightCache = -1;
-    this.isShutdown = false;
-    // console.log(`xprivkey = ${this.xprivkey}`);
+    this.xprivkey = deriveRet.extkey;
   };
 
   /**
@@ -548,7 +567,7 @@ const walletManager = class WalletManager {
       if (txout) {
         totalAmount += BigInt(txout.amount);
         try {
-          const ctAddr = this.cfd.GetUnblindedAddress({
+          const ctAddr = await this.cfd.GetUnblindedAddress({
             confidentialAddress: txout.address,
           });
           if (ctAddr.confidentialKey) {
@@ -595,12 +614,12 @@ const walletManager = class WalletManager {
 
     // generate btc address
     // TODO: Is it necessary to install it in the wallet?
-    const peginKeys = this.cfd.CreateKeyPair({
+    const peginKeys = await this.cfd.CreateKeyPair({
       network: bitcoinWallet.getNetworkType(),
       wif: false,
       isCompressed: true,
     });
-    const peginAddr = this.cfd.CreatePegInAddress({
+    const peginAddr = await this.cfd.CreatePegInAddress({
       fedpegscript: fedpegScript,
       pubkey: peginKeys.pubkey,
       hashType: 'p2sh-p2wsh', // if dynafed, can use p2wsh
@@ -608,7 +627,7 @@ const walletManager = class WalletManager {
     });
 
     // dummy txout nonce
-    const blindNonce = this.cfd.CreateKeyPair({
+    const blindNonce = await this.cfd.CreateKeyPair({
       network: bitcoinWallet.getNetworkType(),
       wif: false,
       isCompressed: true,
@@ -637,7 +656,7 @@ const walletManager = class WalletManager {
     // console.log('minrelaytxfee:', minrelaytxfee);
 
     // create pegin tx (blind)
-    const peginTx = this.cfd.CreateRawPegin({
+    const peginTx = await this.cfd.CreateRawPegin({
       version: 2,
       locktime: 0,
       txins: [{
@@ -662,7 +681,7 @@ const walletManager = class WalletManager {
     let peginTxHex = peginTx.hex;
     if (isBlind) {
       if (blindCount == 1) {
-        const appendTx1 = this.cfd.ElementsAddRawTransaction({
+        const appendTx1 = await this.cfd.ElementsAddRawTransaction({
           tx: peginTxHex,
           txouts: [{
             address: '',
@@ -673,7 +692,7 @@ const walletManager = class WalletManager {
         });
         peginTxHex = appendTx1.hex;
       }
-      const blindTx1 = this.cfd.BlindRawTransaction({
+      const blindTx1 = await this.cfd.BlindRawTransaction({
         tx: peginTxHex,
         txins: [{
           txid: sendInfo.txid,
@@ -686,7 +705,7 @@ const walletManager = class WalletManager {
       });
       peginTxHex = blindTx1.hex;
     }
-    const feeData = this.cfd.EstimateFee({
+    const feeData = await this.cfd.EstimateFee({
       tx: peginTxHex,
       feeRate: 0.15,
       isElements: true,
@@ -699,7 +718,7 @@ const walletManager = class WalletManager {
         minFee : BigInt(feeData.feeAmount);
     const workAmt = BigInt(lastSendAmount) + BigInt(feeAmt);
     const updateSendAmt = workAmt - updateFeeAmt;
-    const updatePeginTx = this.cfd.UpdateTxOutAmount({
+    const updatePeginTx = await this.cfd.UpdateTxOutAmount({
       tx: peginTx.hex,
       isElements: true,
       txouts: [
@@ -715,7 +734,7 @@ const walletManager = class WalletManager {
     peginTxHex = updatePeginTx.hex;
     if (isBlind) {
       if (blindCount == 1) {
-        const appendTx2 = this.cfd.ElementsAddRawTransaction({
+        const appendTx2 = await this.cfd.ElementsAddRawTransaction({
           tx: peginTxHex,
           txouts: [{
             address: '',
@@ -726,11 +745,11 @@ const walletManager = class WalletManager {
         });
         peginTxHex = appendTx2.hex;
       }
-      const decodeTx = this.cfd.ElementsDecodeRawTransaction({
+      const decodeTx = await this.cfd.ElementsDecodeRawTransaction({
         hex: peginTxHex,
       });
       console.log(decodeTx);
-      const blindTx2 = this.cfd.BlindRawTransaction({
+      const blindTx2 = await this.cfd.BlindRawTransaction({
         tx: peginTxHex,
         txins: [{
           txid: sendInfo.txid,
@@ -743,7 +762,7 @@ const walletManager = class WalletManager {
       });
       peginTxHex = blindTx2.hex;
     }
-    const signTx = this.cfd.SignWithPrivkey({
+    const signTx = await this.cfd.SignWithPrivkey({
       tx: peginTxHex,
       isElements: true,
       txin: {

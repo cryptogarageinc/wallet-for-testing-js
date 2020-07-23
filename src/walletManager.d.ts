@@ -1,5 +1,5 @@
 import {Wallet, SendAmount} from './libs/walletService.d';
-import * as cfdjs from 'cfd-js/index.d';
+import * as cfdjs from 'cfd-js-wasm/index.d';
 
 // definition (need export)
 export enum TargetNode {
@@ -77,19 +77,14 @@ export class WalletManager {
    * @param {string} nodeConfigFile node configration file path.
    * @param {string} dirPath directory path.
    * @param {NetworkType} network network type.
-   * @param {string} seed master seed.
-   * @param {string} masterXprivkey? master xprivkey (ignore seed).
-   * @param {string} englishMnemonic? mnemonic by english.
-   * @param {string} passphrase? passphrase.
-   * @param {number} domainIndex? domain index no.
-   * @param {cfdjs} cfdObject? cfd-js object.
+   * @param {cfdjs.Cfdjs} cfdObject? cfd-js object.
    */
   constructor(nodeConfigFile: string, dirPath: string,
-      network: NetworkType, seed: string,
-      masterXprivkey?: string, englishMnemonic?: string,
-      passphrase?: string, domainIndex?: number,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      cfdObject?: any);
+      network: NetworkType, cfdObject?: cfdjs.Cfdjs);
+
+  setMasterPrivkey(seed: string,
+    masterXprivkey?: string, englishMnemonic?: string,
+    passphrase?: string, domainIndex?: number): Promise<void>;
 
   initialize(targetNodeType?: TargetNode): Promise<boolean>;
 
@@ -115,8 +110,6 @@ export class WalletManager {
       blockHash: string): Promise<GetBlockResponse>;
 
   getBlockHash(targetNodeType: TargetNode, count: number): Promise<string>;
-
-  sendsRawTransaction(targetNodeType: TargetNode, tx: string): string;
 
   getRawTransactionHex(targetNodeType: TargetNode, txid: string,
       blockHash?: string | null): Promise<string>

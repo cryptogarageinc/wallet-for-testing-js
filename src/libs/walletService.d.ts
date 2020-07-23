@@ -1,5 +1,5 @@
 import {WalletManager, TargetNode, AddressType, AddressKind, NodeConfigurationData, BlockData} from '../walletManager';
-import cfdjs from 'cfd-js/index.d';
+import cfdjs from 'cfd-js-wasm/index.d';
 
 export interface UtxoData {
     outpoint: string;
@@ -169,16 +169,16 @@ export class Wallet {
   createRawTransaction(version?: number, locktime?: number,
       txin?: cfdjs.TxInRequest[] | cfdjs.ElementsTxInRequest[],
       txout?: cfdjs.TxOutRequest[] | cfdjs.ElementsTxOutRequest[],
-      fee?: AmountByAsset): cfdjs.CreateRawTransactionResponse |
-        cfdjs.ElementsCreateRawTransactionResponse;
+      fee?: AmountByAsset): Promise<cfdjs.CreateRawTransactionResponse |
+        cfdjs.ElementsCreateRawTransactionResponse>;
 
   getNewAddress(addressType?: AddressType | AddressKind | undefined,
       label?: string, targetIndex?: number,
       hasFeeAddress?: boolean): Promise<AddressData>;
 
-  getConfidentialAddress(address: string): string;
+  getConfidentialAddress(address: string): Promise<string>;
 
-  getBlindingKey(address: string): KeyPair;
+  getBlindingKey(address: string): Promise<KeyPair>;
 
   getAddresses(): Promise<AddressData[]>;
 
@@ -218,8 +218,8 @@ export class Wallet {
   setMinimumFeeRate(minimumFeeRate?: number): Promise<void>
 
   decodeRawTransaction(tx: string):
-      cfdjs.DecodeRawTransactionResponse |
-      cfdjs.ElementsDecodeRawTransactionResponse;
+      Promise<cfdjs.DecodeRawTransactionResponse |
+        cfdjs.ElementsDecodeRawTransactionResponse>;
 
   fundRawTransaction(tx: string,
       feeAsset?: string, ignoreAssets?: string[]): Promise<FundRawTxResponse>;

@@ -290,7 +290,7 @@ const walletManager = class WalletManager {
     if (!this.isShutdown) {
       setTimeout(async () => {
         await this.checkUpdateBitcoinBlock();
-      }, 1000);
+      }, 500);
     }
   }
 
@@ -303,7 +303,7 @@ const walletManager = class WalletManager {
     if (!this.isShutdown) {
       setTimeout(async () => {
         await this.checkUpdateElementsBlock();
-      }, 1000);
+      }, 500);
     }
   }
 
@@ -389,7 +389,11 @@ const walletManager = class WalletManager {
               tipHeight, blockHashList, blockTxMap);
         }
       }
-      this.bitcoinTipHeightCache = tipHeight;
+      if (targetNodeType === 'bitcoin') {
+        this.bitcoinTipHeightCache = tipHeight;
+      } else {
+        this.elementsTipHeightCache = tipHeight;
+      }
       return true;
     } catch (err) {
       console.log('[WalletManager] update error: ', err);
@@ -582,9 +586,12 @@ const walletManager = class WalletManager {
     const feeAmt = BigInt(peginAmount) - totalAmount;
 
     // generate
-    await bitcoinWallet.generateFund(peginAmount, true);
-    await bitcoinWallet.generate(100, '', true);
-    await bitcoinWallet.generate(1);
+    const currentCount = await bitcoinWallet.getCurrentBlockHeightCache();
+    const fundRet = await bitcoinWallet.generateFundAndCount(
+        peginAmount, false);
+    const coinbaseWaitCount = 101;
+    const waitingCount = currentCount + fundRet.count + coinbaseWaitCount - 1;
+    await bitcoinWallet.generateWaitCount(coinbaseWaitCount, '', waitingCount);
 
     // generate btc address
     // TODO: Is it necessary to install it in the wallet?
@@ -607,10 +614,16 @@ const walletManager = class WalletManager {
       isCompressed: true,
     });
 
-    // send btc pegin address
-    const sendInfo = await bitcoinWallet.sendToAddress(
-        peginAddr.mainchainAddress, peginAmount);
-    // console.log('send btc pegin tx:', sendInfo);
+    let sendInfo;
+    try {
+      // send btc pegin address
+      sendInfo = await bitcoinWallet.sendToAddress(
+          peginAddr.mainchainAddress, peginAmount);
+      // console.log('send btc pegin tx:', sendInfo);
+    } catch (e) {
+      console.log(e);
+      throw e;
+    }
 
     await bitcoinWallet.generate(peginConfirmationDepth);
 

@@ -6,8 +6,8 @@ module.exports = {
   },
   extends: [
     'google',
-    "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:@typescript-eslint/recommended",
+    'plugin:@typescript-eslint/eslint-recommended',
+    'plugin:@typescript-eslint/recommended',
   ],
   globals: {
     Atomics: 'readonly',
@@ -17,14 +17,14 @@ module.exports = {
     ecmaVersion: 2018,
   },
   plugins: [
-    "@typescript-eslint",
+    '@typescript-eslint',
   ],
   rules: {
     'new-cap': ['off'],
     'max-len': ['error', {
       'ignoreComments': true,
       'ignoreStrings': true,
-      'ignoreTemplateLiterals': true 
+      'ignoreTemplateLiterals': true,
     }],
     '@typescript-eslint/no-var-requires': 0,
     '@typescript-eslint/no-empty-function': 0,

@@ -87,6 +87,11 @@ export interface SendToAddressResponse extends OutPoint {
     hex: string;
 }
 
+export interface GenerateFundResponse {
+    amount: bigint | number;
+    count: number;
+}
+
 export interface SendAmount {
     address: string;
     amount: bigint | number;
@@ -139,8 +144,16 @@ export class Wallet {
   generate(count: number, address?: string,
     nowait?: boolean): Promise<AmountByAddress>;
 
+  generateWaitCount(count: number, address?: string,
+    waitingBlockHeight?: number): Promise<AmountByAddress>;
+
+  getCurrentBlockHeightCache(): Promise<number>;
+
   generateFund(satoshiAmount: bigint | number,
     nowait?: boolean): Promise<bigint | number>;
+
+  generateFundAndCount(satoshiAmount: bigint | number,
+    nowait?: boolean): Promise<GenerateFundResponse>;
 
   // estimateMode: UNSET or CONSERVATIVE or ECONOMICAL
   sendToAddress(address: string, satoshiAmount: bigint | number,

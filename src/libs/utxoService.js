@@ -48,12 +48,17 @@ module.exports = class UtxoService {
       const blockHash = result[k];
       const block = await this.rpc.getblock(blockHash, 2);
       const blockHeight = block.height;
+      let coinbase = false;
       for (let i = 0; i < block.tx.length; i++) {
-        const coinbase = (i === 0 );
         const txid = block.tx[i].txid;
         const txData = block.tx[i];
+        if ((txData.vin.length == 1) && ('coinbase' in txData.vin[0])) {
+          coinbase = true;
+        } else {
+          coinbase= false;
+        }
         let alreadyRegisted = false;
-        if (i === 0) {
+        if (coinbase) {
           // coinbase
           const solvable = true;
           const extend = {};
@@ -200,7 +205,7 @@ module.exports = class UtxoService {
                   const ret = await this.utxoTable.addUtxo(txid, j,
                       satoshi, addr.address,
                       addr.descriptor, lockingScript, solvable,
-                      blockHash, blockHeight);
+                      blockHash, blockHeight, coinbase);
                   if (ret === false) {
                     throw Error('addUtxo: addUtxo fail.');
                   }
@@ -285,11 +290,17 @@ module.exports = class UtxoService {
       const blockHash = blockHashList[k];
       const blockData = blockTxMap[blockHash];
       const blockHeight = blockData.blockHeight;
+      let coinbase = false;
       for (let i = 0; i < blockData.tx.length; i++) {
         const txid = blockData.tx[i].txid;
-        if (i === 0) {
-          // coinbase
-        } else if (blockData.tx[i].vin) {
+        const txData = blockData.tx[i];
+        if ((!txData.vin) || ((txData.vin.length == 1) && ('coinbase' in txData.vin[0]))) {
+          coinbase = true;
+        } else {
+          coinbase = false;
+        }
+
+        if ((!coinbase) && blockData.tx[i].vin) {
           // update block info
           const count = await this.utxoTable.getUtxoCountByTxid(txid);
           if (count > 0) {
@@ -321,7 +332,6 @@ module.exports = class UtxoService {
                 .getAddressInfoByLockingScript(lockingScript);
             // console.log('addr = ', addr);
             if (addr) {
-              const coinbase = false;
               let confidentialKey = '';
               const extend = {};
               const solvable = (!addr.script && addr.path !== '') ? true : false;
@@ -376,7 +386,7 @@ module.exports = class UtxoService {
                 const ret = await this.utxoTable.addUtxo(txid, j,
                     satoshi, addr.address,
                     addr.descriptor, lockingScript, solvable,
-                    blockHash, blockHeight);
+                    blockHash, blockHeight, coinbase);
                 if (ret === false) {
                   console.log('addUtxo: addUtxo fail.');
                   // throw Error('addUtxo: addUtxo fail.');
@@ -400,6 +410,7 @@ module.exports = class UtxoService {
   }
 
   async addUtxo(tx) {
+    const coinbase = false;
     if (this.parent.isElements === true) {
       const decTx = this.parent.decodeRawTransaction(tx);
       // console.log('addUtxo tx = ', decTx);
@@ -442,7 +453,6 @@ module.exports = class UtxoService {
             const solvable = (!addr.script && addr.path !== '') ? true : false;
             const blockHash = '';
             const blockHeight = -1;
-            const coinbase = false;
             const ret = await this.utxoTable.addUtxo(decTx.txid, i,
                 value, addr.address,
                 addr.descriptor, lockingScript, solvable,
@@ -478,7 +488,7 @@ module.exports = class UtxoService {
             const solvable = (!addr.script && addr.path !== '') ? true : false;
             const ret = await this.utxoTable.addUtxo(decTx.txid, i,
                 decTx.vout[i].value, addr.address,
-                addr.descriptor, lockingScript, solvable);
+                addr.descriptor, lockingScript, solvable, coinbase);
             if (ret === false) {
               throw Error('addUtxo: addUtxo fail.');
             }

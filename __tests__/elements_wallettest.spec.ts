@@ -1,11 +1,11 @@
-import {WalletManager, TargetNode, AddressType, AddressKind, NodeConfigurationData, BlockData, NetworkType} from '../src/walletManager';
+import {WalletManager, TargetNode, AddressType, NetworkType} from '../src/walletManager';
 import {Wallet, OutPoint, SendAmount} from '../src/libs/walletService';
 import fs from 'fs';
 import cfd from 'cfd-js';
 import path from 'path';
 import {assert} from 'console';
 
-const isDebug = true;
+const isDebug = false;
 
 const mainchainNetwork = NetworkType.Regtest;
 const network = NetworkType.LiquidRegtest;
@@ -96,13 +96,13 @@ describe('wallet test', () => {
     jest.setTimeout(30000);
 
     const amount = 20000000000; // 200BTC
-    const ret = await btcWallet1.generateFund(amount, true);
+    const ret = await btcWallet1.generateFund(amount, false);
     console.log('generateFund -> ', ret);
     expect(ret).toBe(amount);
   });
 
   it('btc generate test', async () => {
-    const ret = await btcWallet1.generate(2, '', true);
+    const ret = await btcWallet1.generate(2, '');
     console.log('generate -> ', ret);
     expect(ret.amount).not.toBe(0);
   });
@@ -110,7 +110,7 @@ describe('wallet test', () => {
   it('btc sendtoaddress test', async () => {
     jest.setTimeout(15000);
 
-    await btcWallet2.generate(100, '', true); // for using coinbase utxo
+    await btcWallet2.generate(100, '', false); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
     await btcWallet2.forceUpdateUtxoData(); // after nowait generate
 
@@ -372,6 +372,7 @@ describe('wallet test', () => {
     jest.setTimeout(60000);
 
     const peginAmount = 1000000000;
+    console.log('getPeginConfirmationDepth:', elmWallet1.getPeginConfirmationDepth());
 
     // create elements address (unblind)
     const elmAddr1 = await elmWallet1.getNewAddress(
@@ -385,12 +386,12 @@ describe('wallet test', () => {
       },
     ];
 
-    const txid = await elmWalletMgr.peginFromBitcoin(
-        btcWallet1, elmWallet1, peginAmount, sendTargetList);
-    console.log('pegin tx:', txid);
-
     // send pegin tx
     try {
+      const txid = await elmWalletMgr.peginFromBitcoin(
+          btcWallet1, elmWallet1, peginAmount, sendTargetList);
+      console.log('pegin tx:', txid);
+
       await elmWallet1.generate(1);
       const gettxout = await elmWalletMgr.callRpcDirect(
           TargetNode.Elements, 'gettxout', [txid, 0]);

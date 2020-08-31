@@ -212,8 +212,9 @@ module.exports = class Wallet {
         prevBlockHash = block.previousblockhash;
       }
       blockHashList = blockHashList.reverse();
-      return await this.callbackUpdateBlock(
-          tipHeight, blockHashList, blockTxMap);
+      // return await this.callbackUpdateBlock(
+      //     tipHeight, blockHashList, blockTxMap);
+      return await this.utxoService.changeState(blockHashList, blockTxMap);
     }
   }
 
@@ -245,8 +246,9 @@ module.exports = class Wallet {
         const sleep = (msec) => new Promise(
             (resolve) => setTimeout(resolve, msec));
         let tipHeightAfter = await configTbl.getTipBlockHeight();
+        const waitCount = tipHeightCache + count;
         let loop = 0;
-        while (tipHeightCache == tipHeightAfter) {
+        while (waitCount > tipHeightAfter) {
           await sleep(500);
           tipHeightAfter = await configTbl.getTipBlockHeight();
           ++loop;
@@ -263,30 +265,114 @@ module.exports = class Wallet {
   };
 
   /**
+   * call generate block.
+   * @param {number} count execute count.
+   * @param {string} address send address.
+   * @param {number} waitingBlockHeight wait block height.
+   * @return {Promise<*>} generate response data.
+   */
+  async generateWaitCount(count, address = '', waitingBlockHeight = 0) {
+    await this.forceUpdateUtxoData();
+    const configTbl = this.dbService.getConfigTable();
+
+    let addr = address;
+    if (addr === '') {
+      const addrInfo = await this.addrService.getFeeAddress(
+          'p2wpkh', '', -1, this.gapLimit);
+      addr = addrInfo.address;
+    }
+
+    try {
+      const generateInfo = await this.utxoService.generate(addr, count);
+      if (waitingBlockHeight > 0) {
+        const sleep = (msec) => new Promise(
+            (resolve) => setTimeout(resolve, msec));
+        let loop = 0;
+        let tipHeightAfter = await configTbl.getTipBlockHeight();
+        let prevHeight = tipHeightAfter;
+        while (waitingBlockHeight > tipHeightAfter) {
+          await sleep(500);
+          tipHeightAfter = await configTbl.getTipBlockHeight();
+          ++loop;
+          if (loop > 100) {
+            break;
+          }
+          if (prevHeight != tipHeightAfter) {
+            prevHeight = tipHeightAfter;
+          }
+        }
+      }
+      return generateInfo;
+    } catch (e) {
+      console.log('exception: addr=', addr);
+      throw e;
+    }
+  };
+
+  /**
+   * get current block height cache.
+   * @return {Promise<number>} current block height cache.
+   */
+  async getCurrentBlockHeightCache() {
+    const configTbl = this.dbService.getConfigTable();
+    return await configTbl.getTipBlockHeight();
+  }
+
+  /**
    * generate fund.
    * @param {bigint | number} satoshiAmount satoshi amount.
    * @param {boolean} nowait nowait flag.
    * @return {Promise<bigint | number>} generate amount.
    */
   async generateFund(satoshiAmount, nowait = false) {
+    const result = await this.generateFundAndCount(satoshiAmount, nowait);
+    return result.amount;
+  }
+
+  /**
+   * generate fund.
+   * @param {bigint | number} satoshiAmount satoshi amount.
+   * @param {boolean} nowait nowait flag.
+   * @return {Promise<*>} generate amount and generate count.
+   */
+  async generateFundAndCount(satoshiAmount, nowait = false) {
     if (isNaN(satoshiAmount)) {
       throw new Error('Wallet satoshiAmount is number only.');
     }
     await this.forceUpdateUtxoData();
+    const configTbl = this.dbService.getConfigTable();
+    const tipHeightCache = await configTbl.getTipBlockHeight();
     let total = 0;
+    let count = 0;
     while (true) {
-      const ret = await this.generate(1, '', nowait);
+      const ret = await this.generate(1, '', true);
       if (ret === false) {
         console.log('[generateFund] generate error.');
         break;
       }
+      count = count + 1;
       total += ret.amount;
       if (total >= satoshiAmount) {
         // console.log('[generateFund] collect done: ', satoshiAmount);
         break;
       }
     }
-    return total;
+    if (!nowait) {
+      const sleep = (msec) => new Promise(
+          (resolve) => setTimeout(resolve, msec));
+      let tipHeightAfter = await configTbl.getTipBlockHeight();
+      const waitCount = tipHeightCache + count;
+      let loop = 0;
+      while (waitCount > tipHeightAfter) {
+        await sleep(500);
+        tipHeightAfter = await configTbl.getTipBlockHeight();
+        ++loop;
+        if (loop > 20) {
+          break;
+        }
+      }
+    }
+    return {amount: total, count};
   }
 
   // estimateMode: UNSET or CONSERVATIVE or ECONOMICAL

@@ -78,13 +78,13 @@ describe('wallet test', () => {
     jest.setTimeout(30000);
 
     const amount = 20000000000; // 200BTC
-    const ret = await btcWallet1.generateFund(amount, true);
+    const ret = await btcWallet1.generateFund(amount, false);
     console.log('generateFund -> ', ret);
     expect(ret).toBe(amount);
   });
 
   it('generate test', async () => {
-    const ret = await btcWallet1.generate(2, '', true);
+    const ret = await btcWallet1.generate(2, '', false);
     console.log('generate -> ', ret);
     expect(ret.amount).not.toBe(0);
   });
@@ -92,7 +92,7 @@ describe('wallet test', () => {
   it('sendtoaddress test', async () => {
     jest.setTimeout(15000);
 
-    await btcWallet2.generate(100, '', true); // for using coinbase utxo
+    await btcWallet2.generate(101, '', false); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
     await btcWallet2.forceUpdateUtxoData(); // after nowait generate
 
@@ -237,7 +237,7 @@ describe('wallet test', () => {
   it('sendscriptaddress test', async () => {
     jest.setTimeout(15000);
 
-    await btcWallet2.generate(100, '', true); // for using coinbase utxo
+    await btcWallet2.generate(100, '', false); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
     await btcWallet2.forceUpdateUtxoData(); // after nowait generate
 
@@ -327,7 +327,7 @@ describe('wallet test', () => {
   it('send thresh scriptaddress test', async () => {
     jest.setTimeout(15000);
 
-    await btcWallet2.generate(100, '', true); // for using coinbase utxo
+    await btcWallet2.generate(100, '', false); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
     await btcWallet2.forceUpdateUtxoData(); // after nowait generate
 

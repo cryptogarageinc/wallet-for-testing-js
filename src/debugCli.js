@@ -405,7 +405,7 @@ const verifysignature = async function() {
     },
   };
   try {
-    cfdjs.VerifySignature(verifyInput);
+    await cfdjs.VerifySignature(verifyInput);
     console.log('verify success.');
   } catch (err) {
     console.log('verify fail.');
@@ -500,7 +500,7 @@ const verifysign = async function() {
     if (arr[3].indexOf('(') == -1) {
       address = arr[3];
     } else {
-      cfdjs.ParseDescriptor({
+      await cfdjs.ParseDescriptor({
         isElements: isElements,
         descriptor: arr[3],
         network: (isElements) ? 'liquidv1' : 'mainnet',
@@ -517,17 +517,21 @@ const verifysign = async function() {
     });
   }
 
-  const verifyInput = {
-    tx: tx,
-    isElements: isElements,
-    txins: txins,
-  };
-  console.log('verifyInput: ', verifyInput.txins);
-  const result = await cfdjs.VerifySign(verifyInput);
-  if (result.success) {
-    console.log('VerifySign success.');
-  } else {
-    console.log('VerifySign fail:', JSON.stringify(result, null, 2));
+  try {
+    const verifyInput = {
+      tx: tx,
+      isElements: isElements,
+      txins: txins,
+    };
+    console.log('verifyInput: ', verifyInput.txins);
+    const result = await cfdjs.VerifySign(verifyInput);
+    if (result.success) {
+      console.log('VerifySign success.');
+    } else {
+      console.log('VerifySign fail:', JSON.stringify(result, null, 2));
+    }
+  } catch (e) {
+    console.log(e);
   }
 };
 

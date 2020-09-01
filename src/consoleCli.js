@@ -333,7 +333,7 @@ const main = async function() {
       }
       const walletMgr = new WalletManager(configFile, dir, network,
           cfdjsWasm.getCfd());
-      await setMasterPrivkey(seed, '', '', '', -1);
+      await walletMgr.setMasterPrivkey(seed, '', '', '', -1);
       const inMemoryDB = false;
       const wallet = await walletMgr.createWallet(
           userIndex, userPrefix, target, inMemoryDB);

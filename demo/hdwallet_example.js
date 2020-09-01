@@ -7,7 +7,6 @@ const CONNECTION_CONFIG_FILE = 'connection.conf';
 
 const confPath = path.join(__dirname, CONNECTION_CONFIG_FILE);
 const helper = new DemoExampleHelper(confPath);
-const cfdjs = helper.getCfdJsModule();
 
 const commandData = {
   getwordlist: {
@@ -109,6 +108,7 @@ const checkString = function(arg, matchText, alias = undefined) {
 // -----------------------------------------------------------------------------
 
 const main = async () => {
+  const cfdjs = await helper.getCfdJsModule();
   try {
     if (process.argv.length <= 2) {
       for (let i = 0; i < process.argv.length; i++) {
@@ -132,7 +132,7 @@ const main = async () => {
       // === pre process ===
 
       // === get wordlist ===
-      const result = cfdjs.GetMnemonicWordlist({
+      const result = await cfdjs.GetMnemonicWordlist({
         language,
       });
       if (result.error) {
@@ -171,7 +171,7 @@ const main = async () => {
       }
 
       // === mnemonic to seed ===
-      const result = cfdjs.ConvertMnemonicToSeed({
+      const result = await cfdjs.ConvertMnemonicToSeed({
         mnemonic,
         passphrase,
         language,
@@ -195,7 +195,7 @@ const main = async () => {
       // === pre process ===
 
       // === entropy to mnemonic
-      const result = cfdjs.ConvertEntropyToMnemonic({
+      const result = await cfdjs.ConvertEntropyToMnemonic({
         entropy,
         language,
       });
@@ -234,13 +234,13 @@ const main = async () => {
       // === pre process ===
 
       // === create extkeys
-      const extPubkey = cfdjs.CreateExtkeyFromSeed({
+      const extPubkey = await cfdjs.CreateExtkeyFromSeed({
         seed,
         network,
         'extkeyType': 'extPubkey',
       });
       console.log({'ExtPubKey': extPubkey.extkey});
-      const extPrivkey = cfdjs.CreateExtkeyFromSeed({
+      const extPrivkey = await cfdjs.CreateExtkeyFromSeed({
         seed,
         network,
         'extkeyType': 'extPrivkey',
@@ -264,7 +264,7 @@ const main = async () => {
       // === pre process ===
 
       // === create extkeys
-      const extPubkey = cfdjs.CreateExtkeyFromParent({
+      const extPubkey = await cfdjs.CreateExtkeyFromParent({
         extkey,
         network,
         'extkeyType': 'extPubkey',
@@ -273,7 +273,7 @@ const main = async () => {
       });
       console.log({'ExtPubKey': extPubkey.extkey});
       try {
-        const extPrivkey = cfdjs.CreateExtkeyFromParent({
+        const extPrivkey = await cfdjs.CreateExtkeyFromParent({
           extkey,
           network,
           'extkeyType': 'extPrivkey',
@@ -305,7 +305,7 @@ const main = async () => {
 
       // === create extkeys
       try {
-        const extPubkey = cfdjs.CreateExtkeyFromParentPath({
+        const extPubkey = await cfdjs.CreateExtkeyFromParentPath({
           extkey,
           network,
           'extkeyType': 'extPubkey',
@@ -322,7 +322,7 @@ const main = async () => {
       // else fall through
       }
       try {
-        const extPrivkey = cfdjs.CreateExtkeyFromParentPath({
+        const extPrivkey = await cfdjs.CreateExtkeyFromParentPath({
           extkey,
           network,
           'extkeyType': 'extPrivkey',
@@ -351,7 +351,7 @@ const main = async () => {
       // === pre process ===
 
       // === get random byte hex
-      const extPubkey = cfdjs.CreateExtPubkey({
+      const extPubkey = await cfdjs.CreateExtPubkey({
         extkey,
         network,
       });
@@ -370,7 +370,7 @@ const main = async () => {
       // === pre process ===
 
       // === get random byte hex
-      const extkeyInfo = cfdjs.GetExtkeyInfo({
+      const extkeyInfo = await cfdjs.GetExtkeyInfo({
         extkey,
       });
       console.log(extkeyInfo);
@@ -389,7 +389,7 @@ const main = async () => {
       // === pre process ===
 
       // === get random byte hex
-      const pubkey = cfdjs.GetPubkeyFromExtkey({
+      const pubkey = await cfdjs.GetPubkeyFromExtkey({
         extkey,
         network,
       });
@@ -411,7 +411,7 @@ const main = async () => {
 
       // === get random byte hex
       try {
-        const privkey = cfdjs.GetPrivkeyFromExtkey({
+        const privkey = await cfdjs.GetPrivkeyFromExtkey({
           extkey,
           network,
         });
@@ -436,7 +436,7 @@ const main = async () => {
       // === pre process ===
 
       // === get random byte hex
-      const pubkey = cfdjs.GetPubkeyFromPrivkey({
+      const pubkey = await cfdjs.GetPubkeyFromPrivkey({
         privkey,
         isCompressed,
       });
@@ -463,7 +463,7 @@ const main = async () => {
       // === pre process ===
 
       // === parse descriptor
-      const desc = cfdjs.ParseDescriptor({
+      const desc = await cfdjs.ParseDescriptor({
         isElements,
         descriptor,
         network,

@@ -7,7 +7,6 @@ const CONNECTION_CONFIG_FILE = 'connection.conf';
 const confPath = path.join(__dirname, CONNECTION_CONFIG_FILE);
 const helper = new DemoExampleHelper(confPath);
 const elementsCli = helper.getElementsCli();
-const cfdjs = helper.getCfdJsModule();
 
 const COIN_BASE = 100000000;
 const listunspentMax = 9999999;
@@ -57,6 +56,7 @@ const checkString = function(arg, matchText, alias = undefined) {
 // -----------------------------------------------------------------------------
 
 const main = async () => {
+  const cfdjs = await helper.getCfdJsModule();
   try {
     if (process.argv.length <= 2) {
       for (let i = 0; i < process.argv.length; i++) {
@@ -194,14 +194,14 @@ const main = async () => {
           'asset': assetlabels.bitcoin,
         },
       };
-      const rawTx = cfdjs.CreateRawPegout(CreatePegoutTransactionJson);
+      const rawTx = await cfdjs.CreateRawPegout(CreatePegoutTransactionJson);
 
       // console.log("raw transaction =>\n", rawTx)
 
       // === blind transaction ===
       let blindTx = rawTx;
       if (isBlind) {
-        blindTx = cfdjs.BlindRawTransaction({
+        blindTx = await cfdjs.BlindRawTransaction({
           'tx': rawTx.hex,
           'txins': [
             {
@@ -246,7 +246,7 @@ const main = async () => {
         Object.assign(sighashParamJson.txin,
             {'amount': toSatoshiAmount(utxos.btc.amount)});
       }
-      const sighash = cfdjs.CreateElementsSignatureHash(sighashParamJson);
+      const sighash = await cfdjs.CreateElementsSignatureHash(sighashParamJson);
 
       // console.log("sighash = ", sighash)
 
@@ -254,7 +254,7 @@ const main = async () => {
       const privkey = await elementsCli.dumpprivkey(utxos.btc.address);
       // const signature = cfdtest.CalculateEcSignature(
       //     sighash.sighash, privkey, "regtest")
-      const signature = cfdjs.CalculateEcSignature({
+      const signature = await cfdjs.CalculateEcSignature({
         'sighash': sighash.sighash,
         'privkeyData': {
           'privkey': privkey,
@@ -262,7 +262,7 @@ const main = async () => {
         },
       }).signature;
       // set sign to wit
-      signedTx = cfdjs.AddSign({
+      signedTx = await cfdjs.AddSign({
         'tx': signedTx.hex,
         'isElements': true,
         'txin': {
@@ -288,7 +288,7 @@ const main = async () => {
         if (!redeemScript) {
           redeemScript = inputAddrInfo.btc.scriptPubKey;
         }
-        signedTx = cfdjs.AddSign({
+        signedTx = await cfdjs.AddSign({
           'tx': signedTx.hex,
           'isElements': true,
           'txin': {
@@ -314,7 +314,7 @@ const main = async () => {
         console.log(`\n=== pegout txid === => ${txid}\n`);
       } catch (sendErr) {
         const failedTxHex = signedTx.hex;
-        const failedTx = cfdjs.ElementsDecodeRawTransaction({
+        const failedTx = await cfdjs.ElementsDecodeRawTransaction({
           'hex': failedTxHex,
           'network': 'regtest',
           'mainchainNetwork': 'regtest',
@@ -332,7 +332,7 @@ const main = async () => {
       console.log(`  after bitcoin amount = ${balance.bitcoin}`);
 
       const gettransaction = await elementsCli.gettransaction(txid);
-      const decodePegoutTx = cfdjs.ElementsDecodeRawTransaction({
+      const decodePegoutTx = await cfdjs.ElementsDecodeRawTransaction({
         'hex': gettransaction.hex,
         'network': 'regtest',
         'mainchainNetwork': 'regtest',

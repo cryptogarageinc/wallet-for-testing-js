@@ -7,7 +7,6 @@ const CONNECTION_CONFIG_FILE = 'connection.conf';
 const confPath = path.join(__dirname, CONNECTION_CONFIG_FILE);
 const helper = new DemoExampleHelper(confPath);
 const elementsCli = helper.getElementsCli();
-const cfdjs = helper.getCfdJsModule();
 
 const COIN_BASE = 100000000;
 const listunspentMax = 9999999;
@@ -72,6 +71,7 @@ const checkString = function(arg, matchText, alias = undefined) {
 // -----------------------------------------------------------------------------
 
 const main = async () => {
+  const cfdjs = await helper.getCfdJsModule();
   try {
     if (process.argv.length <= 2) {
       for (let i = 0; i < process.argv.length; i++) {
@@ -202,7 +202,7 @@ const main = async () => {
 
       const gettransaction = await elementsCli.gettransaction(txid);
       // console.log("issue tx =>\n", gettransaction)
-      const decodeIssueTx = cfdjs.ElementsDecodeRawTransaction({
+      const decodeIssueTx = await cfdjs.ElementsDecodeRawTransaction({
         'hex': gettransaction.hex,
         'network': 'regtest',
       });
@@ -213,7 +213,7 @@ const main = async () => {
         // === unblind reissue transaction ===
         const unblindIssueTx = await elementsCli.unblindrawtransaction(
             gettransaction.hex);
-        const decodeIssueTx = cfdjs.ElementsDecodeRawTransaction({
+        const decodeIssueTx = await cfdjs.ElementsDecodeRawTransaction({
           'hex': unblindIssueTx.hex,
           'network': 'regtest',
         });
@@ -305,7 +305,7 @@ const main = async () => {
           'asset': assetlabels.bitcoin,
         },
       };
-      const rawTx = cfdjs.ElementsCreateRawTransaction(
+      const rawTx = await cfdjs.ElementsCreateRawTransaction(
           CreateRawTransactionJson);
       // console.log("raw transaction =>\n", rawTx.hex)
 
@@ -318,7 +318,7 @@ const main = async () => {
         }
       }
       const contractHash = emptyEntropy;
-      const issueTx = cfdjs.SetRawIssueAsset({
+      const issueTx = await cfdjs.SetRawIssueAsset({
         'tx': rawTx.hex,
         'isRandomSortTxOut': false,
         'issuances': [
@@ -343,7 +343,7 @@ const main = async () => {
       const issuancesBlind = [];
       if (isBlind) {
         const masterBlindingKey = await elementsCli.dumpmasterblindingkey();
-        const issueBlindingKey = cfdjs.GetIssuanceBlindingKey({
+        const issueBlindingKey = await cfdjs.GetIssuanceBlindingKey({
           'masterBlindingKey': masterBlindingKey,
           'txid': utxos.btc.txid,
           'vout': utxos.btc.vout,
@@ -356,7 +356,7 @@ const main = async () => {
             'tokenBlindingKey': issueBlindingKey.blindingKey,
           });
         }
-        blindTx = cfdjs.BlindRawTransaction({
+        blindTx = await cfdjs.BlindRawTransaction({
           'tx': issueTx.hex,
           'txins': [
             {
@@ -413,7 +413,7 @@ const main = async () => {
         Object.assign(sighashParamJson.txin,
             {'amount': toSatoshiAmount(utxos.btc.amount)});
       }
-      const sighash = cfdjs.CreateElementsSignatureHash(sighashParamJson);
+      const sighash = await cfdjs.CreateElementsSignatureHash(sighashParamJson);
 
 
       // calc signature
@@ -422,7 +422,7 @@ const main = async () => {
       //     sighash.sighash, privkey, "regtest")
       let signature;
       try {
-        signature = cfdjs.CalculateEcSignature({
+        signature = await cfdjs.CalculateEcSignature({
           'sighash': sighash.sighash,
           'privkeyData': {
             'privkey': privkey,
@@ -430,7 +430,7 @@ const main = async () => {
           },
         }).signature;
       } catch (e) {
-        signature = cfdjs.CalculateEcSignature({
+        signature = await cfdjs.CalculateEcSignature({
           'sighash': sighash.sighash,
           'privkeyData': {
             'privkey': privkey,
@@ -441,7 +441,7 @@ const main = async () => {
       }
 
       // set sign to wit
-      signedTx = cfdjs.AddSign({
+      signedTx = await cfdjs.AddSign({
         'tx': signedTx.hex,
         'isElements': true,
         'txin': {
@@ -463,7 +463,7 @@ const main = async () => {
       });
 
       if (utxos.btc.desc.startsWith('sh(w')) {
-        signedTx = cfdjs.AddSign({
+        signedTx = await cfdjs.AddSign({
           'tx': signedTx.hex,
           'isElements': true,
           'txin': {
@@ -488,7 +488,7 @@ const main = async () => {
         console.log(`\n=== issue txid === => ${txid}\n`);
       } catch (sendErr) {
         const failedTxHex = signedTx.hex;
-        const failedTx = cfdjs.ElementsDecodeRawTransaction({
+        const failedTx = await cfdjs.ElementsDecodeRawTransaction({
           'hex': failedTxHex,
           'network': 'regtest',
         });
@@ -511,7 +511,7 @@ const main = async () => {
 
       const gettransaction = await elementsCli.gettransaction(txid);
       // console.log("issue tx =>\n", gettransaction)
-      const decodeIssueTx = cfdjs.ElementsDecodeRawTransaction({
+      const decodeIssueTx = await cfdjs.ElementsDecodeRawTransaction({
         'hex': gettransaction.hex,
         'network': 'regtest',
       });
@@ -527,7 +527,7 @@ const main = async () => {
         }
         // const unblindReissueTx =
         //     await elementsCli.unblindrawtransaction(gettransaction.hex)
-        const unblindIssueTx = cfdjs.UnblindRawTransaction({
+        const unblindIssueTx = await cfdjs.UnblindRawTransaction({
           'tx': gettransaction.hex,
           'txouts': [
             {
@@ -546,7 +546,7 @@ const main = async () => {
           'issuances': issuancesBlind,
         });
         // console.log("unblind reissued transaction =>\n", unblindIssueTx);
-        const decodeUnblindIssueTx = cfdjs.ElementsDecodeRawTransaction({
+        const decodeUnblindIssueTx = await cfdjs.ElementsDecodeRawTransaction({
           'hex': unblindIssueTx.hex,
           'network': 'regtest',
         });
@@ -649,7 +649,7 @@ const main = async () => {
           rawTx, reissuances);
       // console.log("reissueasset =>\n", rawreissueasset)
       let reissueHex = rawreissueasset.hex;
-      // const rawreissueTx = cfdjs.ElementsDecodeRawTransaction({
+      // const rawreissueTx = await cfdjs.ElementsDecodeRawTransaction({
       //   'hex': reissueHex,
       //   'network': 'regtest',
       // });
@@ -686,7 +686,7 @@ const main = async () => {
               'unblindrawtransaction', [failedTxHex]);
           failedTxHex = unblindedTx.hex;
         }
-        const failedTx = cfdjs.ElementsDecodeRawTransaction({
+        const failedTx = await cfdjs.ElementsDecodeRawTransaction({
           'hex': failedTxHex,
           'network': 'regtest',
         });
@@ -704,7 +704,7 @@ const main = async () => {
       console.log('wallet token amount = ', reissuedBalance[assetInfo.token]);
 
       const gettransaction = await elementsCli.gettransaction(txid);
-      const decodeReissueTx = cfdjs.ElementsDecodeRawTransaction({
+      const decodeReissueTx = await cfdjs.ElementsDecodeRawTransaction({
         'hex': gettransaction.hex,
         'network': 'regtest',
       });
@@ -713,7 +713,7 @@ const main = async () => {
       if (isBlind) {
         const unblindTx =
             await elementsCli.unblindrawtransaction(gettransaction.hex);
-        const decodeUnblindReissueTx = cfdjs.ElementsDecodeRawTransaction({
+        const decodeUnblindReissueTx = await cfdjs.ElementsDecodeRawTransaction({
           'hex': unblindTx.hex,
           'network': 'regtest',
         });
@@ -829,14 +829,14 @@ const main = async () => {
           'asset': assetlabels.bitcoin,
         },
       };
-      const rawTx = cfdjs.ElementsCreateRawTransaction(
+      const rawTx = await cfdjs.ElementsCreateRawTransaction(
           CreateRawTransactionJson);
 
       // console.log("raw transaction =>\n", rawTx.hex)
 
       // === reissue asset ===
       addresses.asset = await elementsCli.getnewaddress();
-      const reissueTx = cfdjs.SetRawReissueAsset({
+      const reissueTx = await cfdjs.SetRawReissueAsset({
         'tx': rawTx.hex,
         'issuances': [
           {
@@ -862,7 +862,7 @@ const main = async () => {
         blindingkeys[type] = await elementsCli.dumpblindingkey(addresses[type]);
       }
       const masterBlindingKey = await elementsCli.dumpmasterblindingkey();
-      const issuanceBlindingKey = cfdjs.GetIssuanceBlindingKey({
+      const issuanceBlindingKey = await cfdjs.GetIssuanceBlindingKey({
         'masterBlindingKey': masterBlindingKey,
         'txid': utxos.token.txid,
         'vout': utxos.token.vout,
@@ -879,7 +879,7 @@ const main = async () => {
       }
       let blindTx = reissueTx;
       if (isBlind) {
-        blindTx = cfdjs.BlindRawTransaction({
+        blindTx = await cfdjs.BlindRawTransaction({
           'tx': reissueTx.hex,
           'txins': [
             {
@@ -925,7 +925,7 @@ const main = async () => {
         // calc signature hash
         inputAddrInfo[type] =
             await elementsCli.getaddressinfo(utxos[type].address);
-        const sighash = cfdjs.CreateElementsSignatureHash({
+        const sighash = await cfdjs.CreateElementsSignatureHash({
           'tx': blindTx.hex,
           'txin': {
             'txid': utxos[type].txid,
@@ -943,7 +943,7 @@ const main = async () => {
         const privkey = await elementsCli.dumpprivkey(utxos[type].address);
         // const signature = cfdtest.CalculateEcSignature(
         //     sighash.sighash, privkey, "testnet")
-        const signature = cfdjs.CalculateEcSignature({
+        const signature = await cfdjs.CalculateEcSignature({
           'sighash': sighash.sighash,
           'privkeyData': {
             'privkey': privkey,
@@ -952,7 +952,7 @@ const main = async () => {
         }).signature;
 
         // set sign to wit
-        signedTx = cfdjs.AddSign({
+        signedTx = await cfdjs.AddSign({
           'tx': signedTx.hex,
           'isElements': true,
           'txin': {
@@ -974,7 +974,7 @@ const main = async () => {
         });
 
         if (utxos[type].desc.startsWith('sh(w')) {
-          signedTx = cfdjs.AddSign({
+          signedTx = await cfdjs.AddSign({
             'tx': signedTx.hex,
             'isElements': true,
             'txin': {
@@ -1000,7 +1000,7 @@ const main = async () => {
         console.log(`\n===reissue txid=== => ${txid}\n`);
       } catch (sendErr) {
         const failedTxHex = signedTx.hex;
-        const failedTx = cfdjs.ElementsDecodeRawTransaction({
+        const failedTx = await cfdjs.ElementsDecodeRawTransaction({
           'hex': failedTxHex,
           'network': 'regtest',
         });
@@ -1019,7 +1019,7 @@ const main = async () => {
 
       const gettransaction = await elementsCli.gettransaction(txid);
       // console.log("reissue tx =>\n", gettransaction)
-      const decodeReissueTx = cfdjs.ElementsDecodeRawTransaction({
+      const decodeReissueTx = await cfdjs.ElementsDecodeRawTransaction({
         'hex': gettransaction.hex,
         'network': 'regtest',
       });
@@ -1034,7 +1034,7 @@ const main = async () => {
       }
       // const unblindReissueTx =
       //     await elementsCli.unblindrawtransaction(gettransaction.hex)
-      const unblindReissueTx = cfdjs.UnblindRawTransaction({
+      const unblindReissueTx = await cfdjs.UnblindRawTransaction({
         'tx': gettransaction.hex,
         'txouts': [
           {
@@ -1053,7 +1053,7 @@ const main = async () => {
         'issuances': issuance,
       });
       // console.log("unblind reissued transaction =>\n", unblindReissueTx);
-      const decodeUnblindReissueTx = cfdjs.ElementsDecodeRawTransaction({
+      const decodeUnblindReissueTx = await cfdjs.ElementsDecodeRawTransaction({
         'hex': unblindReissueTx.hex,
         'network': 'regtest',
       });

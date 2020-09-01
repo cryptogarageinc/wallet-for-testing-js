@@ -8,7 +8,6 @@ const confPath = path.join(__dirname, CONNECTION_CONFIG_FILE);
 const helper = new DemoExampleHelper(confPath);
 const btcCli = helper.getBitcoinCli();
 const elementsCli = helper.getElementsCli();
-const cfdjs = helper.getCfdJsModule();
 
 const COIN_BASE = 100000000;
 const listunspentMax = 9999999;
@@ -80,6 +79,7 @@ const checkString = function(arg, matchText, alias = undefined) {
 // -----------------------------------------------------------------------------
 
 const main = async () => {
+  const cfdjs = await helper.getCfdJsModule();
   try {
     if (process.argv.length <= 2) {
       for (let i = 0; i < process.argv.length; i++) {
@@ -128,7 +128,7 @@ const main = async () => {
           'asset': assetlabels.bitcoin,
         },
       };
-      const rawTx = cfdjs.ElementsCreateRawTransaction(
+      const rawTx = await cfdjs.ElementsCreateRawTransaction(
           CreateRawTransactionJson);
       // console.log("raw transaction =>\n", rawTx.hex)
 
@@ -139,7 +139,7 @@ const main = async () => {
       const fundHex = fundRawRet.hex;
 
       // === post process ===
-      const decodeTx = cfdjs.ElementsDecodeRawTransaction({
+      const decodeTx = await cfdjs.ElementsDecodeRawTransaction({
         'hex': fundHex,
         'network': 'regtest',
       });
@@ -245,7 +245,7 @@ const main = async () => {
           'asset': assetlabels.bitcoin,
         },
       };
-      const rawTx = cfdjs.ElementsCreateRawTransaction(
+      const rawTx = await cfdjs.ElementsCreateRawTransaction(
           CreateRawTransactionJson);
       // console.log("raw transaction =>\n", rawTx.hex)
 
@@ -258,7 +258,7 @@ const main = async () => {
         isBlind: true,
         feeAsset: assetlabels.bitcoin,
       };
-      const estimateFeeResult = cfdjs.EstimateFee(FeeEstimateJson);
+      const estimateFeeResult = await cfdjs.EstimateFee(FeeEstimateJson);
       console.log('EstimateFee =>\n', estimateFeeResult);
 
       // === select coin ===
@@ -275,7 +275,7 @@ const main = async () => {
         },
       };
       console.log('SelectUtxo start. utxos = ' + utxos.length);
-      const coinSelectionResult = cfdjs.SelectUtxos(SelectUtxoJson);
+      const coinSelectionResult = await cfdjs.SelectUtxos(SelectUtxoJson);
       console.log('SelectUtxo =>\n', coinSelectionResult);
 
       // === post process ===
@@ -403,7 +403,7 @@ const main = async () => {
         'locktime': 0,
         'txouts': txouts,
       };
-      const rawTx = cfdjs.ElementsCreateRawTransaction(
+      const rawTx = await cfdjs.ElementsCreateRawTransaction(
           CreateRawTransactionJson);
       // console.log("raw transaction =>\n", rawTx.hex)
 
@@ -445,12 +445,12 @@ const main = async () => {
       };
       // console.log('SelectUtxo start. utxos = ' + utxos.length);
       // console.log('Req = ' + JSON.stringify(FundTxJson, null, 2));
-      const fundRawRet = cfdjs.FundRawTransaction(FundTxJson);
+      const fundRawRet = await cfdjs.FundRawTransaction(FundTxJson);
       console.log('SelectUtxo =>\n', fundRawRet);
       const fundHex = fundRawRet.hex;
 
       // === post process ===
-      const decodeTx = cfdjs.ElementsDecodeRawTransaction({
+      const decodeTx = await cfdjs.ElementsDecodeRawTransaction({
         'hex': fundHex,
         'network': 'regtest',
       });
@@ -544,7 +544,7 @@ const main = async () => {
           },
         ],
       };
-      const rawTx = cfdjs.CreateRawTransaction(
+      const rawTx = await cfdjs.CreateRawTransaction(
           CreateRawTransactionJson);
       // console.log("raw transaction =>\n", rawTx.hex)
 
@@ -557,7 +557,7 @@ const main = async () => {
       const fundHex = fundRawRet.hex;
 
       // === post process ===
-      const decodeTx = cfdjs.DecodeRawTransaction({
+      const decodeTx = await cfdjs.DecodeRawTransaction({
         'hex': fundHex,
         'network': 'regtest',
       });
@@ -645,7 +645,7 @@ const main = async () => {
           },
         ],
       };
-      const rawTx = cfdjs.CreateRawTransaction(
+      const rawTx = await cfdjs.CreateRawTransaction(
           CreateRawTransactionJson);
       // console.log("raw transaction =>\n", rawTx.hex)
 
@@ -667,12 +667,12 @@ const main = async () => {
         },
       };
       console.log('FundRawTransaction start. utxos = ' + utxos.length);
-      const fundRawRet = cfdjs.FundRawTransaction(FundTxJson);
+      const fundRawRet = await cfdjs.FundRawTransaction(FundTxJson);
       console.log('FundRawTransaction =>\n', fundRawRet);
       const fundHex = fundRawRet.hex;
 
       // === post process ===
-      const decodeTx = cfdjs.DecodeRawTransaction({
+      const decodeTx = await cfdjs.DecodeRawTransaction({
         'hex': fundHex,
         'network': 'regtest',
       });

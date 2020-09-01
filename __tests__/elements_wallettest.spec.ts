@@ -1,12 +1,13 @@
 import {WalletManager, TargetNode, AddressType, NetworkType} from '../src/walletManager';
 import {Wallet, OutPoint, SendAmount} from '../src/libs/walletService';
 import fs from 'fs';
-import cfd from 'cfd-js';
+import * as cfdjs from 'cfd-js-wasm';
 import path from 'path';
 import {assert} from 'console';
 
 const isDebug = false;
 
+let cfd: cfdjs.Cfdjs;
 const mainchainNetwork = NetworkType.Regtest;
 const network = NetworkType.LiquidRegtest;
 const btcConfigFilePath = __dirname + '/bitcoin.conf';
@@ -20,8 +21,21 @@ let elmWalletMgr: WalletManager;
 let elmWallet1: Wallet;
 let elmWallet2: Wallet;
 
+let initFlag = false;
+cfdjs.addInitializedListener(async () => {
+  console.log('load cfd-js-wasm');
+  initFlag = true;
+});
+
 const sleep = async function(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+};
+
+const checkCfdInit = async function() {
+  while (!initFlag) {
+    console.log('wait for cfd init.');
+    await sleep(1000);
+  }
 };
 
 const getDbDir = async function(dirName: string) {
@@ -53,12 +67,19 @@ beforeAll(async () => {
   console.log('initialize node');
   const dbDir = await getDbDir('dbdir');
 
+  await checkCfdInit();
+  console.log('cfd init done.');
+  await sleep(1000);
+
   // initialize walletManager
+  cfd = cfdjs.getCfd();
   btcWalletMgr = new WalletManager(btcConfigFilePath, dbDir,
-      mainchainNetwork, testSeed);
+      mainchainNetwork, cfd);
+  await btcWalletMgr.setMasterPrivkey(testSeed);
   btcWalletMgr.initialize(TargetNode.Bitcoin);
   elmWalletMgr = new WalletManager(elementsConfigFilePath, dbDir,
-      network, testSeed);
+      network, cfd);
+  await elmWalletMgr.setMasterPrivkey(testSeed);
   elmWalletMgr.initialize(TargetNode.Elements);
 
   console.log('initialize wallet');
@@ -120,7 +141,7 @@ describe('wallet test', () => {
     // send to 1BTC
     const amount = 100000000;
     const sendData = await btcWallet1.sendToAddress(addr.address, amount);
-    const decTx = btcWallet1.decodeRawTransaction(sendData.hex);
+    const decTx = await btcWallet1.decodeRawTransaction(sendData.hex);
     await btcWallet2.generate(1);
     console.log('sendToAddress1 -> ', sendData);
     assert(decTx.vout, 'undefined');
@@ -136,12 +157,13 @@ describe('wallet test', () => {
     const txout1 = {address: addr2.address, amount: amount2};
     const txout2 = {address: addr3.address, amount: 5000000000};
 
-    let tx2 = btcWallet1.createRawTransaction(2, 0, [txin], [txout1, txout2]);
+    let tx2 = await btcWallet1.createRawTransaction(
+        2, 0, [txin], [txout1, txout2]);
     tx2 = await btcWallet1.fundRawTransaction(tx2.hex);
     // console.log('fundRawTransaction -> ', tx2);
     tx2 = await btcWallet1.signRawTransactionWithWallet(tx2.hex, false);
     const txid = await btcWallet1.sendRawTransaction(tx2.hex);
-    const decTx2 = btcWallet1.decodeRawTransaction(tx2.hex);
+    const decTx2 = await btcWallet1.decodeRawTransaction(tx2.hex);
     console.log('sendToAddress2 -> ', {txid: txid, hex: tx2.hex});
 
     await btcWallet2.generate(1);
@@ -178,11 +200,11 @@ describe('wallet test', () => {
     // multisigに送信
     const amount1 = 100000000;
     const txout1 = {address: multisigAddr1.address, amount: amount1};
-    let tx1 = btcWallet1.createRawTransaction(2, 0, [], [txout1]);
+    let tx1 = await btcWallet1.createRawTransaction(2, 0, [], [txout1]);
     tx1 = await btcWallet1.fundRawTransaction(tx1.hex);
     tx1 = await btcWallet1.signRawTransactionWithWallet(tx1.hex, false);
     const txid1 = await btcWallet1.sendRawTransaction(tx1.hex);
-    const decTx1 = btcWallet1.decodeRawTransaction(tx1.hex);
+    const decTx1 = await btcWallet1.decodeRawTransaction(tx1.hex);
     console.log('[multi] sendRawTransaction1 -> ', {txid: txid1, hex: tx1.hex});
     assert(decTx1.vout, 'undefined');
     if (decTx1.vout) {
@@ -200,9 +222,9 @@ describe('wallet test', () => {
 
     const txin2 = {txid: txid1, vout: 0};
     const txout2 = {address: addr2.address, amount: amount1};
-    let tx2 = btcWallet1.createRawTransaction(2, 0, [txin2], [txout2]);
+    let tx2 = await btcWallet1.createRawTransaction(2, 0, [txin2], [txout2]);
     tx2 = await btcWallet1.fundRawTransaction(tx2.hex);
-    const decTx = btcWallet1.decodeRawTransaction(tx2.hex);
+    const decTx = await btcWallet1.decodeRawTransaction(tx2.hex);
     const prevtxs: OutPoint[] = [];
     assert(decTx.vin, 'undefined');
     if (decTx.vin) {
@@ -226,7 +248,7 @@ describe('wallet test', () => {
     // console.log('[multi] sigs1 -> ', sigs1);
     // console.log('[multi] sigs2 -> ', sigs2);
 
-    tx2 = cfd.AddMultisigSign({
+    tx2 = await cfd.AddMultisigSign({
       tx: tx2.hex,
       txin: {
         txid: txid1,
@@ -282,18 +304,18 @@ describe('wallet test', () => {
     if (!addr1.pubkey) {
       throw new Error('pubkey undefined');
     }
-    const script = cfd.CreateScript({
+    const script = await cfd.CreateScript({
       items: [addr1.pubkey, 'OP_CHECKSIG'],
     });
     const addr = await btcWallet1.getScriptAddress(script.hex, AddressType.P2wsh, 'label1', [addr1.pubkey]);
     // send to 1BTC
     const amount1 = 100000000;
     const txout1 = {address: addr.address, amount: amount1};
-    let tx1 = btcWallet1.createRawTransaction(2, 0, [], [txout1]);
+    let tx1 = await btcWallet1.createRawTransaction(2, 0, [], [txout1]);
     tx1 = await btcWallet1.fundRawTransaction(tx1.hex);
     tx1 = await btcWallet1.signRawTransactionWithWallet(tx1.hex, false);
     const txid1 = await btcWallet1.sendRawTransaction(tx1.hex);
-    const decTx1 = btcWallet1.decodeRawTransaction(tx1.hex);
+    const decTx1 = await btcWallet1.decodeRawTransaction(tx1.hex);
     console.log('[script] sendRawTransaction1 -> ', {txid: txid1, hex: tx1.hex});
     assert(decTx1.vout, 'undefined');
     if (decTx1.vout) {
@@ -308,9 +330,9 @@ describe('wallet test', () => {
 
     const txin2 = {txid: txid1, vout: 0};
     const txout2 = {address: addr1.address, amount: amount1};
-    let tx2 = btcWallet1.createRawTransaction(2, 0, [txin2], [txout2]);
+    let tx2 = await btcWallet1.createRawTransaction(2, 0, [txin2], [txout2]);
     tx2 = await btcWallet1.fundRawTransaction(tx2.hex);
-    const decTx = btcWallet1.decodeRawTransaction(tx2.hex);
+    const decTx = await btcWallet1.decodeRawTransaction(tx2.hex);
     const prevtxs = [];
     assert(decTx.vin, 'undefined');
     if (decTx.vin) {
@@ -332,7 +354,7 @@ describe('wallet test', () => {
     console.log('[multi] sigs1 -> ', sigs1);
     // console.log('[multi] sigs2 -> ', sigs2);
 
-    tx2 = cfd.AddSign({
+    tx2 = await cfd.AddSign({
       tx: tx2.hex,
       txin: {
         txid: txid1,
@@ -417,12 +439,14 @@ describe('wallet test', () => {
     // create elements address (blind)
     const elmAddr1 = await elmWallet1.getNewAddress(
         AddressType.P2wpkh, 'peginAddr');
-    const elmCtAddr1 = elmWallet1.getConfidentialAddress(elmAddr1.address);
+    const elmCtAddr1 = await elmWallet1.getConfidentialAddress(
+        elmAddr1.address);
     console.log('btc pegin address1:', elmCtAddr1);
 
     const elmAddr2 = await elmWallet1.getNewAddress(
         AddressType.P2wpkh, 'peginAddr');
-    const elmCtAddr2 = elmWallet1.getConfidentialAddress(elmAddr2.address);
+    const elmCtAddr2 = await elmWallet1.getConfidentialAddress(
+        elmAddr2.address);
     console.log('btc pegin address2:', elmCtAddr2);
 
     const sendTargetList: SendAmount[] = [
@@ -463,12 +487,14 @@ describe('wallet test', () => {
     const peggedAsset = elmWallet1.getPeggedAsset();
     const elmAddr1 = await elmWallet2.getNewAddress(
         AddressType.P2wpkh, 'addr1');
-    const elmCtAddr1 = elmWallet2.getConfidentialAddress(elmAddr1.address);
+    const elmCtAddr1 = await elmWallet2.getConfidentialAddress(
+        elmAddr1.address);
     console.log('address1:', elmCtAddr1);
 
     const elmAddr2 = await elmWallet1.getNewAddress(
         AddressType.P2wpkh, 'addr1');
-    const elmCtAddr2 = elmWallet1.getConfidentialAddress(elmAddr2.address);
+    const elmCtAddr2 = await elmWallet1.getConfidentialAddress(
+        elmAddr2.address);
     console.log('address2:', elmCtAddr2);
 
     const beforeBalance = await elmWallet2.getBalance(1);
@@ -528,17 +554,20 @@ describe('wallet test', () => {
     const peggedAsset = elmWallet1.getPeggedAsset();
     const elmAddr1 = await elmWallet1.getNewAddress(
         AddressType.P2wpkh, 'iaddr1');
-    const elmCtAddr1 = elmWallet1.getConfidentialAddress(elmAddr1.address);
+    const elmCtAddr1 = await elmWallet1.getConfidentialAddress(
+        elmAddr1.address);
     console.log('address1:', elmCtAddr1);
 
     const elmAddr2 = await elmWallet1.getNewAddress(
         AddressType.P2wpkh, 'taddr1');
-    const elmCtAddr2 = elmWallet1.getConfidentialAddress(elmAddr2.address);
+    const elmCtAddr2 = await elmWallet1.getConfidentialAddress(
+        elmAddr2.address);
     console.log('address1:', elmCtAddr2);
 
     const elmAddr3 = await elmWallet1.getNewAddress(
         AddressType.P2wpkh, 'caddr1');
-    const elmCtAddr3 = elmWallet1.getConfidentialAddress(elmAddr3.address);
+    const elmCtAddr3 = await elmWallet1.getConfidentialAddress(
+        elmAddr3.address);
     console.log('address3:', elmCtAddr3);
 
     const issueAmt = 1000000000;
@@ -549,7 +578,7 @@ describe('wallet test', () => {
     }
     const sendAmt = (BigInt(baseUtxo[0].amount) > BigInt(10000)) ?
       BigInt(baseUtxo[0].amount) - BigInt(10000) : BigInt(baseUtxo[0].amount);
-    const baseTx = cfd.ElementsCreateRawTransaction({
+    const baseTx = await cfd.ElementsCreateRawTransaction({
       version: 2,
       locktime: 0,
       txins: [{
@@ -566,7 +595,7 @@ describe('wallet test', () => {
         asset: peggedAsset,
       },
     });
-    const issueTx = cfd.SetRawIssueAsset({
+    const issueTx = await cfd.SetRawIssueAsset({
       tx: baseTx.hex,
       issuances: [{
         txid: baseUtxo[0].txid,
@@ -583,13 +612,13 @@ describe('wallet test', () => {
     console.log('SetRawIssueAsset:', issueTx);
     const fundTx = await elmWallet1.fundRawTransaction(
         issueTx.hex, peggedAsset, [asset, token]);
-    const blindIssuance: cfd.BlindIssuanceRequest[] = [{
+    const blindIssuance: cfdjs.BlindIssuanceRequest[] = [{
       txid: baseUtxo[0].txid,
       vout: baseUtxo[0].vout,
       assetBlindingKey: '',
       tokenBlindingKey: '',
     }];
-    const blindInput: cfd.BlindTxInRequest[] = [];
+    const blindInput: cfdjs.BlindTxInRequest[] = [];
     for (const utxo of fundTx.utxos) {
       blindInput.push({
         txid: utxo.txid,
@@ -603,13 +632,13 @@ describe('wallet test', () => {
     // const decFundTx = cfd.ElementsDecodeRawTransaction({hex: fundTx.hex});
     // console.log('tx:', JSON.stringify(decFundTx, null, '  '));
     // console.log('blindInput:', blindInput);
-    const blindTx = cfd.BlindRawTransaction({
+    const blindTx = await cfd.BlindRawTransaction({
       tx: fundTx.hex,
       txins: blindInput,
       issuances: blindIssuance,
     });
     const signTx = await elmWallet1.signRawTransactionWithWallet(blindTx.hex);
-    const decTx = cfd.ElementsDecodeRawTransaction({hex: signTx.hex});
+    const decTx = await cfd.ElementsDecodeRawTransaction({hex: signTx.hex});
 
     // send tx
     try {
@@ -643,17 +672,20 @@ describe('wallet test', () => {
     const peggedAsset = elmWallet1.getPeggedAsset();
     const elmAddr1 = await elmWallet1.getNewAddress(
         AddressType.P2wpkh, 'iaddr1');
-    const elmCtAddr1 = elmWallet1.getConfidentialAddress(elmAddr1.address);
+    const elmCtAddr1 = await elmWallet1.getConfidentialAddress(
+        elmAddr1.address);
     console.log('address1:', elmCtAddr1);
 
     const elmAddr2 = await elmWallet1.getNewAddress(
         AddressType.P2wpkh, 'taddr1');
-    const elmCtAddr2 = elmWallet1.getConfidentialAddress(elmAddr2.address);
+    const elmCtAddr2 = await elmWallet1.getConfidentialAddress(
+        elmAddr2.address);
     console.log('address1:', elmCtAddr2);
 
     const elmAddr3 = await elmWallet1.getNewAddress(
         AddressType.P2wpkh, 'caddr1');
-    const elmCtAddr3 = elmWallet1.getConfidentialAddress(elmAddr3.address);
+    const elmCtAddr3 = await elmWallet1.getConfidentialAddress(
+        elmAddr3.address);
     console.log('address3:', elmCtAddr3);
 
     const tokenInfo = await elmWallet1.getAssetByLabel('token1');
@@ -667,7 +699,7 @@ describe('wallet test', () => {
     if (tokenUtxo[0].asset !== token) {
       throw new Error('get listunspent asset fail.');
     }
-    const tokenBaseTx = cfd.ElementsCreateRawTransaction({
+    const tokenBaseTx = await cfd.ElementsCreateRawTransaction({
       version: 2,
       locktime: 0,
       txins: [{
@@ -684,7 +716,7 @@ describe('wallet test', () => {
         asset: peggedAsset,
       },
     });
-    const reissueTx = cfd.SetRawReissueAsset({
+    const reissueTx = await cfd.SetRawReissueAsset({
       tx: tokenBaseTx.hex,
       issuances: [{
         txid: tokenUtxo[0].txid,
@@ -699,12 +731,12 @@ describe('wallet test', () => {
     const asset = reissueTx.issuances[0].asset;
     const reissueFundTx = await elmWallet1.fundRawTransaction(
         reissueTx.hex, peggedAsset, [asset, token]);
-    const blindIssuance2: cfd.BlindIssuanceRequest[] = [{
+    const blindIssuance2: cfdjs.BlindIssuanceRequest[] = [{
       txid: tokenUtxo[0].txid,
       vout: tokenUtxo[0].vout,
       assetBlindingKey: '',
     }];
-    const blindInput2: cfd.BlindTxInRequest[] = [];
+    const blindInput2: cfdjs.BlindTxInRequest[] = [];
     for (const utxo of reissueFundTx.utxos) {
       blindInput2.push({
         txid: utxo.txid,
@@ -715,14 +747,14 @@ describe('wallet test', () => {
         amount: utxo.amount,
       });
     }
-    const reissueBlindTx = cfd.BlindRawTransaction({
+    const reissueBlindTx = await cfd.BlindRawTransaction({
       tx: reissueFundTx.hex,
       txins: blindInput2,
       issuances: blindIssuance2,
     });
     const reissueSignTx = await elmWallet1.signRawTransactionWithWallet(
         reissueBlindTx.hex);
-    const reissueDecTx = cfd.ElementsDecodeRawTransaction({
+    const reissueDecTx = await cfd.ElementsDecodeRawTransaction({
       hex: reissueSignTx.hex});
     // send tx
     try {
@@ -750,17 +782,20 @@ describe('wallet test', () => {
     const peggedAsset = elmWallet1.getPeggedAsset();
     const elmAddr1 = await elmWallet1.getNewAddress(
         AddressType.P2wpkh, 'iaddr1');
-    const elmCtAddr1 = elmWallet1.getConfidentialAddress(elmAddr1.address);
+    const elmCtAddr1 = await elmWallet1.getConfidentialAddress(
+        elmAddr1.address);
     console.log('address1:', elmCtAddr1);
 
     const elmAddr2 = await elmWallet1.getNewAddress(
         AddressType.P2wpkh, 'taddr1');
-    const elmCtAddr2 = elmWallet1.getConfidentialAddress(elmAddr2.address);
+    const elmCtAddr2 = await elmWallet1.getConfidentialAddress(
+        elmAddr2.address);
     console.log('address1:', elmCtAddr2);
 
     const elmAddr3 = await elmWallet1.getNewAddress(
         AddressType.P2wpkh, 'caddr1');
-    const elmCtAddr3 = elmWallet1.getConfidentialAddress(elmAddr3.address);
+    const elmCtAddr3 = await elmWallet1.getConfidentialAddress(
+        elmAddr3.address);
     console.log('address3:', elmCtAddr3);
 
     const issueAmt = 1000000000;
@@ -771,7 +806,7 @@ describe('wallet test', () => {
     }
     const sendAmt = (BigInt(baseUtxo[0].amount) > BigInt(10000)) ?
       BigInt(baseUtxo[0].amount) - BigInt(10000) : BigInt(baseUtxo[0].amount);
-    const baseTx = cfd.ElementsCreateRawTransaction({
+    const baseTx = await cfd.ElementsCreateRawTransaction({
       version: 2,
       locktime: 0,
       txins: [{
@@ -788,7 +823,7 @@ describe('wallet test', () => {
         asset: peggedAsset,
       },
     });
-    const issueTx = cfd.SetRawIssueAsset({
+    const issueTx = await cfd.SetRawIssueAsset({
       tx: baseTx.hex,
       issuances: [{
         txid: baseUtxo[0].txid,
@@ -805,13 +840,13 @@ describe('wallet test', () => {
     console.log('SetRawIssueAsset:', issueTx);
     const fundTx = await elmWallet1.fundRawTransaction(
         issueTx.hex, peggedAsset, [asset, token]);
-    const blindIssuance: cfd.BlindIssuanceRequest[] = [{
+    const blindIssuance: cfdjs.BlindIssuanceRequest[] = [{
       txid: baseUtxo[0].txid,
       vout: baseUtxo[0].vout,
       assetBlindingKey: '',
       tokenBlindingKey: '',
     }];
-    const blindInput: cfd.BlindTxInRequest[] = [];
+    const blindInput: cfdjs.BlindTxInRequest[] = [];
     for (const utxo of fundTx.utxos) {
       blindInput.push({
         txid: utxo.txid,
@@ -825,13 +860,13 @@ describe('wallet test', () => {
     // const decFundTx = cfd.ElementsDecodeRawTransaction({hex: fundTx.hex});
     // console.log('tx:', JSON.stringify(decFundTx, null, '  '));
     // console.log('blindInput:', blindInput);
-    const blindTx = cfd.BlindRawTransaction({
+    const blindTx = await cfd.BlindRawTransaction({
       tx: fundTx.hex,
       txins: blindInput,
       issuances: blindIssuance,
     });
     const signTx = await elmWallet1.signRawTransactionWithWallet(blindTx.hex);
-    const decTx = cfd.ElementsDecodeRawTransaction({hex: signTx.hex});
+    const decTx = await cfd.ElementsDecodeRawTransaction({hex: signTx.hex});
 
     // send tx
     try {
@@ -863,12 +898,14 @@ describe('wallet test', () => {
 
     const elmAddr1 = await elmWallet2.getNewAddress(
         AddressType.P2wpkh, 'addr1');
-    const elmCtAddr1 = elmWallet2.getConfidentialAddress(elmAddr1.address);
+    const elmCtAddr1 = await elmWallet2.getConfidentialAddress(
+        elmAddr1.address);
     console.log('address1:', elmCtAddr1);
 
     const elmAddr2 = await elmWallet2.getNewAddress(
         AddressType.P2wpkh, 'addr2');
-    const elmCtAddr2 = elmWallet2.getConfidentialAddress(elmAddr2.address);
+    const elmCtAddr2 = await elmWallet2.getConfidentialAddress(
+        elmAddr2.address);
     console.log('address2:', elmCtAddr2);
 
     const beforeBalance = await elmWallet2.getBalance(1);
@@ -909,13 +946,13 @@ describe('wallet test', () => {
     console.log('before balance:', beforeBalance);
 
     const asset1Amt = 100000000;
-    const keyPair = cfd.CreateKeyPair({
+    const keyPair = await cfd.CreateKeyPair({
       wif: false,
       isCompressed: true,
     });
 
     const OP_RETURN = '6a';
-    const destroyTxBase = cfd.CreateDestroyAmount({
+    const destroyTxBase = await cfd.CreateDestroyAmount({
       version: 2,
       locktime: 0,
       txouts: [{
@@ -932,7 +969,7 @@ describe('wallet test', () => {
     });
     const fundTx = await elmWallet1.fundRawTransaction(
         destroyTxBase.hex, peggedAsset);
-    const blindInput: cfd.BlindTxInRequest[] = [];
+    const blindInput: cfdjs.BlindTxInRequest[] = [];
     for (const utxo of fundTx.utxos) {
       blindInput.push({
         txid: utxo.txid,
@@ -946,12 +983,12 @@ describe('wallet test', () => {
     // const decFundTx = cfd.ElementsDecodeRawTransaction({hex: fundTx.hex});
     // console.log('tx:', JSON.stringify(decFundTx, null, '  '));
     // console.log('blindInput:', blindInput);
-    const blindTx = cfd.BlindRawTransaction({
+    const blindTx = await cfd.BlindRawTransaction({
       tx: fundTx.hex,
       txins: blindInput,
     });
     const signTx = await elmWallet1.signRawTransactionWithWallet(blindTx.hex);
-    const decTx = cfd.ElementsDecodeRawTransaction({hex: signTx.hex});
+    const decTx = await cfd.ElementsDecodeRawTransaction({hex: signTx.hex});
 
     // send tx
     try {

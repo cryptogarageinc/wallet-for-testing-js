@@ -7,7 +7,6 @@ const CONNECTION_CONFIG_FILE = 'connection.conf';
 const confPath = path.join(__dirname, CONNECTION_CONFIG_FILE);
 const helper = new DemoExampleHelper(confPath);
 const elementsCli = helper.getElementsCli();
-const cfdjs = helper.getCfdJsModule();
 
 const NETWORK = 'regtest';
 
@@ -57,6 +56,7 @@ const checkString = function(arg, matchText, alias = undefined) {
 // -----------------------------------------------------------------------------
 
 const main = async () => {
+  const cfdjs = await helper.getCfdJsModule();
   let currentFunction = undefined;
   try {
     if (process.argv.length <= 2) {
@@ -79,7 +79,7 @@ const main = async () => {
         'network': NETWORK,
         'isCompressed': true,
       };
-      const blindKeyData = cfdjs.CreateKeyPair(blindKeyPairRequestJson);
+      const blindKeyData = await cfdjs.CreateKeyPair(blindKeyPairRequestJson);
       console.log('blindKeyData >>\n',
           JSON.stringify(blindKeyData, null, 2), '\n');
 
@@ -89,7 +89,7 @@ const main = async () => {
         'network': NETWORK,
         'isCompressed': true,
       };
-      const addressKeyData = cfdjs.CreateKeyPair(addressKeyPairRequestJson);
+      const addressKeyData = await cfdjs.CreateKeyPair(addressKeyPairRequestJson);
       console.log('addressKeyData >>\n',
           JSON.stringify(addressKeyData, null, 2), '\n');
 
@@ -121,7 +121,7 @@ const main = async () => {
           'hashType': hashtype,
           'isElements': true,
         };
-        const addrRet = cfdjs.CreateAddress(createAddressParamJson);
+        const addrRet = await cfdjs.CreateAddress(createAddressParamJson);
         console.log(`CreateAddress(${targetType}) >>\n`,
             JSON.stringify(addrRet, null, 2), '\n');
 
@@ -129,7 +129,7 @@ const main = async () => {
           'unblindedAddress': addrRet.address,
           'key': blindKeyData.pubkey,
         };
-        const caddrRet = cfdjs.GetConfidentialAddress(
+        const caddrRet = await cfdjs.GetConfidentialAddress(
             getConfidentialAddressParamJson);
         console.log(`GetConfidentialAddress(${targetType}) >>\n`,
             JSON.stringify(caddrRet, null, 2), '\n');
@@ -169,7 +169,7 @@ const main = async () => {
         const tx = await elementsCli.gettransaction(txid);
         const unblindTx = await elementsCli.unblindrawtransaction(tx.hex);
         // const decTx = await elementsCli.decoderawtransaction(unblindTx.hex)
-        const decTx = cfdjs.ElementsDecodeRawTransaction({
+        const decTx = await cfdjs.ElementsDecodeRawTransaction({
           'hex': unblindTx.hex,
           'network': 'regtest',
         });
@@ -186,7 +186,7 @@ const main = async () => {
         'network': NETWORK,
         'isCompressed': true,
       };
-      const blindKeyData = cfdjs.CreateKeyPair(blindKeyPairRequestJson);
+      const blindKeyData = await cfdjs.CreateKeyPair(blindKeyPairRequestJson);
       console.log('blindKeyData >>\n',
           JSON.stringify(blindKeyData, null, 2), '\n');
 
@@ -198,7 +198,7 @@ const main = async () => {
           'network': NETWORK,
           'isCompressed': true,
         };
-        const addressKeyData = cfdjs.CreateKeyPair(addressKeyPairRequestJson);
+        const addressKeyData = await cfdjs.CreateKeyPair(addressKeyPairRequestJson);
         console.log(`addressKeyData(${i}) >>\n`,
             JSON.stringify(addressKeyData, null, 2), '\n');
         addressDatas.push(addressKeyData);
@@ -215,7 +215,7 @@ const main = async () => {
         'hashType': 'p2sh',
         'isElements': true,
       };
-      const createMultisigResult = cfdjs.CreateMultisig(
+      const createMultisigResult = await cfdjs.CreateMultisig(
           createMultisigParamJson);
       console.log('Multisig >> \n', createMultisigResult, '\n');
 
@@ -247,7 +247,7 @@ const main = async () => {
           'hashType': hashtype,
           'isElements': true,
         };
-        const addrRet = cfdjs.CreateAddress(createAddressParamJson);
+        const addrRet = await cfdjs.CreateAddress(createAddressParamJson);
         console.log(`CreateAddress(${targetType}) >>\n`,
             JSON.stringify(addrRet, null, 2), '\n');
 
@@ -255,7 +255,7 @@ const main = async () => {
           'unblindedAddress': addrRet.address,
           'key': blindKeyData.pubkey,
         };
-        const caddrRet = cfdjs.GetConfidentialAddress(
+        const caddrRet = await cfdjs.GetConfidentialAddress(
             getConfidentialAddressParamJson);
         console.log(`GetConfidentialAddress(${targetType}) >>\n`,
             JSON.stringify(caddrRet, null, 2), '\n');
@@ -297,7 +297,7 @@ const main = async () => {
         const tx = await elementsCli.gettransaction(txid);
         const unblindTx = await elementsCli.unblindrawtransaction(tx.hex);
         // const decTx = await elementsCli.decoderawtransaction(unblindTx.hex)
-        const decTx = cfdjs.ElementsDecodeRawTransaction({
+        const decTx = await cfdjs.ElementsDecodeRawTransaction({
           'hex': unblindTx.hex,
           'network': 'regtest',
         });

@@ -7,7 +7,6 @@ const CONNECTION_CONFIG_FILE = 'connection.conf';
 const confPath = path.join(__dirname, CONNECTION_CONFIG_FILE);
 const helper = new DemoExampleHelper(confPath);
 const elementsCli = helper.getElementsCli();
-const cfdjs = helper.getCfdJsModule();
 
 const listunspentMax = 9999999;
 const emptyEntropy = '0000000000000000000000000000000000000000000000000000000000000000'; // eslint-disable-line max-len
@@ -53,6 +52,7 @@ const checkString = function(arg, matchText, alias = undefined) {
 // -----------------------------------------------------------------------------
 
 const main = async () => {
+  const cfdjs = await helper.getCfdJsModule();
   try {
     if (process.argv.length <= 2) {
       for (let i = 0; i < process.argv.length; i++) {
@@ -187,7 +187,7 @@ const main = async () => {
           'asset': assetlabels.bitcoin,
         },
       };
-      const rawTx = cfdjs.CreateDestroyAmount(
+      const rawTx = await cfdjs.CreateDestroyAmount(
           CreateDestroyAmountTransactionJson,
       );
       // console.log("raw transaction =>\n", rawTx)
@@ -195,7 +195,7 @@ const main = async () => {
       // === blind transaction ===
       let blindTx = rawTx;
       if (isBlind) {
-        blindTx = cfdjs.BlindRawTransaction({
+        blindTx = await cfdjs.BlindRawTransaction({
           'tx': rawTx.hex,
           'txins': [
             {
@@ -259,7 +259,7 @@ const main = async () => {
           Object.assign(sighashParamJson.txin,
               {'amount': toSatoshiAmount(utxosBitcoin.btc.amount)});
         }
-        const sighash = cfdjs.CreateElementsSignatureHash(
+        const sighash = await cfdjs.CreateElementsSignatureHash(
             sighashParamJson,
         );
         // console.log("sighash = ", sighash)
@@ -268,7 +268,7 @@ const main = async () => {
         const privkey = await elementsCli.dumpprivkey(utxosBitcoin.btc.address);
         // const signature = cfdtest.CalculateEcSignature(
         //     sighash.sighash, privkey, "regtest")
-        const signature = cfdjs.CalculateEcSignature({
+        const signature = await cfdjs.CalculateEcSignature({
           'sighash': sighash.sighash,
           'privkeyData': {
             'privkey': privkey,
@@ -276,7 +276,7 @@ const main = async () => {
           },
         }).signature;
         // set sign to wit
-        signedTx = cfdjs.AddSign({
+        signedTx = await cfdjs.AddSign({
           'tx': signedTx.hex,
           'isElements': true,
           'txin': {
@@ -302,7 +302,7 @@ const main = async () => {
           if (!redeemScript) {
             redeemScript = inputAddrInfo.btc.scriptPubKey;
           }
-          signedTx = cfdjs.AddSign({
+          signedTx = await cfdjs.AddSign({
             'tx': signedTx.hex,
             'isElements': true,
             'txin': {
@@ -344,7 +344,7 @@ const main = async () => {
           Object.assign(sighashParamJson.txin,
               {'amount': toSatoshiAmount(utxos.btc.amount)});
         }
-        const sighash = cfdjs.CreateElementsSignatureHash(
+        const sighash = await cfdjs.CreateElementsSignatureHash(
             sighashParamJson,
         );
         // console.log("sighash = ", sighash)
@@ -353,7 +353,7 @@ const main = async () => {
         const privkey = await elementsCli.dumpprivkey(utxos.btc.address);
         // const signature = cfdtest.CalculateEcSignature(
         //     sighash.sighash, privkey, "regtest")
-        const signature = cfdjs.CalculateEcSignature({
+        const signature = await cfdjs.CalculateEcSignature({
           'sighash': sighash.sighash,
           'privkeyData': {
             'privkey': privkey,
@@ -361,7 +361,7 @@ const main = async () => {
           },
         }).signature;
         // set sign to wit
-        signedTx = cfdjs.AddSign({
+        signedTx = await cfdjs.AddSign({
           'tx': signedTx.hex,
           'isElements': true,
           'txin': {
@@ -387,7 +387,7 @@ const main = async () => {
           if (!redeemScript) {
             redeemScript = inputAddrInfo.btc.scriptPubKey;
           }
-          signedTx = cfdjs.AddSign({
+          signedTx = await cfdjs.AddSign({
             'tx': signedTx.hex,
             'isElements': true,
             'txin': {
@@ -414,7 +414,7 @@ const main = async () => {
         console.log(`\n=== destroyamount txid === => ${txid}\n`);
       } catch (sendErr) {
         const failedTxHex = signedTx.hex;
-        const failedTx = cfdjs.ElementsDecodeRawTransaction({
+        const failedTx = await cfdjs.ElementsDecodeRawTransaction({
           'hex': failedTxHex,
           'network': 'regtest',
         });
@@ -428,7 +428,7 @@ const main = async () => {
       await elementsCli.generatetoaddress(blockNum, addresses.generate);
 
       const gettransaction = await elementsCli.gettransaction(txid);
-      const decodeDestroyamountTx = cfdjs.ElementsDecodeRawTransaction({
+      const decodeDestroyamountTx = await cfdjs.ElementsDecodeRawTransaction({
         'hex': gettransaction.hex,
         'network': 'regtest',
       });

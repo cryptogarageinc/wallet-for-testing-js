@@ -65,17 +65,17 @@ module.exports = class AddressService {
     // generate hdkey
     const childPath = `${addrRecvType}/${index}`;
     const path = `${this.masterXprivkey}/${childPath}`;
-    const extkey = this.cfd.CreateExtkeyFromParentPath({
+    const extkey = await this.cfd.CreateExtkeyFromParentPath({
       extkey: this.masterXprivkey,
       network: this.mainchainNetwork,
       extkeyType: 'extPubkey',
       path: childPath,
     });
-    const pubkey = this.cfd.GetPubkeyFromExtkey({
+    const pubkey = await this.cfd.GetPubkeyFromExtkey({
       extkey: extkey.extkey,
       network: this.mainchainNetwork,
     });
-    const addrInfo = this.cfd.CreateAddress({
+    const addrInfo = await this.cfd.CreateAddress({
       keyData: {
         hex: pubkey.pubkey,
         type: 'pubkey',
@@ -109,7 +109,7 @@ module.exports = class AddressService {
   };
 
   async getScriptAddress(script, addrType = 'p2wsh', label = '', relatedPubkey = []) {
-    const addrInfo = this.cfd.CreateAddress({
+    const addrInfo = await this.cfd.CreateAddress({
       keyData: {
         hex: script,
         type: 'redeem_script',
@@ -122,7 +122,7 @@ module.exports = class AddressService {
     let isMultisig = false;
     let descriptor = '';
     try {
-      const multisigRet = this.cfd.GetAddressesFromMultisig( {
+      const multisigRet = await this.cfd.GetAddressesFromMultisig( {
         isElements: this.isElements,
         redeemScript: script,
         network: this.network,

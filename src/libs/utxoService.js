@@ -32,12 +32,15 @@ module.exports = class UtxoService {
   };
 
   async generate(address, count) {
-    const lockingScript = this.cfd.GetAddressInfo({
-      address: address,
-      isElements: this.parent.isElements,
-    }).lockingScript;
-    const descriptor = await this.addressService.getDescriptor(address);
+    // const lockingScript = await this.cfd.GetAddressInfo({
+    //  address: address,
+    //  isElements: this.parent.isElements,
+    // }).lockingScript;
+    // const descriptor = await this.addressService.getDescriptor(address);
     // console.log('  descriptor = ', descriptor);
+    const addressData = await this.addressService.getAddressInfo(address);
+    const lockingScript = addressData.lockingScript;
+    const descriptor = addressData.descriptor;
 
     // console.log('  generatetoaddress count = ', count);
     // console.log('  generatetoaddress address = ', address);
@@ -82,9 +85,9 @@ module.exports = class UtxoService {
                   alreadyRegisted = true;
                 }
               } else if (this.parent.isElements) {
-                const blindingKey = this.parent.getBlindingKey(address);
+                const blindingKey = await this.parent.getBlindingKey(address);
                 confidentialKey = blindingKey.pubkey;
-                const unblindData = this.cfd.UnblindRawTransaction({
+                const unblindData = await this.cfd.UnblindRawTransaction({
                   tx: txData.hex,
                   txouts: [{
                     index: j,
@@ -174,9 +177,10 @@ module.exports = class UtxoService {
                     throw Error('addUtxo: addUtxo fail.');
                   }
                 } else if (this.parent.isElements) {
-                  const blindingKey = this.parent.getBlindingKey(addr.address);
+                  const blindingKey = await this.parent.getBlindingKey(
+                      addr.address);
                   confidentialKey = blindingKey.pubkey;
-                  const unblindData = this.cfd.UnblindRawTransaction({
+                  const unblindData = await this.cfd.UnblindRawTransaction({
                     tx: txData.hex,
                     txouts: [{
                       index: j,
@@ -349,10 +353,11 @@ module.exports = class UtxoService {
                   // throw Error('addUtxo: addUtxo fail.');
                 }
               } else if (this.parent.isElements) {
-                const blindingKey = this.parent.getBlindingKey(addr.address);
+                const blindingKey = await this.parent.getBlindingKey(
+                    addr.address);
                 confidentialKey = blindingKey.pubkey;
                 try {
-                  const unblindData = this.cfd.UnblindRawTransaction({
+                  const unblindData = await this.cfd.UnblindRawTransaction({
                     tx: blockData.tx[i].hex,
                     txouts: [{
                       index: j,
@@ -388,7 +393,7 @@ module.exports = class UtxoService {
                     addr.descriptor, lockingScript, solvable,
                     blockHash, blockHeight, coinbase);
                 if (ret === false) {
-                  console.log('addUtxo: addUtxo fail.');
+                  // console.log('addUtxo: addUtxo fail.');
                   // throw Error('addUtxo: addUtxo fail.');
                 }
               }
@@ -412,7 +417,7 @@ module.exports = class UtxoService {
   async addUtxo(tx) {
     const coinbase = false;
     if (this.parent.isElements === true) {
-      const decTx = this.parent.decodeRawTransaction(tx);
+      const decTx = await this.parent.decodeRawTransaction(tx);
       // console.log('addUtxo tx = ', decTx);
       for (let i = 0; i < decTx.vout.length; ++i) {
         if (decTx.vout[i] && ('scriptPubKey' in decTx.vout[i])) {
@@ -429,9 +434,10 @@ module.exports = class UtxoService {
             const extend = {};
             if ('valuecommitment' in decTx.vout[i]) {
               // get blinder
-              const blindingKey = this.parent.getBlindingKey(addr.address);
+              const blindingKey = await this.parent.getBlindingKey(
+                  addr.address);
               confidentialKey = blindingKey.pubkey;
-              const unblindData = this.cfd.UnblindRawTransaction({
+              const unblindData = await this.cfd.UnblindRawTransaction({
                 tx: tx,
                 txouts: [{
                   index: i,
@@ -476,7 +482,7 @@ module.exports = class UtxoService {
         }
       }
     } else {
-      const decTx = this.parent.decodeRawTransaction(tx);
+      const decTx = await this.parent.decodeRawTransaction(tx);
       // console.log('addUtxo tx = ', decTx);
       for (let i = 0; i < decTx.vout.length; ++i) {
         if (decTx.vout[i] && ('scriptPubKey' in decTx.vout[i])) {

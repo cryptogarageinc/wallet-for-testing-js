@@ -3,6 +3,19 @@ const fs = require('fs');
 const ini = require('ini');
 const jsonrpcClientLib = require('./jsonrpc-cli-lib');
 
+let hasInitWasm = false;
+
+const sleep = async function(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+};
+
+const checkCfdInit = async function() {
+  while (!hasInitWasm) {
+    // console.log('wait for cfd init.');
+    await sleep(1000);
+  }
+};
+
 /**
  * example helper class for demo code.
  */
@@ -20,9 +33,10 @@ class DemoExampleHelper {
     this.elementsCli_ = new jsonrpcClientLib.ElementsCli(
         jsonrpcClientLib.createConnection(
             elements.host, elements.port, elements.user, elements.pass));
-    this.cfdjs_ = require(`cfd-js`);
-    // this.cfdjsModule_ = require('../cfdjs_module');
-    this.cfdjsModule_ = require(`cfd-js`);
+    this.cfdjsModule_ = require('cfd-js-wasm');
+    this.cfdjsModule_.addInitializedListener(async () => {
+      hasInitWasm = true;
+    });
   }
 
   /**
@@ -83,27 +97,12 @@ class DemoExampleHelper {
   }
 
   /**
-   * Get cfd-js binary module.
-   * @return {object} cfd-js binary module
-   */
-  getCfdJs() {
-    return this.cfdjs_;
-  }
-
-  /*
-   * Get cfd-test binary module. (depricated)
-   * @return {object} cfd-test binary module
-   */
-  // getCfdTest() {
-  //   return this.cfdtest_;
-  // }
-
-  /**
    * Get cfd-js wrapped module.
    * @return {object} cfd-js wrapped module
    */
-  getCfdJsModule() {
-    return this.cfdjsModule_;
+  async getCfdJsModule() {
+    await checkCfdInit();
+    return this.cfdjsModule_.getCfd();
   }
 }
 

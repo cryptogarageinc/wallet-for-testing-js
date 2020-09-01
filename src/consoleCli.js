@@ -1,4 +1,5 @@
 const WalletManager = require('./walletManager.js');
+const cfdjsWasm = require('cfd-js-wasm');
 
 /**
  * read input from console.
@@ -280,7 +281,7 @@ const help = function() {
   console.log('  -t   target name. (bitcoin or elements)');
 };
 
-(async function main() {
+const main = async function() {
   try {
     if (process.argv.length <= 2) {
       console.log('parameter error.');
@@ -330,7 +331,9 @@ const help = function() {
       if (configFile.startsWith('./') || configFile.startsWith('.\\')) {
         configFile = __dirname + '/../' + configFile.substr(1);
       }
-      const walletMgr = new WalletManager(configFile, dir, network, seed);
+      const walletMgr = new WalletManager(configFile, dir, network,
+          cfdjsWasm.getCfd());
+      await walletMgr.setMasterPrivkey(seed, '', '', '', -1);
       const inMemoryDB = false;
       const wallet = await walletMgr.createWallet(
           userIndex, userPrefix, target, inMemoryDB);
@@ -366,4 +369,6 @@ const help = function() {
   } catch (error) {
     console.log(error);
   }
-})();
+};
+
+cfdjsWasm.addInitializedListener(main);

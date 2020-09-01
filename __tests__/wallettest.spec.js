@@ -1,10 +1,11 @@
 const WalletManager = require('../index.js');
 const fs = require('fs');
-const cfd = require('cfd-js');
+const cfdjsWasm = require('cfd-js-wasm');
 const path = require('path');
 
 const isDebug = false;
 
+let cfd;
 const network = 'regtest';
 const configFilePath = __dirname + '/bitcoin.conf';
 const testSeed = '0e09fbdd00e575b654d480ae979f24da45ef4dee645c7dc2e3b30b2e093d38dda0202357754cc856f8920b8e31dd02e9d34f6a2b20dc825c6ba90f90009085e1';
@@ -12,9 +13,21 @@ let walletMgr;
 let btcWallet1;
 let btcWallet2;
 // let btcWallet3;
+let initFlag = false;
+cfdjsWasm.addInitializedListener(async () => {
+  console.log('load cfd-js-wasm');
+  initFlag = true;
+});
 
 const sleep = async function(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+};
+
+const checkCfdInit = async function() {
+  while (!initFlag) {
+    console.log('wait for cfd init.');
+    await sleep(1000);
+  }
 };
 
 beforeAll(async () => {
@@ -41,9 +54,15 @@ beforeAll(async () => {
     fs.mkdirSync(dbDir);
   }
 
+  await checkCfdInit();
+  console.log('cfd init done.');
+  await sleep(1000);
+
   // initialize walletManager
-  walletMgr = new WalletManager(configFilePath, dbDir, network, testSeed);
-  walletMgr.initialize('bitcoin');
+  cfd = cfdjsWasm.getCfd();
+  walletMgr = new WalletManager(configFilePath, dbDir, network, cfd);
+  await walletMgr.setMasterPrivkey(testSeed, '', '', '', -1);
+  await walletMgr.initialize('bitcoin');
 
   console.log('initialize wallet');
   btcWallet1 = await walletMgr.createWallet(1, 'testuser', 'bitcoin', !isDebug);
@@ -75,7 +94,7 @@ describe('wallet test', () => {
   });
 
   it('generateFund test', async () => {
-    jest.setTimeout(30000);
+    jest.setTimeout(90000);
 
     const amount = 20000000000; // 200BTC
     const ret = await btcWallet1.generateFund(amount, false);
@@ -84,13 +103,14 @@ describe('wallet test', () => {
   });
 
   it('generate test', async () => {
+    jest.setTimeout(90000);
     const ret = await btcWallet1.generate(2, '', false);
     console.log('generate -> ', ret);
     expect(ret.amount).not.toBe(0);
   });
 
   it('sendtoaddress test', async () => {
-    jest.setTimeout(15000);
+    jest.setTimeout(90000);
 
     await btcWallet2.generate(101, '', false); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
@@ -102,7 +122,7 @@ describe('wallet test', () => {
     // send to 1BTC
     const amount = 100000000;
     const sendData = await btcWallet1.sendToAddress(addr.address, amount);
-    const decTx = btcWallet1.decodeRawTransaction(sendData.hex);
+    const decTx = await btcWallet1.decodeRawTransaction(sendData.hex);
     await btcWallet2.generate(1);
     console.log('sendToAddress1 -> ', sendData);
     expect(decTx.vout[0].value).toBe(amount);
@@ -115,12 +135,13 @@ describe('wallet test', () => {
     const txout1 = {address: addr2.address, amount: amount2};
     const txout2 = {address: addr3.address, amount: 5000000000};
 
-    let tx2 = btcWallet1.createRawTransaction(2, 0, [txin], [txout1, txout2]);
+    let tx2 = await btcWallet1.createRawTransaction(
+        2, 0, [txin], [txout1, txout2]);
     tx2 = await btcWallet1.fundRawTransaction(tx2.hex);
     // console.log('fundRawTransaction -> ', tx2);
     tx2 = await btcWallet1.signRawTransactionWithWallet(tx2.hex, false);
     const txid = await btcWallet1.sendRawTransaction(tx2.hex);
-    const decTx2 = btcWallet1.decodeRawTransaction(tx2.hex);
+    const decTx2 = await btcWallet1.decodeRawTransaction(tx2.hex);
     console.log('sendToAddress2 -> ', {txid: txid, hex: tx2.hex});
 
     await btcWallet2.generate(1);
@@ -131,6 +152,7 @@ describe('wallet test', () => {
 
 
   it('multisig test', async () => {
+    jest.setTimeout(90000);
     btcWallet1.estimateSmartFee(6, 'ECONOMICAL');
     btcWallet2.estimateSmartFee(6, 'ECONOMICAL');
 
@@ -149,11 +171,11 @@ describe('wallet test', () => {
     // multisigに送信
     const amount1 = 100000000;
     const txout1 = {address: multisigAddr1.address, amount: amount1};
-    let tx1 = btcWallet1.createRawTransaction(2, 0, [], [txout1]);
+    let tx1 = await btcWallet1.createRawTransaction(2, 0, [], [txout1]);
     tx1 = await btcWallet1.fundRawTransaction(tx1.hex);
     tx1 = await btcWallet1.signRawTransactionWithWallet(tx1.hex, false);
     const txid1 = await btcWallet1.sendRawTransaction(tx1.hex);
-    const decTx1 = btcWallet1.decodeRawTransaction(tx1.hex);
+    const decTx1 = await btcWallet1.decodeRawTransaction(tx1.hex);
     console.log('[multi] sendRawTransaction1 -> ', {txid: txid1, hex: tx1.hex});
     expect(decTx1.vout[0].value).toBe(amount1);
 
@@ -168,9 +190,9 @@ describe('wallet test', () => {
 
     const txin2 = {txid: txid1, vout: 0};
     const txout2 = {address: addr2.address, amount: amount1};
-    let tx2 = btcWallet1.createRawTransaction(2, 0, [txin2], [txout2]);
+    let tx2 = await btcWallet1.createRawTransaction(2, 0, [txin2], [txout2]);
     tx2 = await btcWallet1.fundRawTransaction(tx2.hex);
-    const decTx = btcWallet1.decodeRawTransaction(tx2.hex);
+    const decTx = await btcWallet1.decodeRawTransaction(tx2.hex);
     const prevtxs = [];
     for (let i = 0; i < decTx.vin.length; ++i) {
       if (decTx.vin[i]) {
@@ -191,7 +213,7 @@ describe('wallet test', () => {
     // console.log('[multi] sigs1 -> ', sigs1);
     // console.log('[multi] sigs2 -> ', sigs2);
 
-    tx2 = cfd.AddMultisigSign({
+    tx2 = await cfd.AddMultisigSign({
       tx: tx2.hex,
       txin: {
         txid: txid1,
@@ -245,18 +267,18 @@ describe('wallet test', () => {
 
     const addr1 = await btcWallet1.getNewAddress('p2wpkh', 'label1-1');
     // const pubkeyHash = addr1.lockingScript.substring(2);
-    const script = cfd.CreateScript({
+    const script = await cfd.CreateScript({
       items: [addr1.pubkey, 'OP_CHECKSIG'],
     });
     const addr = await btcWallet1.getScriptAddress(script.hex, 'p2wsh', 'label1', [addr1.pubkey]);
     // send to 1BTC
     const amount1 = 100000000;
     const txout1 = {address: addr.address, amount: amount1};
-    let tx1 = btcWallet1.createRawTransaction(2, 0, [], [txout1]);
+    let tx1 = await btcWallet1.createRawTransaction(2, 0, [], [txout1]);
     tx1 = await btcWallet1.fundRawTransaction(tx1.hex);
     tx1 = await btcWallet1.signRawTransactionWithWallet(tx1.hex, false);
     const txid1 = await btcWallet1.sendRawTransaction(tx1.hex);
-    const decTx1 = btcWallet1.decodeRawTransaction(tx1.hex);
+    const decTx1 = await btcWallet1.decodeRawTransaction(tx1.hex);
     console.log('[script] sendRawTransaction1 -> ', {txid: txid1, hex: tx1.hex});
     expect(decTx1.vout[0].value).toBe(amount1);
 
@@ -268,9 +290,9 @@ describe('wallet test', () => {
 
     const txin2 = {txid: txid1, vout: 0};
     const txout2 = {address: addr1.address, amount: amount1};
-    let tx2 = btcWallet1.createRawTransaction(2, 0, [txin2], [txout2]);
+    let tx2 = await btcWallet1.createRawTransaction(2, 0, [txin2], [txout2]);
     tx2 = await btcWallet1.fundRawTransaction(tx2.hex);
-    const decTx = btcWallet1.decodeRawTransaction(tx2.hex);
+    const decTx = await btcWallet1.decodeRawTransaction(tx2.hex);
     const prevtxs = [];
     for (let i = 0; i < decTx.vin.length; ++i) {
       if (decTx.vin[i]) {
@@ -289,7 +311,7 @@ describe('wallet test', () => {
     console.log('[multi] sigs1 -> ', sigs1);
     // console.log('[multi] sigs2 -> ', sigs2);
 
-    tx2 = cfd.AddSign({
+    tx2 = await cfd.AddSign({
       tx: tx2.hex,
       txin: {
         txid: txid1,
@@ -325,7 +347,7 @@ describe('wallet test', () => {
   });
 
   it('send thresh scriptaddress test', async () => {
-    jest.setTimeout(15000);
+    jest.setTimeout(90000);
 
     await btcWallet2.generate(100, '', false); // for using coinbase utxo
     await btcWallet1.forceUpdateUtxoData();
@@ -350,7 +372,7 @@ describe('wallet test', () => {
     const miniscript = `thresh(2,c:pk_k(${pubkey1}),sc:pk_k(${pubkey2}),sc:pk_k(${pubkey3}))`;
 
     // const pubkeyHash = addr1.lockingScript.substring(2);
-    const desc = cfd.ParseDescriptor({
+    const desc = await cfd.ParseDescriptor({
       descriptor: `wsh(${miniscript})`,
       network: network,
     });
@@ -360,11 +382,11 @@ describe('wallet test', () => {
     // send to 1BTC
     const amount1 = 100000000;
     const txout1 = {address: addr.address, amount: amount1};
-    let tx1 = btcWallet1.createRawTransaction(2, 0, [], [txout1]);
+    let tx1 = await btcWallet1.createRawTransaction(2, 0, [], [txout1]);
     tx1 = await btcWallet1.fundRawTransaction(tx1.hex);
     tx1 = await btcWallet1.signRawTransactionWithWallet(tx1.hex, false);
     const txid1 = await btcWallet1.sendRawTransaction(tx1.hex);
-    const decTx1 = btcWallet1.decodeRawTransaction(tx1.hex);
+    const decTx1 = await btcWallet1.decodeRawTransaction(tx1.hex);
     console.log('[script] sendRawTransaction1 -> ', {txid: txid1, hex: tx1.hex});
     expect(decTx1.vout[0].value).toBe(amount1);
 
@@ -376,9 +398,9 @@ describe('wallet test', () => {
 
     const txin2 = {txid: txid1, vout: 0};
     const txout2 = {address: addr1.address, amount: amount1};
-    let tx2 = btcWallet1.createRawTransaction(2, 0, [txin2], [txout2]);
+    let tx2 = await btcWallet1.createRawTransaction(2, 0, [txin2], [txout2]);
     tx2 = await btcWallet1.fundRawTransaction(tx2.hex);
-    const decTx = btcWallet1.decodeRawTransaction(tx2.hex);
+    const decTx = await btcWallet1.decodeRawTransaction(tx2.hex);
     const prevtxs = [];
     for (let i = 0; i < decTx.vin.length; ++i) {
       if (decTx.vin[i]) {
@@ -396,7 +418,7 @@ describe('wallet test', () => {
         tx2.hex, false, [{txid: txid1, vout: 0}]);
     console.log('[multi] sigs1 -> ', sigs1);
     // console.log('[multi] sigs2 -> ', sigs2);
-    const sighash = cfd.CreateSignatureHash({
+    const sighash = await cfd.CreateSignatureHash({
       tx: tx2.hex,
       txin: {
         txid: txid1,
@@ -410,7 +432,7 @@ describe('wallet test', () => {
         sighashType: 'all',
       },
     });
-    const sig2 = cfd.CalculateEcSignature({
+    const sig2 = await cfd.CalculateEcSignature({
       sighash: sighash.sighash,
       privkeyData: {
         privkey: keyPairs[1].privkey,
@@ -418,7 +440,7 @@ describe('wallet test', () => {
       },
     });
 
-    tx2 = cfd.AddSign({
+    tx2 = await cfd.AddSign({
       tx: tx2.hex,
       txin: {
         txid: txid1,

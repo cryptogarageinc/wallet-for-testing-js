@@ -54,15 +54,13 @@ beforeAll(async () => {
     fs.mkdirSync(dbDir);
   }
 
-  await checkCfdInit();
-  console.log('cfd init done.');
-  await sleep(1000);
-
   // initialize walletManager
-  cfd = cfdjsWasm.getCfd();
-  walletMgr = new WalletManager(configFilePath, dbDir, network, cfd);
+  walletMgr = new WalletManager(configFilePath, dbDir, network);
   await walletMgr.setMasterPrivkey(testSeed, '', '', '', -1);
   await walletMgr.initialize('bitcoin');
+
+  await checkCfdInit();
+  cfd = cfdjsWasm.getCfd();
 
   console.log('initialize wallet');
   btcWallet1 = await walletMgr.createWallet(1, 'testuser', 'bitcoin', !isDebug);

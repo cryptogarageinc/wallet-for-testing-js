@@ -147,6 +147,18 @@ const walletManager = class WalletManager {
   }
 
   /**
+   * waiting default cfd initialized.
+   * @return {Promise<void>} async.
+   */
+  async waitCfdInit() {
+    const sleep = (msec) => new Promise(
+        (resolve) => setTimeout(resolve, msec));
+    while (!cfdjsWasm.hasLoadedWasm()) {
+      await sleep(100);
+    }
+  }
+
+  /**
    * set wallet private key.
    * @param {string} seed master seed.
    * @param {string} masterXprivkey master xprivkey (ignore seed).
@@ -157,6 +169,7 @@ const walletManager = class WalletManager {
    */
   async setMasterPrivkey(seed, masterXprivkey = '', englishMnemonic = '',
       passphrase = '', domainIndex = -1) {
+    await this.waitCfdInit();
     this.masterXprivkey = masterXprivkey;
     this.xprivkey = masterXprivkey; // conv to m/44'/(nettype)
     let keyNetwork = this.network;
@@ -229,6 +242,7 @@ const walletManager = class WalletManager {
    * @return {Promise<boolean>} success or fail.
    */
   async initialize(targetNodeType = 'bitcoin') {
+    await this.waitCfdInit();
     let result = '';
     try {
       if (targetNodeType === 'bitcoin') {

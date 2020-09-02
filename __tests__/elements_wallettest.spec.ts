@@ -67,20 +67,18 @@ beforeAll(async () => {
   console.log('initialize node');
   const dbDir = await getDbDir('dbdir');
 
-  await checkCfdInit();
-  console.log('cfd init done.');
-  await sleep(1000);
-
   // initialize walletManager
-  cfd = cfdjs.getCfd();
   btcWalletMgr = new WalletManager(btcConfigFilePath, dbDir,
-      mainchainNetwork, cfd);
+      mainchainNetwork);
   await btcWalletMgr.setMasterPrivkey(testSeed);
-  btcWalletMgr.initialize(TargetNode.Bitcoin);
+  await btcWalletMgr.initialize(TargetNode.Bitcoin);
   elmWalletMgr = new WalletManager(elementsConfigFilePath, dbDir,
-      network, cfd);
+      network);
   await elmWalletMgr.setMasterPrivkey(testSeed);
-  elmWalletMgr.initialize(TargetNode.Elements);
+  await elmWalletMgr.initialize(TargetNode.Elements);
+
+  await checkCfdInit();
+  cfd = cfdjs.getCfd();
 
   console.log('initialize wallet');
   btcWallet1 = await btcWalletMgr.createWallet(1, 'testuser', TargetNode.Bitcoin, !isDebug);

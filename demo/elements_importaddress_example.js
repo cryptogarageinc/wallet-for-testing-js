@@ -89,7 +89,8 @@ const main = async () => {
         'network': NETWORK,
         'isCompressed': true,
       };
-      const addressKeyData = await cfdjs.CreateKeyPair(addressKeyPairRequestJson);
+      const addressKeyData = await cfdjs.CreateKeyPair(
+          addressKeyPairRequestJson);
       console.log('addressKeyData >>\n',
           JSON.stringify(addressKeyData, null, 2), '\n');
 
@@ -198,7 +199,8 @@ const main = async () => {
           'network': NETWORK,
           'isCompressed': true,
         };
-        const addressKeyData = await cfdjs.CreateKeyPair(addressKeyPairRequestJson);
+        const addressKeyData = await cfdjs.CreateKeyPair(
+            addressKeyPairRequestJson);
         console.log(`addressKeyData(${i}) >>\n`,
             JSON.stringify(addressKeyData, null, 2), '\n');
         addressDatas.push(addressKeyData);

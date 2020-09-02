@@ -713,7 +713,8 @@ const main = async () => {
       if (isBlind) {
         const unblindTx =
             await elementsCli.unblindrawtransaction(gettransaction.hex);
-        const decodeUnblindReissueTx = await cfdjs.ElementsDecodeRawTransaction({
+        const decodeUnblindReissueTx =
+        await cfdjs.ElementsDecodeRawTransaction({
           'hex': unblindTx.hex,
           'network': 'regtest',
         });

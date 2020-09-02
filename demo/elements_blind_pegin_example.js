@@ -278,7 +278,8 @@ const main = async () => {
         };
       }
 
-      const peginaddressInfo = await cfdjs.CreatePegInAddress(paramPeginAddrJson);
+      const peginaddressInfo = await cfdjs.CreatePegInAddress(
+          paramPeginAddrJson);
 
       // const peginaddress = await elementsCli.directExecute(
       //     'getpeginaddress', [])

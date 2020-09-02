@@ -74,13 +74,15 @@ export interface GetBlockResponse {
 export class WalletManager {
   /**
    * constructor.
-   * @param {string} nodeConfigFile node configration file path.
+   * @param {string} nodeConfigFile node configuration file path.
    * @param {string} dirPath directory path.
    * @param {NetworkType} network network type.
    * @param {cfdjs.Cfdjs} cfdObject? cfd-js object.
    */
   constructor(nodeConfigFile: string, dirPath: string,
-      network: NetworkType, cfdObject?: cfdjs.Cfdjs);
+      network: NetworkType,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      cfdObject?: any);
 
   setMasterPrivkey(seed: string,
     masterXprivkey?: string, englishMnemonic?: string,

@@ -79,12 +79,13 @@ module.exports = class Wallet {
   async initialize() {
     const extPath = `${this.userIndex}h`;
     // console.log(`bip44 = ${bip44}, nettypeIndex = ${nettypeIndexStr}`);
-    const childExtkey = await this.cfd.CreateExtkeyFromParentPath({
-      extkey: this.masterXprivkey,
-      network: this.mainchainNetwork,
-      extkeyType: 'extPrivkey',
-      path: extPath,
-    });
+    const childExtkey = await Promise.resolve(
+        this.cfd.CreateExtkeyFromParentPath({
+          extkey: this.masterXprivkey,
+          network: this.mainchainNetwork,
+          extkeyType: 'extPrivkey',
+          path: extPath,
+        }));
     this.masterXprivkey = childExtkey.extkey;
 
     this.dbService = new DbService(
@@ -432,10 +433,11 @@ module.exports = class Wallet {
           assetBlindFactor: utxot.assetBlinder,
         });
       }
-      tx = await this.cfd.BlindRawTransaction({
-        tx: tx.hex,
-        txins: inputList,
-      });
+      tx = await Promise.resolve(
+          this.cfd.BlindRawTransaction({
+            tx: tx.hex,
+            txins: inputList,
+          }));
     }
     tx = await this.signRawTransactionWithWallet(tx.hex, false);
     const txid = await this.sendRawTransaction(tx.hex);
@@ -497,10 +499,10 @@ module.exports = class Wallet {
         });
       }
       // console.log('blind utxo:', inputList);
-      tx = await this.cfd.BlindRawTransaction({
+      tx = await Promise.resolve(this.cfd.BlindRawTransaction({
         tx: tx.hex,
         txins: inputList,
-      });
+      }));
     }
     tx = await this.signRawTransactionWithWallet(tx.hex, false);
     const txid = await this.sendRawTransaction(tx.hex);
@@ -520,20 +522,20 @@ module.exports = class Wallet {
       txout = [], fee = {asset: '', amount: 0}) {
     let tx;
     if (this.isElements) {
-      tx = await this.cfd.ElementsCreateRawTransaction({
+      tx = await Promise.resolve(this.cfd.ElementsCreateRawTransaction({
         'version': 2,
         'locktime': 0,
         'txins': txin,
         'txouts': txout,
         'fee': fee,
-      });
+      }));
     } else {
-      tx = await this.cfd.CreateRawTransaction({
+      tx = await Promise.resolve(this.cfd.CreateRawTransaction({
         version: version,
         locktime: locktime,
         txins: txin,
         txouts: txout,
-      });
+      }));
     }
     return tx;
   }
@@ -566,10 +568,10 @@ module.exports = class Wallet {
    */
   async getConfidentialAddress(address) {
     const keyPair = await this.getBlindingKey(address);
-    const ctAddr = await this.cfd.GetConfidentialAddress({
+    const ctAddr = await Promise.resolve(this.cfd.GetConfidentialAddress({
       unblindedAddress: address,
       key: keyPair.pubkey,
-    });
+    }));
     return ctAddr.confidentialAddress;
   }
 
@@ -579,14 +581,15 @@ module.exports = class Wallet {
    * @return {*} blinding key and confidnetial key
    */
   async getBlindingKey(address) {
-    const blindingKey = await this.cfd.GetDefaultBlindingKey({
+    const blindingKey = await Promise.resolve(this.cfd.GetDefaultBlindingKey({
       masterBlindingKey: this.masterBlindingKey,
       address: address,
-    });
-    const confidentialKey = await this.cfd.GetPubkeyFromPrivkey({
-      privkey: blindingKey.blindingKey,
-      isCompressed: true,
-    });
+    }));
+    const confidentialKey = await Promise.resolve(
+        this.cfd.GetPubkeyFromPrivkey({
+          privkey: blindingKey.blindingKey,
+          isCompressed: true,
+        }));
     return {
       privkey: blindingKey.blindingKey,
       pubkey: confidentialKey.pubkey,
@@ -619,15 +622,15 @@ module.exports = class Wallet {
     let ret = await this.addrService.getAddressInfo(address);
     if (!ret) {
       // empty, convert address with cfd.
-      ret = await this.cfd.GetAddressInfo({
+      ret = await Promise.resolve(this.cfd.GetAddressInfo({
         address: address,
-      });
+      }));
       ret['solvable'] = false;
     } else {
       ret['solvable'] = (ret.path !== '');
       try {
         if (ret.type === 'p2sh-p2wpkh') {
-          const addrInfo = await this.cfd.CreateAddress({
+          const addrInfo = await Promise.resolve(this.cfd.CreateAddress({
             keyData: {
               hex: ret.pubkey,
               type: 'pubkey',
@@ -635,7 +638,7 @@ module.exports = class Wallet {
             network: this.network,
             hashType: 'p2wpkh',
             isElements: this.isElements,
-          });
+          }));
           const embedded = {
             pubkey: ret.pubkey,
             path: ret.path,
@@ -646,7 +649,7 @@ module.exports = class Wallet {
           };
           ret['embedded'] = embedded;
         } else if (ret.type === 'p2sh-p2wsh') {
-          const addrInfo = await this.cfd.CreateAddress({
+          const addrInfo = await Promise.resolve(this.cfd.CreateAddress({
             keyData: {
               hex: ret.script,
               type: 'redeem_script',
@@ -654,15 +657,16 @@ module.exports = class Wallet {
             network: this.network,
             hashType: 'p2wsh',
             isElements: this.isElements,
-          });
+          }));
           let desc = `addr(${addrInfo.address})`;
           if (ret.multisig === true) {
-            const multisigRet = await this.cfd.GetAddressesFromMultisig( {
-              isElements: this.isElements,
-              redeemScript: ret.script,
-              network: this.network,
-              hashType: 'p2wpkh',
-            });
+            const multisigRet = await Promise.resolve(
+                this.cfd.GetAddressesFromMultisig( {
+                  isElements: this.isElements,
+                  redeemScript: ret.script,
+                  network: this.network,
+                  hashType: 'p2wpkh',
+                }));
             desc = this.addrService.getMultisigDescriptor(
                 multisigRet.pubkeys);
           }
@@ -708,19 +712,19 @@ module.exports = class Wallet {
         pubkeyList.push(pubkeys[i]);
       } else {
         // extkey
-        const keyInfo = await this.cfd.GetPubkeyFromExtkey({
+        const keyInfo = await Promise.resolve(this.cfd.GetPubkeyFromExtkey({
           extkey: pubkeys[i],
           network: this.network,
-        });
+        }));
         pubkeyList.push(keyInfo.pubkey);
       }
     }
-    const scriptRet = await this.cfd.CreateMultisig({
+    const scriptRet = await Promise.resolve(this.cfd.CreateMultisig({
       nrequired: requireNum,
       keys: pubkeyList,
       network: this.network,
       hashType: addrType,
-    });
+    }));
     const script = ('witnessScript' in scriptRet) ?
         scriptRet.witnessScript : scriptRet.redeemScript;
     return await this.addrService.getScriptAddress(
@@ -770,18 +774,18 @@ module.exports = class Wallet {
         childPath = childPath + '/' + keys[i];
       }
     }
-    const extkey = await this.cfd.CreateExtkeyFromParentPath({
+    const extkey = await Promise.resolve(this.cfd.CreateExtkeyFromParentPath({
       extkey: this.masterXprivkey,
       network: this.mainchainNetwork,
       extkeyType: 'extPrivkey',
       path: childPath,
-    });
-    const privkey = await this.cfd.GetPrivkeyFromExtkey({
+    }));
+    const privkey = await Promise.resolve(this.cfd.GetPrivkeyFromExtkey({
       extkey: extkey.extkey,
       network: this.mainchainNetwork,
       wif: true,
       isCompressed: true,
-    });
+    }));
     return privkey.privkey;
   }
 
@@ -952,16 +956,16 @@ module.exports = class Wallet {
         mainchainNetwork = 'mainnet';
         liquidNetwork = 'liquidv1';
       }
-      return await this.cfd.ElementsDecodeRawTransaction({
+      return await Promise.resolve(this.cfd.ElementsDecodeRawTransaction({
         hex: tx,
         network: liquidNetwork,
         mainchainNetwork: mainchainNetwork,
-      });
+      }));
     } else {
-      return await this.cfd.DecodeRawTransaction({
+      return await Promise.resolve(this.cfd.DecodeRawTransaction({
         hex: tx,
         network: this.network,
-      });
+      }));
     }
   }
 
@@ -1145,7 +1149,7 @@ module.exports = class Wallet {
     }
     // console.log('isConfidential : ', isConfidential);
     // console.log('FundRawTransaction : ', reqJson);
-    const result = await this.cfd.FundRawTransaction(reqJson);
+    const result = await Promise.resolve(this.cfd.FundRawTransaction(reqJson));
     if (result) {
       const decTx2 = await this.decodeRawTransaction(result.hex);
       if (this.isElements) {
@@ -1224,15 +1228,15 @@ module.exports = class Wallet {
         // console.log('privkey = ', privkey);
         let amountCommitment = '';
         if (this.isElements && (utxo.amountBlinder != emptyBlinder)) {
-          const commitment = await this.cfd.GetCommitment({
+          const commitment = await Promise.resolve(this.cfd.GetCommitment({
             amount: utxo.amount,
             asset: utxo.asset,
             assetBlindFactor: utxo.assetBlinder,
             blindFactor: utxo.amountBlinder,
-          });
+          }));
           amountCommitment = commitment.amountCommitment;
         }
-        const signRet = await this.cfd.SignWithPrivkey({
+        const signRet = await Promise.resolve(this.cfd.SignWithPrivkey({
           isElements: this.isElements,
           tx: transaction,
           txin: {
@@ -1244,7 +1248,7 @@ module.exports = class Wallet {
             hashType: addrInfo.type,
             sighashtype: sighashtype,
           },
-        });
+        }));
         transaction = signRet.hex;
         ++signedCount;
       } catch (err) {
@@ -1351,12 +1355,12 @@ module.exports = class Wallet {
           const keyDataType = (addrInfo.pubkey) ? 'pubkey' : 'redeem_script';
           let amountCommitment = '';
           if (this.isElements && (utxo.amountBlinder != emptyBlinder)) {
-            const commitment = await this.cfd.GetCommitment({
+            const commitment = await Promise.resolve(this.cfd.GetCommitment({
               amount: utxo.amount,
               asset: utxo.asset,
               assetBlindFactor: utxo.assetBlinder,
               blindFactor: utxo.amountBlinder,
-            });
+            }));
             amountCommitment = commitment.amountCommitment;
           }
           const sighashRequest = {
@@ -1376,21 +1380,23 @@ module.exports = class Wallet {
           };
           // calc sighash
           if (this.isElements) {
-            sighashRet = await this.cfd.CreateElementsSignatureHash(
-                sighashRequest);
+            sighashRet = Promise.resolve(CreateElementsSignatureHash(
+                sighashRequest));
           } else {
-            sighashRet = await this.cfd.CreateSignatureHash(sighashRequest);
+            sighashRet = await Promise.resolve(
+                this.cfd.CreateSignatureHash(sighashRequest));
           }
           // calc signature
-          const signatureRet = await this.cfd.CalculateEcSignature({
-            sighash: sighashRet.sighash,
-            privkeyData: {
-              privkey: privkey,
-              wif: true,
-              network: this.network,
-              isCompressed: true,
-            },
-          });
+          const signatureRet = await Promise.resolve(
+              this.cfd.CalculateEcSignature({
+                sighash: sighashRet.sighash,
+                privkeyData: {
+                  privkey: privkey,
+                  wif: true,
+                  network: this.network,
+                  isCompressed: true,
+                },
+              }));
           // console.log('signatures add = ', pubkey, signatureRet.signature);
           signatures.push({
             txid: txid,

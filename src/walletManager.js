@@ -200,31 +200,34 @@ const walletManager = class WalletManager {
     if (this.xprivkey === '') {
       let tempSeed = seed;
       if (englishMnemonic !== '') {
-        const mnemonicRet = await this.cfd.ConvertMnemonicToSeed({
-          mnemonic: englishMnemonic.split(' '),
-          language: 'en',
-          passphrase: passphrase,
-        });
+        const mnemonicRet = await Promise.resolve(
+            this.cfd.ConvertMnemonicToSeed({
+              mnemonic: englishMnemonic.split(' '),
+              language: 'en',
+              passphrase: passphrase,
+            }));
         tempSeed = mnemonicRet.seed;
       }
       if (tempSeed !== '') {
-        const seedRet = await this.cfd.CreateExtkeyFromSeed({
-          seed: tempSeed,
-          network: keyNetwork,
-          extkeyType: 'extPrivkey',
-        });
+        const seedRet = await Promise.resolve(
+            this.cfd.CreateExtkeyFromSeed({
+              seed: tempSeed,
+              network: keyNetwork,
+              extkeyType: 'extPrivkey',
+            }));
         this.xprivkey = seedRet.extkey;
       }
     }
     if (this.xprivkey === '') {
       throw new Error('master xprivkey is empty.');
     }
-    const deriveRet = await this.cfd.CreateExtkeyFromParentPath({
-      extkey: this.xprivkey,
-      network: keyNetwork,
-      extkeyType: 'extPrivkey',
-      path: extPath,
-    });
+    const deriveRet = await Promise.resolve(
+        this.cfd.CreateExtkeyFromParentPath({
+          extkey: this.xprivkey,
+          network: keyNetwork,
+          extkeyType: 'extPrivkey',
+          path: extPath,
+        }));
     this.xprivkey = deriveRet.extkey;
   };
 
@@ -581,9 +584,10 @@ const walletManager = class WalletManager {
       if (txout) {
         totalAmount += BigInt(txout.amount);
         try {
-          const ctAddr = await this.cfd.GetUnblindedAddress({
-            confidentialAddress: txout.address,
-          });
+          const ctAddr = await Promise.resolve(
+              this.cfd.GetUnblindedAddress({
+                confidentialAddress: txout.address,
+              }));
           if (ctAddr.confidentialKey) {
             isBlind = true;
             ++blindCount;
@@ -628,24 +632,27 @@ const walletManager = class WalletManager {
 
     // generate btc address
     // TODO: Is it necessary to install it in the wallet?
-    const peginKeys = await this.cfd.CreateKeyPair({
-      network: bitcoinWallet.getNetworkType(),
-      wif: false,
-      isCompressed: true,
-    });
-    const peginAddr = await this.cfd.CreatePegInAddress({
-      fedpegscript: fedpegScript,
-      pubkey: peginKeys.pubkey,
-      hashType: 'p2sh-p2wsh', // if dynafed, can use p2wsh
-      network: bitcoinWallet.getNetworkType(),
-    });
+    const peginKeys = await Promise.resolve(
+        this.cfd.CreateKeyPair({
+          network: bitcoinWallet.getNetworkType(),
+          wif: false,
+          isCompressed: true,
+        }));
+    const peginAddr = await Promise.resolve(
+        this.cfd.CreatePegInAddress({
+          fedpegscript: fedpegScript,
+          pubkey: peginKeys.pubkey,
+          hashType: 'p2sh-p2wsh', // if dynafed, can use p2wsh
+          network: bitcoinWallet.getNetworkType(),
+        }));
 
     // dummy txout nonce
-    const blindNonce = await this.cfd.CreateKeyPair({
-      network: bitcoinWallet.getNetworkType(),
-      wif: false,
-      isCompressed: true,
-    });
+    const blindNonce = await Promise.resolve(
+        this.cfd.CreateKeyPair({
+          network: bitcoinWallet.getNetworkType(),
+          wif: false,
+          isCompressed: true,
+        }));
 
     let sendInfo;
     try {
@@ -670,125 +677,134 @@ const walletManager = class WalletManager {
     // console.log('minrelaytxfee:', minrelaytxfee);
 
     // create pegin tx (blind)
-    const peginTx = await this.cfd.CreateRawPegin({
-      version: 2,
-      locktime: 0,
-      txins: [{
-        txid: sendInfo.txid,
-        vout: sendInfo.vout,
-        isPegin: true,
-        peginwitness: {
-          amount: peginAmount,
-          asset: peggedAsset,
-          claimScript: peginAddr.claimScript,
-          mainchainGenesisBlockHash: genesisBlockHash,
-          mainchainRawTransaction: txHex,
-          mainchainTxoutproof: txoutProof,
-        },
-      }],
-      txouts: sendTargetList,
-      fee: {
-        amount: feeAmt,
-        asset: peggedAsset,
-      },
-    });
+    const peginTx = await Promise.resolve(
+        this.cfd.CreateRawPegin({
+          version: 2,
+          locktime: 0,
+          txins: [{
+            txid: sendInfo.txid,
+            vout: sendInfo.vout,
+            isPegin: true,
+            peginwitness: {
+              amount: peginAmount,
+              asset: peggedAsset,
+              claimScript: peginAddr.claimScript,
+              mainchainGenesisBlockHash: genesisBlockHash,
+              mainchainRawTransaction: txHex,
+              mainchainTxoutproof: txoutProof,
+            },
+          }],
+          txouts: sendTargetList,
+          fee: {
+            amount: feeAmt,
+            asset: peggedAsset,
+          },
+        }));
     let peginTxHex = peginTx.hex;
     if (isBlind) {
       if (blindCount == 1) {
-        const appendTx1 = await this.cfd.ElementsAddRawTransaction({
-          tx: peginTxHex,
-          txouts: [{
-            address: '',
-            amount: 0,
-            asset: peggedAsset,
-            directNonce: blindNonce.privkey,
-          }],
-        });
+        const appendTx1 = await Promise.resolve(
+            this.cfd.ElementsAddRawTransaction({
+              tx: peginTxHex,
+              txouts: [{
+                address: '',
+                amount: 0,
+                asset: peggedAsset,
+                directNonce: blindNonce.privkey,
+              }],
+            }));
         peginTxHex = appendTx1.hex;
       }
-      const blindTx1 = await this.cfd.BlindRawTransaction({
-        tx: peginTxHex,
-        txins: [{
-          txid: sendInfo.txid,
-          vout: sendInfo.vout,
-          amount: peginAmount,
-          asset: peggedAsset,
-          assetBlindFactor: emptyBlinder,
-          blindFactor: emptyBlinder,
-        }],
-      });
+      const blindTx1 = await Promise.resolve(
+          this.cfd.BlindRawTransaction({
+            tx: peginTxHex,
+            txins: [{
+              txid: sendInfo.txid,
+              vout: sendInfo.vout,
+              amount: peginAmount,
+              asset: peggedAsset,
+              assetBlindFactor: emptyBlinder,
+              blindFactor: emptyBlinder,
+            }],
+          }));
       peginTxHex = blindTx1.hex;
     }
-    const feeData = await this.cfd.EstimateFee({
-      tx: peginTxHex,
-      feeRate: 0.15,
-      isElements: true,
-      isBlind: isBlind,
-      feeAsset: peggedAsset,
-    });
+    const feeData = await Promise.resolve(
+        this.cfd.EstimateFee({
+          tx: peginTxHex,
+          feeRate: 0.15,
+          isElements: true,
+          isBlind: isBlind,
+          feeAsset: peggedAsset,
+        }));
     const lastSendAmount = sendTargetList[sendTargetList.length - 1].amount;
     const minFee = BigInt(minrelaytxfee);
     const updateFeeAmt = (minFee > BigInt(feeData.feeAmount)) ?
         minFee : BigInt(feeData.feeAmount);
     const workAmt = BigInt(lastSendAmount) + BigInt(feeAmt);
     const updateSendAmt = workAmt - updateFeeAmt;
-    const updatePeginTx = await this.cfd.UpdateTxOutAmount({
-      tx: peginTx.hex,
-      isElements: true,
-      txouts: [
-        {
-          index: sendTargetList.length - 1,
-          amount: updateSendAmt,
-        }, {
-          index: sendTargetList.length,
-          amount: updateFeeAmt,
-        },
-      ],
-    });
+    const updatePeginTx = await Promise.resolve(
+        this.cfd.UpdateTxOutAmount({
+          tx: peginTx.hex,
+          isElements: true,
+          txouts: [
+            {
+              index: sendTargetList.length - 1,
+              amount: updateSendAmt,
+            }, {
+              index: sendTargetList.length,
+              amount: updateFeeAmt,
+            },
+          ],
+        }));
     peginTxHex = updatePeginTx.hex;
     if (isBlind) {
       if (blindCount == 1) {
-        const appendTx2 = await this.cfd.ElementsAddRawTransaction({
-          tx: peginTxHex,
-          txouts: [{
-            address: '',
-            amount: 0,
-            asset: peggedAsset,
-            directNonce: blindNonce.privkey,
-          }],
-        });
+        const appendTx2 = await Promise.resolve(
+            this.cfd.ElementsAddRawTransaction({
+              tx: peginTxHex,
+              txouts: [{
+                address: '',
+                amount: 0,
+                asset: peggedAsset,
+                directNonce: blindNonce.privkey,
+              }],
+            }));
         peginTxHex = appendTx2.hex;
       }
-      const decodeTx = await this.cfd.ElementsDecodeRawTransaction({
-        hex: peginTxHex,
-      });
+      const decodeTx = await Promise.resolve(
+          this.cfd.ElementsDecodeRawTransaction({
+            hex: peginTxHex,
+          }));
       console.log(decodeTx);
-      const blindTx2 = await this.cfd.BlindRawTransaction({
-        tx: peginTxHex,
-        txins: [{
-          txid: sendInfo.txid,
-          vout: sendInfo.vout,
-          amount: peginAmount,
-          asset: peggedAsset,
-          assetBlindFactor: emptyBlinder,
-          blindFactor: emptyBlinder,
-        }],
-      });
+      const blindTx2 = await Promise.resolve(
+          this.cfd.BlindRawTransaction({
+            tx: peginTxHex,
+            txins: [{
+              txid: sendInfo.txid,
+              vout: sendInfo.vout,
+              amount: peginAmount,
+              asset: peggedAsset,
+              assetBlindFactor: emptyBlinder,
+              blindFactor: emptyBlinder,
+            }],
+          }));
       peginTxHex = blindTx2.hex;
     }
-    const signTx = await this.cfd.SignWithPrivkey({
-      tx: peginTxHex,
-      isElements: true,
-      txin: {
-        txid: sendInfo.txid,
-        vout: sendInfo.vout,
-        hashType: 'p2wpkh',
-        amount: peginAmount,
-        privkey: peginKeys.privkey,
-        pubkey: peginKeys.pubkey,
-        sighashType: 'all',
-      },
-    });
+    const signTx = await Promise.resolve(
+        this.cfd.SignWithPrivkey({
+          tx: peginTxHex,
+          isElements: true,
+          txin: {
+            txid: sendInfo.txid,
+            vout: sendInfo.vout,
+            hashType: 'p2wpkh',
+            amount: peginAmount,
+            privkey: peginKeys.privkey,
+            pubkey: peginKeys.pubkey,
+            sighashType: 'all',
+          },
+        }));
 
     // send pegin tx
     try {

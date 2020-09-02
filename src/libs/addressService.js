@@ -65,17 +65,17 @@ module.exports = class AddressService {
     // generate hdkey
     const childPath = `${addrRecvType}/${index}`;
     const path = `${this.masterXprivkey}/${childPath}`;
-    const extkey = await this.cfd.CreateExtkeyFromParentPath({
+    const extkey = await Promise.resolve(this.cfd.CreateExtkeyFromParentPath({
       extkey: this.masterXprivkey,
       network: this.mainchainNetwork,
       extkeyType: 'extPubkey',
       path: childPath,
-    });
-    const pubkey = await this.cfd.GetPubkeyFromExtkey({
+    }));
+    const pubkey = await Promise.resolve(this.cfd.GetPubkeyFromExtkey({
       extkey: extkey.extkey,
       network: this.mainchainNetwork,
-    });
-    const addrInfo = await this.cfd.CreateAddress({
+    }));
+    const addrInfo = await Promise.resolve(this.cfd.CreateAddress({
       keyData: {
         hex: pubkey.pubkey,
         type: 'pubkey',
@@ -83,7 +83,7 @@ module.exports = class AddressService {
       network: this.network,
       hashType: addrType,
       isElements: this.isElements,
-    });
+    }));
     const extra = {};
 
     // TODO move to cfd.
@@ -109,7 +109,7 @@ module.exports = class AddressService {
   };
 
   async getScriptAddress(script, addrType = 'p2wsh', label = '', relatedPubkey = []) {
-    const addrInfo = await this.cfd.CreateAddress({
+    const addrInfo = await Promise.resolve(this.cfd.CreateAddress({
       keyData: {
         hex: script,
         type: 'redeem_script',
@@ -117,17 +117,18 @@ module.exports = class AddressService {
       network: this.network,
       hashType: addrType,
       isElements: this.isElements,
-    });
+    }));
     const pubkeyMap = {'': []};
     let isMultisig = false;
     let descriptor = '';
     try {
-      const multisigRet = await this.cfd.GetAddressesFromMultisig( {
-        isElements: this.isElements,
-        redeemScript: script,
-        network: this.network,
-        hashType: 'p2wpkh',
-      });
+      const multisigRet = await Promise.resolve(
+          this.cfd.GetAddressesFromMultisig( {
+            isElements: this.isElements,
+            redeemScript: script,
+            network: this.network,
+            hashType: 'p2wpkh',
+          }));
       if (multisigRet.pubkeys) {
         isMultisig = true;
         pubkeyMap[''] = multisigRet.pubkeys;

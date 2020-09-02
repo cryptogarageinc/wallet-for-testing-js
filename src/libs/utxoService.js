@@ -32,20 +32,10 @@ module.exports = class UtxoService {
   };
 
   async generate(address, count) {
-    // const lockingScript = await this.cfd.GetAddressInfo({
-    //  address: address,
-    //  isElements: this.parent.isElements,
-    // }).lockingScript;
-    // const descriptor = await this.addressService.getDescriptor(address);
-    // console.log('  descriptor = ', descriptor);
     const addressData = await this.addressService.getAddressInfo(address);
     const lockingScript = addressData.lockingScript;
     const descriptor = addressData.descriptor;
-
-    // console.log('  generatetoaddress count = ', count);
-    // console.log('  generatetoaddress address = ', address);
     const result = await this.rpc.generatetoaddress(count, address);
-    // console.log('  generatetoaddress = ', result);
     let totalMining = 0;
     for (let k = 0; k < result.length; k++) {
       const blockHash = result[k];
@@ -87,13 +77,14 @@ module.exports = class UtxoService {
               } else if (this.parent.isElements) {
                 const blindingKey = await this.parent.getBlindingKey(address);
                 confidentialKey = blindingKey.pubkey;
-                const unblindData = await this.cfd.UnblindRawTransaction({
-                  tx: txData.hex,
-                  txouts: [{
-                    index: j,
-                    blindingKey: blindingKey.privkey,
-                  }],
-                });
+                const unblindData = await Promise.resolve(
+                    this.cfd.UnblindRawTransaction({
+                      tx: txData.hex,
+                      txouts: [{
+                        index: j,
+                        blindingKey: blindingKey.privkey,
+                      }],
+                    }));
                 if (unblindData.outputs[0]) {
                   const assetBlinder =
                     unblindData.outputs[0].assetBlindFactor;
@@ -180,13 +171,14 @@ module.exports = class UtxoService {
                   const blindingKey = await this.parent.getBlindingKey(
                       addr.address);
                   confidentialKey = blindingKey.pubkey;
-                  const unblindData = await this.cfd.UnblindRawTransaction({
-                    tx: txData.hex,
-                    txouts: [{
-                      index: j,
-                      blindingKey: blindingKey.privkey,
-                    }],
-                  });
+                  const unblindData = await Promise.resolve(
+                      this.cfd.UnblindRawTransaction({
+                        tx: txData.hex,
+                        txouts: [{
+                          index: j,
+                          blindingKey: blindingKey.privkey,
+                        }],
+                      }));
                   if (unblindData.outputs[0]) {
                     const assetBlinder =
                       unblindData.outputs[0].assetBlindFactor;
@@ -357,13 +349,14 @@ module.exports = class UtxoService {
                     addr.address);
                 confidentialKey = blindingKey.pubkey;
                 try {
-                  const unblindData = await this.cfd.UnblindRawTransaction({
-                    tx: blockData.tx[i].hex,
-                    txouts: [{
-                      index: j,
-                      blindingKey: blindingKey.privkey,
-                    }],
-                  });
+                  const unblindData = await Promise.resolve(
+                      this.cfd.UnblindRawTransaction({
+                        tx: blockData.tx[i].hex,
+                        txouts: [{
+                          index: j,
+                          blindingKey: blindingKey.privkey,
+                        }],
+                      }));
                   if (unblindData.outputs[0]) {
                     const assetBlinder =
                         unblindData.outputs[0].assetBlindFactor;
@@ -437,13 +430,14 @@ module.exports = class UtxoService {
               const blindingKey = await this.parent.getBlindingKey(
                   addr.address);
               confidentialKey = blindingKey.pubkey;
-              const unblindData = await this.cfd.UnblindRawTransaction({
-                tx: tx,
-                txouts: [{
-                  index: i,
-                  blindingKey: blindingKey.privkey,
-                }],
-              });
+              const unblindData = await Promise.resolve(
+                  this.cfd.UnblindRawTransaction({
+                    tx: tx,
+                    txouts: [{
+                      index: i,
+                      blindingKey: blindingKey.privkey,
+                    }],
+                  }));
               if (unblindData.outputs[0]) {
                 assetBlinder = unblindData.outputs[0].assetBlindFactor;
                 amountBlinder = unblindData.outputs[0].blindFactor;

@@ -5,6 +5,7 @@ on:
     branches:
     - master
     - develop
+    - ci_test
     paths-ignore:
     - 'src/consoleCli.js'
     - 'src/debugCli.js'
@@ -15,7 +16,7 @@ on:
 
 env:
   DOCKERHUB_VERSION: v0.18.1.3
-  GITHUB_VERSION: v0.0.2
+  GITHUB_VERSION: v0.0.4
   GITHUB_DOCKER_IMAGE: docker.pkg.github.com/${{ github.repository_owner }}/elements-testing-dockerfile/elements-testing
   ENTRYPOINT_PATH: /github/workspace/.github/workflows/docker/test_entrypoint.sh
 

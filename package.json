@@ -14,29 +14,29 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "cfd-js-wasm": "github:cryptogarageinc/cfd-js-wasm#semver:^0.2.6",
+    "cfd-js-wasm": "github:cryptogarageinc/cfd-js-wasm#semver:^0.3.4",
     "ini": "^2.0.0",
-    "nedb-promises": "^4.1.0",
-    "needle": "^2.5.2",
+    "nedb-promises": "^4.1.1",
+    "needle": "^2.6.0",
     "node-json-rpc2": "git+https://github.com/ko-matsu/node-json-rpc2#async_minimum",
     "readline-sync": "^1.4.10",
     "zlib": "^1.0.5"
   },
   "devDependencies": {
-    "@types/jest": "^26.0.19",
-    "@types/node": "^14.14.14",
-    "@typescript-eslint/eslint-plugin": "^4.11.0",
-    "@typescript-eslint/eslint-plugin-tslint": "^4.11.0",
-    "@typescript-eslint/parser": "^4.11.0",
-    "@typescript-eslint/typescript-estree": "^4.11.0",
-    "acorn": "*",
-    "eslint": "*",
+    "@types/jest": "^26.0.22",
+    "@types/node": "^14.14.37",
+    "@typescript-eslint/eslint-plugin": "^4.20.0",
+    "@typescript-eslint/eslint-plugin-tslint": "^4.20.0",
+    "@typescript-eslint/parser": "^4.20.0",
+    "@typescript-eslint/typescript-estree": "^4.20.0",
+    "acorn": "^8.1.0",
+    "eslint": "^7.23.0",
     "eslint-config-google": "*",
     "jest": "*",
     "npm-run-all": "^4.1.5",
-    "run-script-os": "^1.1.3",
-    "ts-jest": "^26.4.4",
+    "run-script-os": "^1.1.6",
+    "ts-jest": "^26.5.4",
     "ts-node": "^9.1.1",
-    "typescript": "^4.1.3"
+    "typescript": "^4.2.3"
   }
 }

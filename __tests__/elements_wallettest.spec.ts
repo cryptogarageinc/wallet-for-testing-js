@@ -358,7 +358,7 @@ describe('wallet test', () => {
         txid: txid1,
         vout: 0,
         isWitness: true,
-        signParam: [
+        signParams: [
           {
             hex: sigs1.signatures[0].signature,
             type: 'sign',

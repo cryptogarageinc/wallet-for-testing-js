@@ -1,6 +1,6 @@
 {
   "name": "wallet-for-testing-js",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "",
   "main": "index.js",
   "types": "./src/walletManager.d.ts",
@@ -16,7 +16,7 @@
   "dependencies": {
     "cfd-js-wasm": "github:cryptogarageinc/cfd-js-wasm#semver:^0.3.4",
     "ini": "^2.0.0",
-    "nedb-promises": "^4.1.1",
+    "lokijs": "^1.5.12",
     "needle": "^2.6.0",
     "node-json-rpc2": "git+https://github.com/ko-matsu/node-json-rpc2#async_minimum",
     "readline-sync": "^1.4.10",

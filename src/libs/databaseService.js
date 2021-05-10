@@ -18,28 +18,28 @@ module.exports = class DatabaseService {
     this.addrTbl = new AddressTable(name, dirPath, inMemoryOnly);
     this.cfdKeyTbl = new ConfidentialKeyTable(name, dirPath, inMemoryOnly);
     this.utxoTbl = new UtxoTable(name, dirPath, inMemoryOnly);
-  };
+  }
 
   async initialize(network) {
     await this.addrTbl.initialize();
     await this.cfdKeyTbl.initialize();
     await this.utxoTbl.initialize();
     return await this.cfgTbl.initialize(network);
-  };
+  }
 
   getConfigTable() {
     return this.cfgTbl;
-  };
+  }
 
   getAddressTable() {
     return this.addrTbl;
-  };
+  }
 
   getConfidentialKeyTable() {
     return this.cfdKeyTbl;
-  };
+  }
 
   getUtxoTable() {
     return this.utxoTbl;
-  };
+  }
 };

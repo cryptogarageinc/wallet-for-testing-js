@@ -12,7 +12,7 @@ module.exports = class UtxoService {
     this.utxoTable = databaseService.getUtxoTable();
     this.configTable = databaseService.getConfigTable();
     this.cfd = this.parent.getCfd();
-  };
+  }
 
   async initialize(network, masterXprivkey) {
     this.network = network;
@@ -29,7 +29,7 @@ module.exports = class UtxoService {
       }
     }
     return true;
-  };
+  }
 
   async generate(address, count) {
     const addressData = await this.addressService.getAddressInfo(address);
@@ -213,7 +213,7 @@ module.exports = class UtxoService {
       }
     }
     return {address: address, amount: totalMining};
-  };
+  }
 
   async getMaxBlockHeight() {
     const utxos = await this.utxoTable.getUtxos(1, 10000000);
@@ -508,28 +508,30 @@ module.exports = class UtxoService {
       }
     }
     return true;
-  };
+  }
 
   async updateUtxo(outpoint, blockHash, blockCount) {
     return await this.utxoTable.updateBlockInfo(
         outpoint, blockHash, blockCount);
-  };
+  }
 
   async updateUtxoState(txid, vout, spent = true) {
     return await this.utxoTable.updateSpendable(txid, vout, spent);
-  };
+  }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async deleteUtxo(outpoint) {
     // delete utxoTable
-  };
+  }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async deleteUtxoSpentAndConfirmation(confirmation = 6) {
     // delete utxoTable spent=true, confirm >= 6
-  };
+  }
 
   async getUtxoData(outpoint) {
     return await this.utxoTable.getUtxoByOutpoint(outpoint);
-  };
+  }
 
   async listUnspent(minimumConf = 6, maximumConf = 9999999999,
       address = '', asset = '', path = '', solvedOnly = false,
@@ -562,9 +564,9 @@ module.exports = class UtxoService {
       }
     }
     return list;
-  };
+  }
 
   async getMempoolUtxoCount() {
     return await this.utxoTable.getUtxoCountOutsideBlock();
-  };
+  }
 };

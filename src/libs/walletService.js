@@ -62,7 +62,7 @@ module.exports = class Wallet {
     this.masterBlindingKey = '';
     this.sidechaininfo = {};
     this.assetLbtc = '';
-  };
+  }
 
   /**
    * constructor.
@@ -128,7 +128,7 @@ module.exports = class Wallet {
       await this.appendAsset(this.assetLbtc, 'bitcoin');
     }
     return true;
-  };
+  }
 
   /**
    * get current target.
@@ -136,7 +136,7 @@ module.exports = class Wallet {
    */
   getTarget() {
     return (!this.isElements) ? 'bitcoin' : 'elements';
-  };
+  }
 
   /**
    * check connection.
@@ -265,7 +265,7 @@ module.exports = class Wallet {
       console.log('exception: addr=', addr);
       throw e;
     }
-  };
+  }
 
   /**
    * call generate block.
@@ -310,7 +310,7 @@ module.exports = class Wallet {
       console.log('exception: addr=', addr);
       throw e;
     }
-  };
+  }
 
   /**
    * get current block height cache.
@@ -1422,7 +1422,9 @@ module.exports = class Wallet {
    * @param {bigint | number} minimumFeeAmount minimum fee amount
    * @return {Promise<void>} empty.
    */
-  async setPayTxFee(minimumFeeAmount = 0) {
+  async setPayTxFee(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      minimumFeeAmount = 0) {
     // TODO priority is low.
   }
 
@@ -1431,7 +1433,9 @@ module.exports = class Wallet {
    * @param {bigint | number} relayFeeAmount relay fee amount
    * @return {Promise<void>} empty.
    */
-  async setRelayFee(relayFeeAmount = 0) {
+  async setRelayFee(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      relayFeeAmount = 0) {
     // TODO priority is low.
   }
 
@@ -1443,7 +1447,9 @@ module.exports = class Wallet {
    * @param {string} privkeyWif privkey(wif)
    * @return {Promise<void>} empty
    */
-  async importAddress(address = '', pubkey = '', path = '', privkeyWif = '') {
+  async importAddress(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      address = '', pubkey = '', path = '', privkeyWif = '') {
     // TODO priority is low.
   }
 
@@ -1468,7 +1474,7 @@ module.exports = class Wallet {
       console.log('utxo[0] tx = ', JSON.stringify(gettx, null, '  '));
       throw err;
     }
-  };
+  }
 
   /**
    * get minimum relay tx fee.
@@ -1480,7 +1486,7 @@ module.exports = class Wallet {
     const minrelaytxfee = (typeof mempoolinfo.minrelaytxfee == 'number') ?
         mempoolinfo.minrelaytxfee * 100000000 : minFee;
     return minrelaytxfee;
-  };
+  }
 
   /**
    * find asset check.
@@ -1582,7 +1588,7 @@ module.exports = class Wallet {
    */
   async getWalletTxData(txid, vout) {
     return await this.utxoService.getUtxoData(`${txid},${vout}`);
-  };
+  }
 
   /**
    * get network type.

@@ -62,7 +62,7 @@ module.exports = class ConfigTable {
     }
     return await this.database.update(
         {key: KeyBip32Count}, {value: count});
-  };
+  }
 
   async updateBip32FeeCount(count) {
     if (count === undefined) {
@@ -70,7 +70,7 @@ module.exports = class ConfigTable {
     }
     return await this.database.update(
         {key: KeyBip32FeeCount}, {value: count});
-  };
+  }
 
   async updateBlindingKeyCount(count) {
     if (count === undefined) {
@@ -78,7 +78,7 @@ module.exports = class ConfigTable {
     }
     return await this.database.update(
         {key: KeyBlindCount}, {value: count});
-  };
+  }
 
   async updateTipBlockHeight(count) {
     if (count === undefined) {
@@ -87,7 +87,7 @@ module.exports = class ConfigTable {
     }
     return await this.database.update(
         {key: KeyTipBlockHeight}, {value: count});
-  };
+  }
 
   async updateAssetMap(assetMap) {
     if (assetMap === undefined) {
@@ -96,7 +96,7 @@ module.exports = class ConfigTable {
     }
     return await this.database.update(
         {key: KeyAssetMap}, {value: assetMap});
-  };
+  }
 
 
   async getNetworkType() {
@@ -105,7 +105,7 @@ module.exports = class ConfigTable {
       return false;
     }
     return ret.value;
-  };
+  }
 
   async getBip32Count() {
     const ret = await this.database.findOne({key: KeyBip32Count});
@@ -113,7 +113,7 @@ module.exports = class ConfigTable {
       return false;
     }
     return ret.value;
-  };
+  }
 
   async getBip32FeeCount() {
     const ret = await this.database.findOne({key: KeyBip32FeeCount});
@@ -121,7 +121,7 @@ module.exports = class ConfigTable {
       return false;
     }
     return ret.value;
-  };
+  }
 
   async getBlindingKeyCount() {
     const ret = await this.database.findOne({key: KeyBlindCount});
@@ -129,7 +129,7 @@ module.exports = class ConfigTable {
       return false;
     }
     return ret.value;
-  };
+  }
 
   async getTipBlockHeight() {
     const ret = await this.database.findOne({key: KeyTipBlockHeight});
@@ -137,7 +137,7 @@ module.exports = class ConfigTable {
       return false;
     }
     return ret.value;
-  };
+  }
 
   async getAssetMap() {
     const ret = await this.database.findOne({key: KeyAssetMap});
@@ -145,5 +145,5 @@ module.exports = class ConfigTable {
       return false;
     }
     return ret.value;
-  };
+  }
 };

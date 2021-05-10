@@ -7,12 +7,12 @@ const emptyBlinder = define.emptyBlinder;
 module.exports = class UtxoTable {
   constructor(name = 'db', dirPath = './', inMemoryOnly = true) {
     this.database = new DbWrapper(name, 'utxo', dirPath, inMemoryOnly);
-  };
+  }
 
   async initialize() {
     await this.database.createIndex('outpoint');
     return true;
-  };
+  }
 
   async addUtxo(txid, vout, amount, address, descriptor, lockingScript,
       solvable, blockHash = '', blockHeight = -1, coinbase = false, asset = '',
@@ -39,7 +39,7 @@ module.exports = class UtxoTable {
         spent: false, solvable: solvable, coinbase: coinbase, extend: extend};
     }
     return await this.database.insert(mapData, {outpoint: outpoint});
-  };
+  }
 
   async updateBlockInfo(txid, blockHash, blockHeight) {
     return await this.database.update(
@@ -47,7 +47,7 @@ module.exports = class UtxoTable {
           blockHash: blockHash,
           blockHeight: blockHeight,
         });
-  };
+  }
 
   async updateSpendable(txid, vout, spent = true) {
     const outpoint = `${txid},${vout}`;
@@ -55,7 +55,7 @@ module.exports = class UtxoTable {
         {outpoint: outpoint}, {
           spent: spent,
         });
-  };
+  }
 
   async updateOutBlockByBlock(blockHash) {
     return await this.database.update(
@@ -63,7 +63,7 @@ module.exports = class UtxoTable {
           blockHash: '',
           blockHeight: -1,
         });
-  };
+  }
 
   async updateOutBlockByBlockHeight(blockHeight) {
     return await this.database.update(
@@ -71,33 +71,33 @@ module.exports = class UtxoTable {
           blockHash: '',
           blockHeight: -1,
         });
-  };
+  }
 
   async deleteAll() {
     return await this.database.delete({}, {multi: true});
-  };
+  }
 
   async deleteByOutpoint(outpoint) {
     return await this.database.delete({outpoint: outpoint}, {multi: true});
-  };
+  }
 
   async deleteByBlock(blockHash) {
     return await this.database.delete({blockHash: blockHash}, {multi: true});
-  };
+  }
 
   async deleteCoinbaseByBlock(blockHash) {
     return await this.database.delete(
         {blockHash: blockHash, coinbase: true}, {multi: true});
-  };
+  }
 
   async deleteCoinbaseByBlockHeight(blockHeight) {
     return await this.database.delete(
         {blockHeight: blockHeight, coinbase: true}, {multi: true});
-  };
+  }
 
   async getUtxoCount() {
     return await this.database.count({});
-  };
+  }
 
   async existUtxoByOutpoint(outpoint) {
     const ret = await this.database.findOne({outpoint: outpoint});
@@ -105,55 +105,56 @@ module.exports = class UtxoTable {
       return false;
     }
     return true;
-  };
+  }
 
   async getUtxoCountInBlock(blockHash) {
     return await this.database.count({blockHash: blockHash});
-  };
+  }
 
   async getUtxoCountByTxid(txid) {
     return await this.database.count({txid: txid});
-  };
+  }
 
   async getUtxoCountOutsideBlock() {
     return await this.database.count({blockHash: ''});
-  };
+  }
 
   async getUtxoByOutpoint(outpoint) {
     return await this.database.findOne({outpoint: outpoint});
-  };
+  }
 
   async getUtxos(page = 1, perPage = 100) {
     return await this.database.find({}, page, perPage);
-  };
+  }
 
   async getUtxosByBlock(blockHash = '', page = 1, perPage = 100) {
     return await this.database.find(
         {blockHash: blockHash}, page, perPage);
-  };
+  }
 
   async getUtxoByBlockHeight(blockHeight = 0, page = 1, perPage = 100) {
     return await this.database.find(
         {blockHeight: blockHeight}, page, perPage);
-  };
+  }
 
   async getUtxosByAddress(address, page = 1, perPage = 100) {
     return await this.database.find({address: address}, page, perPage);
-  };
+  }
 
   async getUtxosByAsset(asset, page = 1, perPage = 100) {
     return await this.database.find({asset: asset}, page, perPage);
-  };
+  }
 
   async getUtxosSpentable(page = 1, perPage = 100) {
     return await this.database.find({spent: true}, page, perPage);
-  };
+  }
 
   async getUtxosSpentableConfirmation(conf = 100, page = 1, perPage = 100) {
     return await this.database.find(
         {spent: true, blockHeight: {$lte: conf}}, page, perPage);
-  };
+  }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async getUtxosBlockHeightSpendable(maxBlockHeight = 9223372036854775807,
       minimumConf = 6, page = 1, perPage = 100) {
     return await this.database.findByFilter({}, function(obj) {
@@ -165,7 +166,7 @@ module.exports = class UtxoTable {
               ((obj.blockHeight === -1) ||
                ((height >= 0) && (height < minimumConf))));
     }, page, perPage);
-  };
+  }
 
   async getUtxosBlockHeightSolvedUnspentable(
       bestBlockHeight = 9223372036854775807,
@@ -189,7 +190,7 @@ module.exports = class UtxoTable {
               (height >= minimumConf) &&
               (height <= maximumConf));
     }, page, perPage);
-  };
+  }
 
   async getUtxosBlockHeightUnspentable(bestBlockHeight = 9223372036854775807,
       minimumConf = 6, maximumConf = 9223372036854775807,
@@ -211,10 +212,11 @@ module.exports = class UtxoTable {
               (height >= minimumConf) &&
               (height <= maximumConf));
     }, page, perPage);
-  };
+  }
 
   // elements only
   async getUtxosBlindUnspentable(bestBlockHeight = 9223372036854775807,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       confTarget = 6, page = 1, perPage = 100) {
     return await this.database.findByFilter({},
         function(obj) {
@@ -233,9 +235,10 @@ module.exports = class UtxoTable {
                   (height >= minimumConf) &&
                   (height <= maximumConf));
         }, page, perPage);
-  };
+  }
 
   async getUtxosUnblindUnspentable(bestBlockHeight = 9223372036854775807,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       confTarget = 6, page = 1, perPage = 100) {
     return await this.database.findByFilter({},
         function(obj) {
@@ -254,5 +257,5 @@ module.exports = class UtxoTable {
                   (height >= minimumConf) &&
                   (height <= maximumConf));
         }, page, perPage);
-  };
+  }
 };

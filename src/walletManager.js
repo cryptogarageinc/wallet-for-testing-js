@@ -229,7 +229,7 @@ const walletManager = class WalletManager {
           path: extPath,
         }));
     this.xprivkey = deriveRet.extkey;
-  };
+  }
 
   /**
    * constructor.
@@ -268,14 +268,14 @@ const walletManager = class WalletManager {
       }
       return true;
     }
-  };
+  }
 
   /**
    * shutdown.
    */
   shutdown() {
     this.isShutdown = true;
-  };
+  }
 
   /**
    * create wallet.
@@ -303,7 +303,7 @@ const walletManager = class WalletManager {
     }
     this.walletList[targetNodeType][userName] = walletObj;
     return walletObj;
-  };
+  }
 
   /**
    * get wallet.
@@ -315,7 +315,7 @@ const walletManager = class WalletManager {
   getWallet(userIndex, userNamePrefix, targetNodeType) {
     const userName = `${targetNodeType}-${userNamePrefix}${userIndex}`;
     return this.walletList[targetNodeType][userName];
-  };
+  }
 
   /**
    * check update target bitcoin block.
@@ -448,7 +448,7 @@ const walletManager = class WalletManager {
     } else {
       return await this.elmClient.getblockcount();
     }
-  };
+  }
 
   /**
    * get block.
@@ -462,7 +462,7 @@ const walletManager = class WalletManager {
     } else {
       return await this.elmClient.getblock(blockHash);
     }
-  };
+  }
 
   /**
    * get block hash.
@@ -476,7 +476,7 @@ const walletManager = class WalletManager {
     } else {
       return await this.elmClient.getblockhash(count);
     }
-  };
+  }
 
   /**
    * get transaction hex.
@@ -497,7 +497,7 @@ const walletManager = class WalletManager {
     } else {
       throw new Error('invalid data format.');
     }
-  };
+  }
 
   /**
    * get txout proof.
@@ -518,7 +518,7 @@ const walletManager = class WalletManager {
     } else {
       throw new Error('invalid data format.');
     }
-  };
+  }
 
   /**
    * stop target node.
@@ -531,7 +531,7 @@ const walletManager = class WalletManager {
     } else {
       return await this.elmClient.stop();
     }
-  };
+  }
 
   /**
    * stop target node.
@@ -544,7 +544,7 @@ const walletManager = class WalletManager {
     } else {
       return await this.elmClient.stop();
     }
-  };
+  }
 
   /**
    * call RPC command directly.
@@ -559,7 +559,7 @@ const walletManager = class WalletManager {
     } else {
       return await this.elmClient.directExecute(command, parameters);
     }
-  };
+  }
 
   /**
    * send pegin tx from bitcoin.

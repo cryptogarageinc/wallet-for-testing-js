@@ -5,7 +5,7 @@ module.exports = class AddressService {
     this.addressTable = databaseService.getAddressTable();
     this.configTable = databaseService.getConfigTable();
     this.cfd = cfdObject;
-  };
+  }
 
   async initialize(network, masterXprivkey) {
     this.network = network;
@@ -23,7 +23,7 @@ module.exports = class AddressService {
       this.isElements = true;
     }
     return true;
-  };
+  }
 
   async getFeeAddress(addrType = 'p2wpkh', label = '', targetIndex = -1, gapLimit = 20) {
     let index = 0;
@@ -41,7 +41,7 @@ module.exports = class AddressService {
       await this.configTable.updateBip32Count(index);
     }
     return result;
-  };
+  }
 
   async getReceiveAddress(addrType = 'p2wpkh', label = '', targetIndex = -1, gapLimit = 20) {
     let index = 0;
@@ -59,7 +59,7 @@ module.exports = class AddressService {
       await this.configTable.updateBip32Count(index);
     }
     return result;
-  };
+  }
 
   async getAddress(addrType, index, addrRecvType, label = '') {
     // generate hdkey
@@ -106,7 +106,7 @@ module.exports = class AddressService {
     }
 
     return result;
-  };
+  }
 
   async getScriptAddress(script, addrType = 'p2wsh', label = '', relatedPubkey = []) {
     const addrInfo = await Promise.resolve(this.cfd.CreateAddress({
@@ -123,7 +123,7 @@ module.exports = class AddressService {
     let descriptor = '';
     try {
       const multisigRet = await Promise.resolve(
-          this.cfd.GetAddressesFromMultisig( {
+          this.cfd.GetAddressesFromMultisig({
             isElements: this.isElements,
             redeemScript: script,
             network: this.network,
@@ -158,7 +158,7 @@ module.exports = class AddressService {
       result = await this.addressTable.getAddress(addrInfo.address);
     }
     return result;
-  };
+  }
 
   getMultisigDescriptor(addrType, pubkeys, requireNum) {
     let multisig = `multi(${requireNum}`;
@@ -182,7 +182,7 @@ module.exports = class AddressService {
 
   async getAddressInfo(address) {
     return await this.addressTable.getAddress(address);
-  };
+  }
 
   async getAddressInfoByPubkey(pubkey, addrType = '') {
     const list = await this.addressTable.getPubkeyAddresses(pubkey);
@@ -199,24 +199,25 @@ module.exports = class AddressService {
       }
     }
     return false;
-  };
+  }
 
   async getAddressInfoByLockingScript(lockingScript) {
     return await this.addressTable.getAddressByLockingScript(lockingScript);
-  };
+  }
 
   async getDescriptor(address) {
     const addrInfo = await this.addressTable.getAddress(address);
     return addrInfo.descriptor;
-  };
+  }
 
   async getAddresses() {
     return await this.addressTable.getAddressesAll();
-  };
+  }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async getAddressesByLabel(label) {
     return await this.addressTable.getAddressesAll();
-  };
+  }
 };
 /*
 HDkey

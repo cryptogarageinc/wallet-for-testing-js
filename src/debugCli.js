@@ -198,7 +198,7 @@ const decoderawtransactionFromFile = async function() {
   const tx = fs.readFileSync(filePath, 'utf-8').toString().trim();
   try {
     const liquidNetwork = ((network === 'regtest') || (network === 'testnet')) ?
-        'regtest' : 'liquidv1';
+      'regtest' : 'liquidv1';
     decTx = await cfdjs.ElementsDecodeRawTransaction({
       hex: tx,
       mainchainNetwork: network,
@@ -240,7 +240,7 @@ const decoderawtransaction = async function() {
   let decTx = '';
   try {
     const liquidNetwork = ((network === 'regtest') || (network === 'testnet')) ?
-        'regtest' : 'liquidv1';
+      'regtest' : 'liquidv1';
     decTx = await cfdjs.ElementsDecodeRawTransaction({
       hex: tx,
       mainchainNetwork: network,
@@ -433,7 +433,7 @@ const verifysign = async function() {
   targetList.push(targetData);
 
   if (process.argv.length >= 6) {
-    for (let idx=5; idx<process.argv.length; ++idx) {
+    for (let idx = 5; idx < process.argv.length; ++idx) {
       targetData = process.argv[5];
       targetList.push(targetData);
     }
@@ -883,7 +883,7 @@ const mnemonictoseed = async function() {
     path = process.argv[6];
   }
   if ((path.length > 2) && (path.charAt(0) === '\'') &&
-      (path.charAt(path.length - 1) === '\'')) {
+    (path.charAt(path.length - 1) === '\'')) {
     path = path.substring(1, path.length - 1);
   }
 
@@ -894,7 +894,6 @@ const mnemonictoseed = async function() {
   const result = await cfdjs.ConvertMnemonicToSeed({
     mnemonic: mnemonicItems,
     passphrase: passphrase,
-    // eslint-disable-next-line @typescript-eslint/camelcase
     strictCheck: true,
     language: 'en',
   });
@@ -1186,46 +1185,6 @@ const createextkey = async function() {
   }
 };
 
-const checkextkey = async function() {
-  let basekey = '';
-  if (process.argv.length < 4) {
-    basekey = await readInput('extkey > ');
-  } else {
-    basekey = process.argv[3];
-  }
-  let path = '';
-  if (process.argv.length < 5) {
-    path = await readInput('bip32DerivationPath > ');
-  } else {
-    path = process.argv[4];
-  }
-  if ((path === '\'\'') || (path === '""')) {
-    path = '';
-  }
-  if ((path.length > 2) && (path.charAt(0) === '\'') && (path.charAt(path.length - 1) === '\'')) {
-    path = path.substring(1, path.length - 1);
-  }
-  let childkey = '';
-  if (process.argv.length < 6) {
-    childkey = await readInput('child extkey > ');
-  } else {
-    childkey = process.argv[5];
-  }
-  let childPath = '';
-  if (process.argv.length < 7) {
-    childPath = await readInput('child bip32DerivationPath > ');
-  } else {
-    childPath = process.argv[6];
-  }
-  if ((childPath === '\'\'') || (childPath === '""')) {
-    childPath = '';
-  }
-  if ((childPath.length > 2) && (childPath.charAt(0) === '\'') &&
-      (childPath.charAt(path.length - 1) === '\'')) {
-    childPath = childPath.substring(1, childPath.length - 1);
-  }
-};
-
 const estimatefee = async function() {
   let feeStr = '1.0';
   if (process.argv.length < 4) {
@@ -1275,7 +1234,7 @@ const estimatefee = async function() {
 };
 
 const getissuanceblindingkey = async function() {
-// parameter: '<masterBlindingKey> <txid> <vout>',
+  // parameter: '<masterBlindingKey> <txid> <vout>',
   let masterBlindingKey = '0';
   if (process.argv.length < 4) {
     masterBlindingKey = await readInput('masterBlindingKey > ');
@@ -1305,7 +1264,7 @@ const getissuanceblindingkey = async function() {
 };
 
 const getblindingkey = async function() {
-// parameter: '<masterBlindingKey> <address>',
+  // parameter: '<masterBlindingKey> <address>',
   let masterBlindingKey = '0';
   if (process.argv.length < 4) {
     masterBlindingKey = await readInput('masterBlindingKey > ');
@@ -1336,7 +1295,7 @@ const getblindingkey = async function() {
 };
 
 const getpubkeyaddress = async function() {
-// parameter: '<addrtype(p2pkh,p2wpkh,p2sh-p2wpkh)> <network> <privkey or pubkey>',
+  // parameter: '<addrtype(p2pkh,p2wpkh,p2sh-p2wpkh)> <network> <privkey or pubkey>',
   let addrtype = 'p2pkh';
   if (process.argv.length < 4) {
     addrtype = await readInput('addrtype > ');
@@ -1389,7 +1348,7 @@ const getpubkeyaddress = async function() {
 };
 
 const getscriptaddress = async function() {
-// parameter: '<addrtype(p2pkh,p2wpkh,p2sh-p2wpkh)> <network> <privkey or pubkey>',
+  // parameter: '<addrtype(p2pkh,p2wpkh,p2sh-p2wpkh)> <network> <privkey or pubkey>',
   let addrtype = 'p2pkh';
   if (process.argv.length < 4) {
     addrtype = await readInput('addrtype > ');
@@ -1432,7 +1391,7 @@ const getscriptaddress = async function() {
 };
 
 const getconfidentialaddress = async function() {
-// parameter: '<address> <blinding key>',
+  // parameter: '<address> <blinding key>',
   let address = '';
   if (process.argv.length < 4) {
     address = await readInput('address > ');
@@ -1463,7 +1422,7 @@ const getconfidentialaddress = async function() {
 };
 
 const generatekeywithmnemonic = async function() {
-// parameter: '<network(mainnet,testnet)> <passphrase> <derivePath> <mnemonic ...>',
+  // parameter: '<network(mainnet,testnet)> <passphrase> <derivePath> <mnemonic ...>',
   let network = '';
   if (process.argv.length < 4) {
     network = await readInput('network > ');
@@ -1511,7 +1470,6 @@ const generatekeywithmnemonic = async function() {
     const seed = await cfdjs.ConvertMnemonicToSeed({
       mnemonic: mnemonicItems,
       passphrase: passphrase,
-      // eslint-disable-next-line @typescript-eslint/camelcase
       strict_check: true,
       language: 'en',
     });
@@ -1558,7 +1516,7 @@ const generatekeywithmnemonic = async function() {
 };
 
 const mnemonictoblindtx = async function() {
-// parameter: '<mnemonic ...>',
+  // parameter: '<mnemonic ...>',
   let network = '';
   if (process.argv.length < 4) {
     network = await readInput('network > ');
@@ -1607,8 +1565,7 @@ const mnemonictoblindtx = async function() {
   const seed = await cfdjs.ConvertMnemonicToSeed({
     mnemonic: mnemonicArgList,
     passphrase: passphrase,
-    // eslint-disable-next-line @typescript-eslint/camelcase
-    strict_check: true,
+    strictCheck: true,
     language: 'en',
   });
   const masterxpriv = await cfdjs.CreateExtkeyFromSeed({
@@ -1828,12 +1785,6 @@ const commandData = {
     parameter: '<extkey or seed> <derivePath> [<network>]',
     function: createextkey,
   },
-  checkextkey: {
-    name: 'checkextkey',
-    alias: 'checkkey',
-    parameter: '<extkey> <derivePath> <child extkey> <child derivePath>',
-    function: checkextkey,
-  },
   getissuanceblindingkey: {
     name: 'getissuanceblindingkey',
     alias: 'ibkey',
@@ -1921,7 +1872,7 @@ const help = async function() {
 };
 
 // -----------------------------------------------------------------------------
-const main = async () =>{
+const main = async () => {
   cfdjs = cfdjsWasm.getCfd();
   try {
     if (process.argv.length > 2) {

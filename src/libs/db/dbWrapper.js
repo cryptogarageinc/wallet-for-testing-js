@@ -17,17 +17,18 @@ module.exports = class LokijsWrapper {
     };
     this.db = new loki(filepath, option);
     this.datastore = this.db.addCollection(tableName);
-  };
+  }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async createIndex(keyName, unique = true) {
     // regenerate file
-    //return await this.datastore.ensureIndex(
+    // return await this.datastore.ensureIndex(
     //    {fieldName: keyName, unique: unique});
     return new Promise((resolve) => {
       this.datastore.ensureIndex(keyName, true);
       resolve();
     });
-  };
+  }
 
   async insert(data, query = {}) {
     return new Promise((resolve) => {
@@ -45,13 +46,14 @@ module.exports = class LokijsWrapper {
         resolve(false);
       }
     });
-  };
+  }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async update(query, data, options = {}) {
     return new Promise((resolve) => {
-      const currentDatas = this.datastore.find(query);
+      const datas = this.datastore.find(query);
       const list = [];
-      currentDatas.forEach(currentData => list.push({...currentData, ...data}));
+      datas.forEach((currentData) => list.push({...currentData, ...data}));
       this.datastore.update(list);
 
       if (!list) {
@@ -62,8 +64,9 @@ module.exports = class LokijsWrapper {
         resolve(list);
       }
     });
-  };
+  }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async delete(query = {}, options = {}) {
     return new Promise((resolve) => {
       if (!Object.keys(query).length) {
@@ -73,20 +76,23 @@ module.exports = class LokijsWrapper {
       }
       resolve(true);
     });
-  };
+  }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async findOne(query = {}, projection = {}) {
     return new Promise((resolve) => {
       resolve(this.datastore.findOne(query));
     });
-  };
+  }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async find(query = {}, projection = {}) {
     return new Promise((resolve) => {
       resolve(this.datastore.find(query));
     });
-  };
+  }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async find(query = {}, page = 1, perPage = 100, projection = {}) {
     return new Promise((resolve) => {
       let list;
@@ -109,41 +115,43 @@ module.exports = class LokijsWrapper {
       }
       resolve(list);
     });
-  };
+  }
 
   async findSorted(query = {}, page = 1, perPage = 10,
-    projection = {}, sortFunction = {}, secondQuery = {}) {
-  return new Promise((resolve) => {
-    let list;
-    if (page <= 1) {
-      if (!Object.keys(query).length) {
-        list = this.datastore.chain().limit(perPage).data();
-      } else if (Object.keys(secondQuery).length > 0) {
-        list = this.datastore.chain().find(query).find(secondQuery)
-            .sort(sortFunction).limit(perPage).data();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      projection = {}, sortFunction = {}, secondQuery = {}) {
+    return new Promise((resolve) => {
+      let list;
+      if (page <= 1) {
+        if (!Object.keys(query).length) {
+          list = this.datastore.chain().limit(perPage).data();
+        } else if (Object.keys(secondQuery).length > 0) {
+          list = this.datastore.chain().find(query).find(secondQuery)
+              .sort(sortFunction).limit(perPage).data();
+        } else {
+          list = this.datastore.chain().find(query).sort(sortFunction)
+              .limit(perPage).data();
+        }
       } else {
-        list = this.datastore.chain().find(query).sort(sortFunction)
-            .limit(perPage).data();
+        const skipNum = (page - 1) * perPage;
+        if (!Object.keys(query).length) {
+          list = this.datastore.chain().offset(skipNum)
+              .limit(perPage).data();
+        } else if (Object.keys(secondQuery).length > 0) {
+          list = this.datastore.chain().find(query).find(secondQuery)
+              .offset(skipNum).limit(perPage).data();
+        } else {
+          list = this.datastore.chain().find(query)
+              .offset(skipNum).limit(perPage).data();
+        }
       }
-    } else {
-      const skipNum = (page - 1) * perPage;
-      if (!Object.keys(query).length) {
-        list = this.datastore.chain().offset(skipNum)
-            .limit(perPage).data();
-      } else if (Object.keys(secondQuery).length > 0) {
-        list = this.datastore.chain().find(query).find(secondQuery)
-            .offset(skipNum).limit(perPage).data();
-      } else {
-        list = this.datastore.chain().find(query)
-            .offset(skipNum).limit(perPage).data();
-      }
-    }
-    resolve(list);
-  });
-};
+      resolve(list);
+    });
+  }
 
-  async findByFilter(query = {}, filterFunction = {},
-        page = 1, perPage = 10, projection = {}, secondQuery = {}) {
+  async findByFilter(query = {}, filterFunction = {}, page = 1,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      perPage = 10, projection = {}, secondQuery = {}) {
     return new Promise((resolve) => {
       let list;
       if (page <= 1) {
@@ -172,19 +180,19 @@ module.exports = class LokijsWrapper {
       }
       resolve(list);
     });
-  };
+  }
 
   async count(query = {}) {
     return new Promise((resolve) => {
       resolve(this.datastore.count(query));
     });
-  };
+  }
 
   getDbName() {
     return this.dbName;
-  };
+  }
 
   getTableName() {
     return this.tableName;
-  };
+  }
 };

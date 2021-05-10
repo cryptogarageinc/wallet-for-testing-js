@@ -1,5 +1,5 @@
 /* eslint-disable require-jsdoc */
-const NedbWrapper = require('./nedbWrapper.js');
+const DbWrapper = require('./dbWrapper.js');
 const KeyNetworkType = 'network';
 const KeyBip32Count = 'bip32Count';
 const KeyBip32FeeCount = 'bip32FeeCount';
@@ -9,7 +9,7 @@ const KeyAssetMap = 'assetMap';
 
 module.exports = class ConfigTable {
   constructor(name = 'db', dirPath = './', inMemoryOnly = true) {
-    this.database = new NedbWrapper(`${name}_config`, dirPath, inMemoryOnly);
+    this.database = new DbWrapper(name, 'config', dirPath, inMemoryOnly);
   }
 
   async initialize(networkType = 'regtest') {
@@ -61,7 +61,7 @@ module.exports = class ConfigTable {
       return false;
     }
     return await this.database.update(
-        {key: KeyBip32Count}, {$set: {value: count}});
+        {key: KeyBip32Count}, {value: count});
   };
 
   async updateBip32FeeCount(count) {
@@ -69,7 +69,7 @@ module.exports = class ConfigTable {
       return false;
     }
     return await this.database.update(
-        {key: KeyBip32FeeCount}, {$set: {value: count}});
+        {key: KeyBip32FeeCount}, {value: count});
   };
 
   async updateBlindingKeyCount(count) {
@@ -77,7 +77,7 @@ module.exports = class ConfigTable {
       return false;
     }
     return await this.database.update(
-        {key: KeyBlindCount}, {$set: {value: count}});
+        {key: KeyBlindCount}, {value: count});
   };
 
   async updateTipBlockHeight(count) {
@@ -86,7 +86,7 @@ module.exports = class ConfigTable {
       return false;
     }
     return await this.database.update(
-        {key: KeyTipBlockHeight}, {$set: {value: count}});
+        {key: KeyTipBlockHeight}, {value: count});
   };
 
   async updateAssetMap(assetMap) {
@@ -95,7 +95,7 @@ module.exports = class ConfigTable {
       return false;
     }
     return await this.database.update(
-        {key: KeyAssetMap}, {$set: {value: assetMap}});
+        {key: KeyAssetMap}, {value: assetMap});
   };
 
 

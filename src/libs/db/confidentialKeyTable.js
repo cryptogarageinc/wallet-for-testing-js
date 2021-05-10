@@ -1,9 +1,9 @@
 /* eslint-disable require-jsdoc */
-const NedbWrapper = require('./nedbWrapper.js');
+const DbWrapper = require('./dbWrapper.js');
 
 module.exports = class ConfidentialKeyTable {
   constructor(name = 'db', dirPath = './', inMemoryOnly = true) {
-    this.database = new NedbWrapper(`${name}_cfdkey`, dirPath, inMemoryOnly);
+    this.database = new DbWrapper(name, 'blindkey', dirPath, inMemoryOnly);
   };
 
   async initialize() {
@@ -45,14 +45,14 @@ module.exports = class ConfidentialKeyTable {
   };
 
   async getConfidentialKeysByAddress(address, page = 1, perPage = 100) {
-    return await this.database.findSorted({address: address}, page, perPage);
+    return await this.database.find({address: address}, page, perPage);
   };
 
   async getAddressByKey(pubkey, page = 1, perPage = 100) {
-    return await this.database.findSorted({pubkey: pubkey}, page, perPage);
+    return await this.database.find({pubkey: pubkey}, page, perPage);
   };
 
   async getAddressByPath(hdkeyPath, page = 1, perPage = 100) {
-    return await this.database.findSorted({path: hdkeyPath}, page, perPage);
+    return await this.database.find({path: hdkeyPath}, page, perPage);
   };
 };

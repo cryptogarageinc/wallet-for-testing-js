@@ -1,9 +1,9 @@
 /* eslint-disable require-jsdoc */
-const NedbWrapper = require('./nedbWrapper.js');
+const DbWrapper = require('./dbWrapper.js');
 
 module.exports = class AddressTable {
   constructor(name = 'db', dirPath = './', inMemoryOnly = true) {
-    this.database = new NedbWrapper(`${name}_addr`, dirPath, inMemoryOnly);
+    this.database = new DbWrapper(name, 'addr', dirPath, inMemoryOnly);
   };
 
   async initialize() {
@@ -53,7 +53,7 @@ module.exports = class AddressTable {
   };
 
   async getAddressesAll(page = 1, perPage = 100) {
-    return await this.database.findSorted({}, page, perPage);
+    return await this.database.find({}, page, perPage);
   };
 
   async getAddressesByPath(hdkeyPath) {
@@ -65,11 +65,10 @@ module.exports = class AddressTable {
   };
 
   async getAddressesByContainPath(hdkeyPath, page = 1, perPage = 100) {
-    return await this.database.findSorted({
-      $where: function() {
-        return (this.path && !(this.path.indexOf(hdkeyPath) == -1));
-      },
-    }, page, perPage);
+    return await this.database.findByFilter({},
+      function(obj) {
+        return (obj.path && !(obj.path.indexOf(hdkeyPath) == -1));
+      }, page, perPage);
   };
 
   async getPubkeyAddress(pubkey, addressType) {
@@ -80,7 +79,7 @@ module.exports = class AddressTable {
   };
 
   async getPubkeyAddressesAll(page = 1, perPage = 100) {
-    return await this.database.findSorted(
+    return await this.database.find(
         {pubkey: {$exists: true}}, page, perPage);
   };
 
@@ -92,7 +91,7 @@ module.exports = class AddressTable {
   };
 
   async getScriptAddressesAll(page = 1, perPage = 100) {
-    return await this.database.findSorted(
+    return await this.database.find(
         {script: {$exists: true}}, page, perPage);
   };
 };

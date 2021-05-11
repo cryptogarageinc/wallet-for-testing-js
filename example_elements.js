@@ -135,11 +135,15 @@ console.log(multisigSign.hex);
 console.log('-------------------------------------------------------------------');
 console.log('-- large output tx --');
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const networkType = 'liquidv1';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const mainchainNetworkType = 'mainnet';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const masterBlindingKey = '28054244faf0d4a04fc9dd3012443fc126c4a353f48d0277d3c57f69164adf87';
 // dust laptop safe error tent soon fragile skill pear alley awkward vague stomach duck future
 // xprv9s21ZrQH143K39sCCERa3w6NuVmYLMxHKH1PjEnuiaq2RB9iHhEwncTGpbx1WANWJZzFFbFdBi7BKECLg3HnFgajeRi5Go6YxD1K2nZtpDB/44h/1776h/1h
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const baseXpubkey = 'xpub6CADKiKYZrFrmFbPAQPSrzKMRohBHNmYM7GHNngAaaVHqNhC3apR1aNKJkigUjBDU7HwciQSRjeBK42vZUMZGNEjZkPjDWDawKVxTLGhNVE';
 const minimumBits = 36;
 

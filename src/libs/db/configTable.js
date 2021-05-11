@@ -1,5 +1,5 @@
 /* eslint-disable require-jsdoc */
-const NedbWrapper = require('./nedbWrapper.js');
+const DbWrapper = require('./dbWrapper.js');
 const KeyNetworkType = 'network';
 const KeyBip32Count = 'bip32Count';
 const KeyBip32FeeCount = 'bip32FeeCount';
@@ -9,7 +9,7 @@ const KeyAssetMap = 'assetMap';
 
 module.exports = class ConfigTable {
   constructor(name = 'db', dirPath = './', inMemoryOnly = true) {
-    this.database = new NedbWrapper(`${name}_config`, dirPath, inMemoryOnly);
+    this.database = new DbWrapper(name, 'config', dirPath, inMemoryOnly);
   }
 
   async initialize(networkType = 'regtest') {
@@ -61,24 +61,24 @@ module.exports = class ConfigTable {
       return false;
     }
     return await this.database.update(
-        {key: KeyBip32Count}, {$set: {value: count}});
-  };
+        {key: KeyBip32Count}, {value: count});
+  }
 
   async updateBip32FeeCount(count) {
     if (count === undefined) {
       return false;
     }
     return await this.database.update(
-        {key: KeyBip32FeeCount}, {$set: {value: count}});
-  };
+        {key: KeyBip32FeeCount}, {value: count});
+  }
 
   async updateBlindingKeyCount(count) {
     if (count === undefined) {
       return false;
     }
     return await this.database.update(
-        {key: KeyBlindCount}, {$set: {value: count}});
-  };
+        {key: KeyBlindCount}, {value: count});
+  }
 
   async updateTipBlockHeight(count) {
     if (count === undefined) {
@@ -86,8 +86,8 @@ module.exports = class ConfigTable {
       return false;
     }
     return await this.database.update(
-        {key: KeyTipBlockHeight}, {$set: {value: count}});
-  };
+        {key: KeyTipBlockHeight}, {value: count});
+  }
 
   async updateAssetMap(assetMap) {
     if (assetMap === undefined) {
@@ -95,8 +95,8 @@ module.exports = class ConfigTable {
       return false;
     }
     return await this.database.update(
-        {key: KeyAssetMap}, {$set: {value: assetMap}});
-  };
+        {key: KeyAssetMap}, {value: assetMap});
+  }
 
 
   async getNetworkType() {
@@ -105,7 +105,7 @@ module.exports = class ConfigTable {
       return false;
     }
     return ret.value;
-  };
+  }
 
   async getBip32Count() {
     const ret = await this.database.findOne({key: KeyBip32Count});
@@ -113,7 +113,7 @@ module.exports = class ConfigTable {
       return false;
     }
     return ret.value;
-  };
+  }
 
   async getBip32FeeCount() {
     const ret = await this.database.findOne({key: KeyBip32FeeCount});
@@ -121,7 +121,7 @@ module.exports = class ConfigTable {
       return false;
     }
     return ret.value;
-  };
+  }
 
   async getBlindingKeyCount() {
     const ret = await this.database.findOne({key: KeyBlindCount});
@@ -129,7 +129,7 @@ module.exports = class ConfigTable {
       return false;
     }
     return ret.value;
-  };
+  }
 
   async getTipBlockHeight() {
     const ret = await this.database.findOne({key: KeyTipBlockHeight});
@@ -137,7 +137,7 @@ module.exports = class ConfigTable {
       return false;
     }
     return ret.value;
-  };
+  }
 
   async getAssetMap() {
     const ret = await this.database.findOne({key: KeyAssetMap});
@@ -145,5 +145,5 @@ module.exports = class ConfigTable {
       return false;
     }
     return ret.value;
-  };
+  }
 };

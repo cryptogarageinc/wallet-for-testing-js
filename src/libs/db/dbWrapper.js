@@ -17,6 +17,11 @@ module.exports = class LokijsWrapper {
     };
     this.db = new loki(filepath, option);
     this.datastore = this.db.addCollection(tableName);
+    this.getDataOptions = {
+      forceClones: true,
+      forceCloneMethod: 'parse-stringify',
+      removeMeta: true,
+    };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -86,31 +91,25 @@ module.exports = class LokijsWrapper {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async find(query = {}, projection = {}) {
-    return new Promise((resolve) => {
-      resolve(this.datastore.find(query));
-    });
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async find(query = {}, page = 1, perPage = 100, projection = {}) {
     return new Promise((resolve) => {
       let list;
       if (page <= 1) {
         if (!Object.keys(query).length) {
-          list = this.datastore.chain().limit(perPage).data();
+          list = this.datastore.chain().limit(perPage)
+              .data(this.getDataOptions);
         } else {
           list = this.datastore.chain().find(query)
-              .limit(perPage).data();
+              .limit(perPage).data(this.getDataOptions);
         }
       } else {
         const skipNum = (page - 1) * perPage;
         if (!Object.keys(query).length) {
           list = this.datastore.chain().offset(skipNum)
-              .limit(perPage).data();
+              .limit(perPage).data(this.getDataOptions);
         } else {
           list = this.datastore.chain().find(query)
-              .offset(skipNum).limit(perPage).data();
+              .offset(skipNum).limit(perPage).data(this.getDataOptions);
         }
       }
       resolve(list);
@@ -124,25 +123,27 @@ module.exports = class LokijsWrapper {
       let list;
       if (page <= 1) {
         if (!Object.keys(query).length) {
-          list = this.datastore.chain().limit(perPage).data();
+          list = this.datastore.chain().limit(perPage)
+              .data(this.getDataOptions);
         } else if (Object.keys(secondQuery).length > 0) {
           list = this.datastore.chain().find(query).find(secondQuery)
-              .sort(sortFunction).limit(perPage).data();
+              .sort(sortFunction).limit(perPage)
+              .data(this.getDataOptions);
         } else {
           list = this.datastore.chain().find(query).sort(sortFunction)
-              .limit(perPage).data();
+              .limit(perPage).data(this.getDataOptions);
         }
       } else {
         const skipNum = (page - 1) * perPage;
         if (!Object.keys(query).length) {
           list = this.datastore.chain().offset(skipNum)
-              .limit(perPage).data();
+              .limit(perPage).data(this.getDataOptions);
         } else if (Object.keys(secondQuery).length > 0) {
           list = this.datastore.chain().find(query).find(secondQuery)
-              .offset(skipNum).limit(perPage).data();
+              .offset(skipNum).limit(perPage).data(this.getDataOptions);
         } else {
           list = this.datastore.chain().find(query)
-              .offset(skipNum).limit(perPage).data();
+              .offset(skipNum).limit(perPage).data(this.getDataOptions);
         }
       }
       resolve(list);
@@ -157,25 +158,27 @@ module.exports = class LokijsWrapper {
       if (page <= 1) {
         if (!Object.keys(query).length) {
           list = this.datastore.chain().where(filterFunction)
-              .limit(perPage).data();
+              .limit(perPage).data(this.getDataOptions);
         } else if (Object.keys(secondQuery).length > 0) {
           list = this.datastore.chain().find(query).find(secondQuery)
-              .where(filterFunction).limit(perPage).data();
+              .where(filterFunction).limit(perPage).data(this.getDataOptions);
         } else {
           list = this.datastore.chain().find(query).where(filterFunction)
-              .limit(perPage).data();
+              .limit(perPage).data(this.getDataOptions);
         }
       } else {
         const skipNum = (page - 1) * perPage;
         if (!Object.keys(query).length) {
           list = this.datastore.chain().where(filterFunction)
-              .offset(skipNum).limit(perPage).data();
+              .offset(skipNum).limit(perPage).data(this.getDataOptions);
         } else if (Object.keys(secondQuery).length > 0) {
           list = this.datastore.chain().find(query).find(secondQuery)
-              .where(filterFunction).offset(skipNum).limit(perPage).data();
+              .where(filterFunction).offset(skipNum).limit(perPage)
+              .data(this.getDataOptions);
         } else {
           list = this.datastore.chain().find(query)
-              .where(filterFunction).offset(skipNum).limit(perPage).data();
+              .where(filterFunction).offset(skipNum).limit(perPage)
+              .data(this.getDataOptions);
         }
       }
       resolve(list);

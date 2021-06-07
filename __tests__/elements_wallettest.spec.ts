@@ -438,9 +438,9 @@ describe('wallet test', () => {
       console.log('pegin tx:', txid);
 
       await elmWallet1.generate(1);
-      const gettxout = await elmWalletMgr.callRpcDirect(
-          TargetNode.Elements, 'gettxout', [txid, 0]);
-      console.log('gettxout:', gettxout);
+      // const gettxout = await elmWalletMgr.callRpcDirect(
+      //     TargetNode.Elements, 'gettxout', [txid, 0]);
+      // console.log('gettxout:', gettxout);
 
       // console.log('tx:', decTx);
 
@@ -490,9 +490,9 @@ describe('wallet test', () => {
     // send pegin tx
     try {
       await elmWallet1.generate(1);
-      const gettxout = await elmWalletMgr.callRpcDirect(
-          TargetNode.Elements, 'gettxout', [txid, 0]);
-      console.log('gettxout:', gettxout);
+      // const gettxout = await elmWalletMgr.callRpcDirect(
+      //     TargetNode.Elements, 'gettxout', [txid, 0]);
+      // console.log('gettxout:', gettxout);
 
       // console.log('tx:', decTx);
 
@@ -670,9 +670,9 @@ describe('wallet test', () => {
       expect(txid).toBe(decTx.txid);
 
       await elmWallet1.generate(1);
-      const gettxout = await elmWalletMgr.callRpcDirect(
-          TargetNode.Elements, 'gettxout', [txid, 0]);
-      console.log('gettxout:', gettxout);
+      // const gettxout = await elmWalletMgr.callRpcDirect(
+      //     TargetNode.Elements, 'gettxout', [txid, 0]);
+      // console.log('gettxout:', gettxout);
 
       // console.log('tx:', decTx);
 
@@ -786,9 +786,9 @@ describe('wallet test', () => {
       expect(txid).toBe(reissueDecTx.txid);
 
       await elmWallet1.generate(1);
-      const gettxout = await elmWalletMgr.callRpcDirect(
-          TargetNode.Elements, 'gettxout', [txid, 0]);
-      console.log('gettxout:', gettxout);
+      // const gettxout = await elmWalletMgr.callRpcDirect(
+      //     TargetNode.Elements, 'gettxout', [txid, 0]);
+      // console.log('gettxout:', gettxout);
 
       // console.log('tx:', decTx);
 

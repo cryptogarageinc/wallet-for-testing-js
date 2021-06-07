@@ -1,6 +1,6 @@
 {
   "name": "wallet-for-testing-js",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "",
   "main": "index.js",
   "types": "./src/walletManager.d.ts",
@@ -14,7 +14,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "cfd-js-wasm": "github:cryptogarageinc/cfd-js-wasm#semver:^0.3.5",
+    "cfd-js-wasm": "github:cryptogarageinc/cfd-js-wasm#semver:^0.3.6",
     "ini": "^2.0.0",
     "lokijs": "^1.5.12",
     "needle": "^2.6.0",

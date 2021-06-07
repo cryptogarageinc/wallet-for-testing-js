@@ -503,21 +503,24 @@ const walletManager = class WalletManager {
    * get txout proof.
    * @param {string} targetNodeType target node type
    * @param {string[]} txids transaction id list
-   * @param {string | null} blockHash block hash
+   * @param {string} blockHash block hash
    * @return {Promise<string>} transaction proof.
    */
-  async getTxOutProof(targetNodeType, txids, blockHash = null) {
-    let txProof;
+  async getTxOutProof(targetNodeType, txids, blockHash) {
+    let block;
     if (targetNodeType === 'bitcoin') {
-      txProof = await this.btcClient.gettxoutproof(txids, blockHash);
+      block = await this.btcClient.getblock(blockHash, 0);
     } else {
-      txProof = await this.elmClient.gettxoutproof(txids, blockHash);
+      block = await this.elmClient.getblock(blockHash, 0);
     }
-    if (typeof txProof == 'string') {
-      return txProof;
-    } else {
-      throw new Error('invalid data format.');
-    }
+    const txid = txids[0];
+    const txData = await Promise.resolve(
+        this.cfd.GetTxDataFromBlock({
+          block,
+          isElements: false,
+          txid,
+        }));
+    return txData.txoutproof;
   }
 
   /**
@@ -667,11 +670,25 @@ const walletManager = class WalletManager {
 
     await bitcoinWallet.generate(peginConfirmationDepth);
 
+    const btcUtxos = await bitcoinWallet.listUnspent();
+    let blockHash = '';
+    for (const utxo of btcUtxos) {
+      if (utxo) {
+        if (utxo.txid == sendInfo.txid) {
+          blockHash = utxo.blockHash;
+          break;
+        }
+      }
+    }
+    if (!blockHash) {
+      throw error('pegged UTXO not found.');
+    }
+
     const txHex = await this.getRawTransactionHex(
-        targetNodeDefine.Bitcoin, sendInfo.txid);
+        targetNodeDefine.Bitcoin, sendInfo.txid, blockHash);
 
     const txoutProof = await this.getTxOutProof(
-        targetNodeDefine.Bitcoin, [sendInfo.txid]);
+        targetNodeDefine.Bitcoin, [sendInfo.txid], blockHash);
 
     const minrelaytxfee = await elementsWallet.getMinRelayTxFee();
     // console.log('minrelaytxfee:', minrelaytxfee);

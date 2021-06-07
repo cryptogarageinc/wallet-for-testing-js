@@ -117,7 +117,7 @@ export class WalletManager {
       blockHash?: string | null): Promise<string>
 
   getTxOutProof(targetNodeType: TargetNode, txids: string[],
-    blockHash?: string | null): Promise<string>
+    blockHash: string): Promise<string>
 
   stop(targetNodeType: TargetNode): Promise<string>;
 

@@ -14,16 +14,16 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "cfd-js-wasm": "github:cryptogarageinc/cfd-js-wasm#semver:^0.3.7",
+    "cfd-js-wasm": "github:cryptogarageinc/cfd-js-wasm#semver:^0.3.8",
     "ini": "^2.0.0",
     "lokijs": "^1.5.12",
-    "needle": "^2.8.0",
+    "needle": "^3.0.0",
     "node-json-rpc2": "git+https://github.com/ko-matsu/node-json-rpc2#async_minimum",
     "readline-sync": "^1.4.10",
     "zlib": "^1.0.5"
   },
   "devDependencies": {
-    "@types/jest": "^26.0.24",
+    "@types/jest": "^27.0.2",
     "@types/node": "^16.0.1",
     "@typescript-eslint/eslint-plugin": "^4.28.2",
     "@typescript-eslint/eslint-plugin-tslint": "^4.28.2",

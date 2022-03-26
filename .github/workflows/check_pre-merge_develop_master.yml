@@ -15,17 +15,16 @@ on:
     - develop
 
 env:
-  GITHUB_VERSION: v0.0.10
-  GITHUB_BITCOIN_VERSION: v0.0.10
-  GITHUB_DOCKER_IMAGE: docker.pkg.github.com/cryptogarageinc/elements-testing-dockerfile/elements-testing
+  GITHUB_VERSION: v0.1.2
+  GITHUB_BITCOIN_VERSION: v0.1.2
+  GITHUB_DOCKER_IMAGE: ghcr.io/cryptogarageinc/elements-testing
   ENTRYPOINT_PATH: /github/workspace/.github/workflows/docker/test_entrypoint.sh
   BITCOIN_ENTRYPOINT_PATH: /github/workspace/.github/workflows/docker/test_bitcoin_entrypoint.sh
-#  DOCKERHUB_VERSION: v0.18.1.3
 
 jobs:
   elements-e2e-test:
     name: elements e2e test
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
 
     steps:
     - name: checkout
@@ -48,17 +47,12 @@ jobs:
       if: steps.cache-node-modules.outputs.cache-hit != 'true'
       run: npm install
     - name: integration test
-#      uses: docker://cryptogarageinc/elements-testing:${{ env.DOCKERHUB_VERSION }}
-#      with:
-#        entrypoint: ${{ env.ENTRYPOINT_PATH }}
       run: |
         docker run -v ${{ github.workspace }}:/github/workspace --entrypoint ${{ env.ENTRYPOINT_PATH }} ${{ env.GITHUB_DOCKER_IMAGE }}:${{ env.GITHUB_VERSION }}
-#    - name: after cleanup
-#      run: sudo rm -rf bitcoind_datadir
 
   bitcoin-e2e-test:
     name: bitcoin e2e test
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
 
     steps:
     - name: checkout

@@ -155,7 +155,7 @@ module.exports = class UtxoTable {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async getUtxosBlockHeightSpendable(maxBlockHeight = 9223372036854775807,
+  async getUtxosBlockHeightSpendable(maxBlockHeight = 0x1FFFFFFFFFFFFF,
       minimumConf = 6, page = 1, perPage = 100) {
     return await this.database.findByFilter({}, function(obj) {
       const height = bestBlockHeight - obj.blockHeight;
@@ -169,8 +169,8 @@ module.exports = class UtxoTable {
   }
 
   async getUtxosBlockHeightSolvedUnspentable(
-      bestBlockHeight = 9223372036854775807,
-      minimumConf = 6, maximumConf = 9223372036854775807,
+      bestBlockHeight = 0x1FFFFFFFFFFFFF,
+      minimumConf = 6, maximumConf = 0x1FFFFFFFFFFFFF,
       page = 1, perPage = 10000, ignoreConfidential = false) {
     return await this.database.findByFilter({}, function(obj) {
       const height = bestBlockHeight - obj.blockHeight + 1;
@@ -192,8 +192,8 @@ module.exports = class UtxoTable {
     }, page, perPage);
   }
 
-  async getUtxosBlockHeightUnspentable(bestBlockHeight = 9223372036854775807,
-      minimumConf = 6, maximumConf = 9223372036854775807,
+  async getUtxosBlockHeightUnspentable(bestBlockHeight = 0x1FFFFFFFFFFFFF,
+      minimumConf = 6, maximumConf = 0x1FFFFFFFFFFFFF,
       page = 1, perPage = 10000, ignoreConfidential = false) {
     return await this.database.findByFilter({}, function(obj) {
       const height = bestBlockHeight - obj.blockHeight + 1;
@@ -215,7 +215,7 @@ module.exports = class UtxoTable {
   }
 
   // elements only
-  async getUtxosBlindUnspentable(bestBlockHeight = 9223372036854775807,
+  async getUtxosBlindUnspentable(bestBlockHeight = 0x1FFFFFFFFFFFFF,
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       confTarget = 6, page = 1, perPage = 100) {
     return await this.database.findByFilter({},
@@ -237,7 +237,7 @@ module.exports = class UtxoTable {
         }, page, perPage);
   }
 
-  async getUtxosUnblindUnspentable(bestBlockHeight = 9223372036854775807,
+  async getUtxosUnblindUnspentable(bestBlockHeight = 0x1FFFFFFFFFFFFF,
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       confTarget = 6, page = 1, perPage = 100) {
     return await this.database.findByFilter({},

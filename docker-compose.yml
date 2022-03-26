@@ -2,14 +2,14 @@ version: '3.8'
 
 services:
   wallet-test:
-    image: ghcr.io/cryptogarageinc/elements-testing:v0.1.0
+    image: ghcr.io/cryptogarageinc/elements-testing:v0.1.2
     volumes:
       - ./:/root/wallet-test
     working_dir: /root/wallet-test
     command: /bin/bash -c "/root/wallet-test/__tests__/docker-entrypoint.sh"
 
   wallet-update-package-lock:
-    image: ghcr.io/cryptogarageinc/elements-testing:v0.1.0
+    image: ghcr.io/cryptogarageinc/elements-testing:v0.1.2
     volumes:
       - ./:/workspace
     working_dir: /workspace

@@ -1,4 +1,4 @@
-import {Wallet, SendAmount} from './libs/walletService.d';
+import {Wallet, SendAmount, AddressData, KeyPair} from './libs/walletService.d';
 import * as cfdjs from 'cfd-js-wasm/index.d';
 
 // definition (need export)
@@ -87,6 +87,9 @@ export class WalletManager {
   setMasterPrivkey(seed: string,
     masterXprivkey?: string, englishMnemonic?: string,
     passphrase?: string, domainIndex?: number): Promise<void>;
+
+  setBlindingKeyFunction(
+    blindingKeyFn: (addrData:AddressData)=>Promise<KeyPair>): Promise<void>;
 
   initialize(targetNodeType?: TargetNode): Promise<boolean>;
 

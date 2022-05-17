@@ -8,6 +8,12 @@ const emptyBlinder = define.emptyBlinder;
 
 module.exports = class Wallet {
   /**
+   * This callback is getting blinding key pair.
+   * @callback blindingKeyCallback
+   * @param {AddressData} address data
+   * @return {Promise<KeyPair>} async blinding key pair.
+   */
+  /**
    * constructor.
    * @param {string} userNamePrefix user name prefix.
    * @param {number} userIndex user index.
@@ -16,10 +22,12 @@ module.exports = class Wallet {
    * @param {string} masterXprivkey master xprivkey.
    * @param {NodeConfigurationData} nodeConfig node config.
    * @param {WalletManager} manager wallet manager.
+   * @param {blindingKeyCallback} blindingKeyFn blinding key function.
    * @param {boolean} inMemoryDatabase use in-memory database.
    */
   constructor(userNamePrefix, userIndex, dirPath, network,
-      masterXprivkey, nodeConfig, manager, inMemoryDatabase = true) {
+      masterXprivkey, nodeConfig, manager,
+      blindingKeyFn = undefined, inMemoryDatabase = true) {
     if (isNaN(userIndex)) {
       throw new Error('Wallet userIndex is number only.');
     }
@@ -31,6 +39,7 @@ module.exports = class Wallet {
     this.masterXprivkey = masterXprivkey; // xpriv(m/44'/(nettype)')
     this.manager = manager;
     this.inMemoryDatabase = inMemoryDatabase;
+    this.blindingKeyFn = blindingKeyFn;
     this.cfd = this.manager.getCfd();
 
     const conn = RpcClient.createConnection(nodeConfig.host,
@@ -578,9 +587,16 @@ module.exports = class Wallet {
   /**
    * get blinding key.
    * @param {string} address unblinded address
-   * @return {*} blinding key and confidnetial key
+   * @return {*} blinding key and confidential key
    */
   async getBlindingKey(address) {
+    if (this.blindingKeyFn != undefined) {
+      const ret = await this.addrService.getAddressInfo(address);
+      if (!ret) {
+        throw Error('unknown address.');
+      }
+      return this.blindingKeyFn(ret);
+    }
     const blindingKey = await Promise.resolve(this.cfd.GetDefaultBlindingKey({
       masterBlindingKey: this.masterBlindingKey,
       address: address,
@@ -594,6 +610,30 @@ module.exports = class Wallet {
       privkey: blindingKey.blindingKey,
       pubkey: confidentialKey.pubkey,
     };
+  }
+
+  /**
+   * get blinding key.
+   * @param {*} addressData address data
+   * @return {*} blinding key and confidential key
+   */
+  async getBlindingKeyWithData(addressData) {
+    if (this.blindingKeyFn == undefined) {
+      return this.getBlindingKey(addressData.address);
+    }
+    return this.blindingKeyFn(addressData);
+  }
+
+  /**
+   * get user extended pubkey.
+   * @return {Promise<string>} async extended pubkey.
+   */
+  async getUserExtPubkey() {
+    const extkeyData = await this.cfd.CreateExtPubkey({
+      extkey: this.masterXprivkey,
+      network: this.mainchainNetwork,
+    });
+    return extkeyData.extkey;
   }
 
   /**

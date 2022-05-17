@@ -123,11 +123,13 @@ export class Wallet {
    * @param {string} masterXprivkey master xprivkey.
    * @param {NodeConfigurationData} nodeConfig node config.
    * @param {WalletManager} manager wallet manager.
+   * @param {(addrData:AddressData)=>Promise<KeyPair>} blindingKeyFn blindingKey function.
    * @param {boolean} inMemoryDatabase use in-memory database.
    */
   constructor(userNamePrefix: string, userIndex: number, dirPath: string,
       network: string, masterXprivkey: string,
       nodeConfig: NodeConfigurationData, manager: WalletManager,
+      blindingKeyFn: (addrData:AddressData)=>Promise<KeyPair>,
       inMemoryDatabase: boolean);
 
   initialize(): Promise<boolean>;
@@ -160,7 +162,6 @@ export class Wallet {
       asset?: string, estimateMode?: string, feeRateForUnset?: number,
       targetConf?: number): Promise<SendToAddressResponse>;
 
-
   // estimateMode: UNSET or CONSERVATIVE or ECONOMICAL
   sendToAddresses(addresses: SendAmount[],
     estimateMode?: string, feeRateForUnset?: number,
@@ -179,6 +180,10 @@ export class Wallet {
   getConfidentialAddress(address: string): Promise<string>;
 
   getBlindingKey(address: string): Promise<KeyPair>;
+
+  getBlindingKeyWithData(addressData: AddressData): Promise<KeyPair>;
+
+  getUserExtPubkey(): Promise<string>;
 
   getAddresses(): Promise<AddressData[]>;
 

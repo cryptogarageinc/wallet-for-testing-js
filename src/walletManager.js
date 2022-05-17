@@ -127,6 +127,7 @@ const walletManager = class WalletManager {
     this.bitcoinTipHeightCache = -1;
     this.elementsTipHeightCache = -1;
     this.isShutdown = false;
+    this.blindingKeyFn = undefined;
     if ((network === 'mainnet') || (network === 'testnet') || (network === 'regtest')) {
       this.btcClient = new RpcClient.BitcoinCli(
           RpcClient.createConnection(this.nodeConfigMap.bitcoin.host,
@@ -232,6 +233,21 @@ const walletManager = class WalletManager {
   }
 
   /**
+   * set blinding key function.
+   * @param {blindingKeyCallback} blindingKeyFn blindingKey function.
+   * @return {Promise<void>} async.
+   */
+  async setBlindingKeyFunction(blindingKeyFn = undefined) {
+    this.blindingKeyFn = blindingKeyFn;
+  }
+  /**
+   * This callback is getting blinding key pair.
+   * @callback blindingKeyCallback
+   * @param {AddressData} address data
+   * @return {Promise<KeyPair>} async blinding key pair.
+   */
+
+  /**
    * constructor.
    * @return {cfdjs} cfd object.
    */
@@ -296,7 +312,8 @@ const walletManager = class WalletManager {
     }
     const walletObj = new Wallet(userNamePrefix, userIndex,
         this.dirName, this.network, this.xprivkey,
-        this.nodeConfigMap[targetNodeType], this, inMemoryDatabase);
+        this.nodeConfigMap[targetNodeType], this,
+        this.blindingKeyFn, inMemoryDatabase);
     await walletObj.initialize();
     if (!(targetNodeType in this.walletList)) {
       this.walletList[targetNodeType] = {};

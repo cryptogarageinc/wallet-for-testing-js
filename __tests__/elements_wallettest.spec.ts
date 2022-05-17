@@ -1194,6 +1194,8 @@ describe('wallet test', () => {
       mainchainNetwork,
     });
     console.log('pegout tx:', JSON.stringify(decTx, null, '  '));
+    const xpub = await elmWallet1.getUserExtPubkey();
+    console.log(`wallet xpub: ${xpub}`);
 
     // send tx
     try {

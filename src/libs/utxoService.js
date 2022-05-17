@@ -75,7 +75,8 @@ module.exports = class UtxoService {
                   alreadyRegisted = true;
                 }
               } else if (this.parent.isElements) {
-                const blindingKey = await this.parent.getBlindingKey(address);
+                const blindingKey = await this.parent.getBlindingKeyWithData(
+                    addressData);
                 confidentialKey = blindingKey.pubkey;
                 const unblindData = await Promise.resolve(
                     this.cfd.UnblindRawTransaction({
@@ -168,8 +169,8 @@ module.exports = class UtxoService {
                     throw Error('addUtxo: addUtxo fail.');
                   }
                 } else if (this.parent.isElements) {
-                  const blindingKey = await this.parent.getBlindingKey(
-                      addr.address);
+                  const blindingKey = await this.parent.getBlindingKeyWithData(
+                      addr);
                   confidentialKey = blindingKey.pubkey;
                   const unblindData = await Promise.resolve(
                       this.cfd.UnblindRawTransaction({
@@ -345,8 +346,8 @@ module.exports = class UtxoService {
                   // throw Error('addUtxo: addUtxo fail.');
                 }
               } else if (this.parent.isElements) {
-                const blindingKey = await this.parent.getBlindingKey(
-                    addr.address);
+                const blindingKey = await this.parent.getBlindingKeyWithData(
+                    addr);
                 confidentialKey = blindingKey.pubkey;
                 try {
                   const unblindData = await Promise.resolve(
@@ -427,8 +428,8 @@ module.exports = class UtxoService {
             const extend = {};
             if ('valuecommitment' in decTx.vout[i]) {
               // get blinder
-              const blindingKey = await this.parent.getBlindingKey(
-                  addr.address);
+              const blindingKey = await this.parent.getBlindingKeyWithData(
+                  addr);
               confidentialKey = blindingKey.pubkey;
               const unblindData = await Promise.resolve(
                   this.cfd.UnblindRawTransaction({

@@ -625,6 +625,18 @@ module.exports = class Wallet {
   }
 
   /**
+   * get user extended pubkey.
+   * @return {Promise<string>} async extended pubkey.
+   */
+  async getUserExtPubkey() {
+    const extkeyData = await this.cfd.CreateExtPubkey({
+      extkey: this.masterXprivkey,
+      network: this.mainchainNetwork,
+    });
+    return extkeyData.extkey;
+  }
+
+  /**
    * get generated address list.
    * @return {Promise<*[]>} address list.
    */

@@ -162,7 +162,6 @@ export class Wallet {
       asset?: string, estimateMode?: string, feeRateForUnset?: number,
       targetConf?: number): Promise<SendToAddressResponse>;
 
-
   // estimateMode: UNSET or CONSERVATIVE or ECONOMICAL
   sendToAddresses(addresses: SendAmount[],
     estimateMode?: string, feeRateForUnset?: number,
@@ -183,6 +182,8 @@ export class Wallet {
   getBlindingKey(address: string): Promise<KeyPair>;
 
   getBlindingKeyWithData(addressData: AddressData): Promise<KeyPair>;
+
+  getUserExtPubkey(): Promise<string>;
 
   getAddresses(): Promise<AddressData[]>;
 

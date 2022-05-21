@@ -73,6 +73,9 @@ exports.BitcoinCli = function(connection) {
   this.getmempoolinfo = async function() {
     return await executeRpc(client, 'getmempoolinfo', []);
   };
+  this.submitblock = async function(blockHex) {
+    return await executeRpc(client, 'submitblock', [blockHex]);
+  };
   // Generating
   this.generatetoaddress = async function(
       nblocks, address, maxtries = 1000000) {
@@ -154,6 +157,9 @@ exports.ElementsCli = function(connection) {
   this.getmempoolinfo = async function() {
     return await executeRpc(client, 'getmempoolinfo', []);
   };
+  this.submitblock = async function(blockHex) {
+    return await executeRpc(client, 'submitblock', [blockHex]);
+  };
   // createblindedaddress "address" "blinding_key"
   // this.tweakfedpegscript = async function(claim_script)
 
@@ -163,6 +169,9 @@ exports.ElementsCli = function(connection) {
       nblocks, address, maxtries = 1000000) {
     return await executeRpc(client, 'generatetoaddress',
         [nblocks, address, maxtries]);
+  };
+  this.getnewblockhex = async function(num, data) {
+    return await executeRpc(client, 'getnewblockhex', [num, data]);
   };
   // Rawtransactions
   this.createrawtransaction = async function(

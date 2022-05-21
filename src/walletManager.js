@@ -567,6 +567,16 @@ const walletManager = class WalletManager {
   }
 
   /**
+   * generate dynafed.
+   * @param {NewBlockHexHeader} data new block header.
+   * @return {Promise<string>} response.
+   */
+  async generateDynafed(data) {
+    const blockHex = await this.elmClient.getnewblockhex(0, data);
+    return await this.elmClient.submitblock(blockHex);
+  }
+
+  /**
    * call RPC command directly.
    * @param {string} targetNodeType target node type.
    * @param {string} command RPC command.
@@ -579,6 +589,17 @@ const walletManager = class WalletManager {
     } else {
       return await this.elmClient.directExecute(command, parameters);
     }
+  }
+
+  /**
+   * call RPC command directly response simple string.
+   * @param {string} targetNodeType target node type.
+   * @param {string} command RPC command.
+   * @param {string[]} parameters parameter list.
+   * @return {Promise<*>} response info.
+   */
+  async callRpcDirectSimpleString(targetNodeType, command, parameters = []) {
+    await callRpcDirect(targetNodeType, command, parameters);
   }
 
   /**

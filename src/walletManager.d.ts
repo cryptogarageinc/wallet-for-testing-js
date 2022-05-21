@@ -65,6 +65,13 @@ export interface GetBlockResponse {
   nextblockhash: string;
 }
 
+export interface NewBlockHexHeader {
+  signblockscript: string;
+  max_block_witness: number;
+  fedpegscript: string;
+  extension_space: string[];
+}
+
 // --------------------------------------------------------------------------------------
 // public
 // --------------------------------------------------------------------------------------
@@ -124,9 +131,15 @@ export class WalletManager {
 
   stop(targetNodeType: TargetNode): Promise<string>;
 
+  generateDynafed(data: NewBlockHexHeader): Promise<string>;
+
   callRpcDirect(targetNodeType: TargetNode, command: string,
       parameters?: (string | number | boolean | string[])[]):
         Promise<{[key: string]: string | number | boolean}>;
+
+  callRpcDirectSimpleString(targetNodeType: TargetNode, command: string,
+    parameters?: (string | number | boolean | string[])[]):
+      Promise<string>;
 
   peginFromBitcoin(bitcoinWallet: Wallet, elementsWallet: Wallet,
       peginAmount: number | bigint, sendTxoutList: SendAmount[]):

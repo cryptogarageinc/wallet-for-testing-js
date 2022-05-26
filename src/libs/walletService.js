@@ -438,7 +438,7 @@ module.exports = class Wallet {
           vout: utxo.vout,
           asset: utxo.asset,
           amount: utxo.amount,
-          blindFactor: utxo.amoutnBlinder,
+          blindFactor: utxo.amountBlinder,
           assetBlindFactor: utxo.assetBlinder,
         });
       }

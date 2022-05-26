@@ -439,7 +439,7 @@ module.exports = class Wallet {
           asset: utxo.asset,
           amount: utxo.amount,
           blindFactor: utxo.amoutnBlinder,
-          assetBlindFactor: utxot.assetBlinder,
+          assetBlindFactor: utxo.assetBlinder,
         });
       }
       tx = await Promise.resolve(

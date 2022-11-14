@@ -80,10 +80,20 @@ const getUtxoList = async function(utxoStrList, basePath, network) {
     const pattern = /^\d+\)\s+"(.+)"$/gi; // need re-generate
     const regRet = pattern.exec(utxoStr);
     if (!regRet) {
-      console.log('utxo pattern failed:', utxoStr);
-      continue;
+      if (utxoStr.includes('\\')) {
+        console.log('utxo pattern failed:', utxoStr);
+        continue;
+      }
+      const pattern2 = /^{.+}$/gi; // need re-generate
+      const regRet2 = pattern2.exec(utxoStr);
+      if (!regRet2) {
+        console.log('utxo pattern failed:', utxoStr);
+        continue;
+      }
+      utxoStr = regRet2[0];
+    } else {
+      utxoStr = regRet[1];
     }
-    utxoStr = regRet[1];
 
     if (utxoStr.includes('\\')) {
       utxoStr = utxoStr.replaceAll('\\', '');

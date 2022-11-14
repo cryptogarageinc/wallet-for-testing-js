@@ -34,4 +34,15 @@ if [ ! -d node_modules ]; then
 fi
 chmod 777 node_modules
 node --version
-npm install && npm run js-test
+npm install
+NODE_MAJOR_VER=$(node --version | sed -r 's/^v([0-9]+).([0-9]+).([0-9]+)(\..*)?$/\1/')
+NODE_MINOR_VER=$(node --version | sed -r 's/^v([0-9]+).([0-9]+).([0-9]+)(\..*)?$/\2/')
+if [ $NODE_MAJOR_VER -gt 18 ]; then
+  echo "node version $NODE_MAJOR_VER" ;
+  NODE_OPTIONS="--no-experimental-fetch" npm run js-test ;
+elif test "$NODE_MAJOR_VER" = "18" && test "$NODE_MINOR_VER" != "0"; then
+  echo "node version $NODE_MAJOR_VER.$NODE_MINOR_VER" ;
+  NODE_OPTIONS="--no-experimental-fetch" npm run js-test ;
+else
+  npm run js-test
+fi

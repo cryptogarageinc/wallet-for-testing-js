@@ -15,8 +15,8 @@ on:
     - develop
 
 env:
-  GITHUB_VERSION: v0.1.2
-  GITHUB_BITCOIN_VERSION: v0.1.2
+  GITHUB_VERSION: v0.2.3
+  GITHUB_BITCOIN_VERSION: v0.2.3
   GITHUB_DOCKER_IMAGE: ghcr.io/cryptogarageinc/elements-testing
   ENTRYPOINT_PATH: /github/workspace/.github/workflows/docker/test_entrypoint.sh
   BITCOIN_ENTRYPOINT_PATH: /github/workspace/.github/workflows/docker/test_bitcoin_entrypoint.sh
@@ -25,10 +25,11 @@ jobs:
   elements-e2e-test:
     name: elements e2e test
     runs-on: ubuntu-20.04
+    timeout-minutes: 20
 
     steps:
     - name: checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Login GitHub Registry
       run: docker login docker.pkg.github.com -u owner -p ${{ secrets.GITHUB_TOKEN }}
     - name: Pull image from GitHub Registry
@@ -39,7 +40,7 @@ jobs:
         chmod 777 node_modules
     - name: cache node modules
       id: cache-node-modules
-      uses: actions/cache@v1
+      uses: actions/cache@v3
       with:
         path: node_modules
         key: ${{ runner.os }}-${{ env.GITHUB_VERSION }}-${{ hashFiles('package-lock.json') }}
@@ -48,15 +49,16 @@ jobs:
       run: npm install
     - name: integration test
       run: |
-        docker run -v ${{ github.workspace }}:/github/workspace --entrypoint ${{ env.ENTRYPOINT_PATH }} ${{ env.GITHUB_DOCKER_IMAGE }}:${{ env.GITHUB_VERSION }}
+        docker run -u root -v ${{ github.workspace }}:/github/workspace --entrypoint ${{ env.ENTRYPOINT_PATH }} ${{ env.GITHUB_DOCKER_IMAGE }}:${{ env.GITHUB_VERSION }}
 
   bitcoin-e2e-test:
     name: bitcoin e2e test
     runs-on: ubuntu-20.04
+    timeout-minutes: 20
 
     steps:
     - name: checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Login GitHub Registry
       run: docker login docker.pkg.github.com -u owner -p ${{ secrets.GITHUB_TOKEN }}
     - name: Pull image from GitHub Registry
@@ -67,7 +69,7 @@ jobs:
         chmod 777 node_modules
     - name: cache node modules
       id: cache-node-modules
-      uses: actions/cache@v1
+      uses: actions/cache@v3
       with:
         path: node_modules
         key: ${{ runner.os }}-${{ env.GITHUB_BITCOIN_VERSION }}-${{ hashFiles('package-lock.json') }}
@@ -76,4 +78,4 @@ jobs:
       run: npm install
     - name: integration test
       run: |
-        docker run -v ${{ github.workspace }}:/github/workspace --entrypoint ${{ env.BITCOIN_ENTRYPOINT_PATH }} ${{ env.GITHUB_DOCKER_IMAGE }}:${{ env.GITHUB_BITCOIN_VERSION }}
+        docker run -u root -v ${{ github.workspace }}:/github/workspace --entrypoint ${{ env.BITCOIN_ENTRYPOINT_PATH }} ${{ env.GITHUB_DOCKER_IMAGE }}:${{ env.GITHUB_BITCOIN_VERSION }}

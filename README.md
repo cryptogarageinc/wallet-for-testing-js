@@ -33,3 +33,10 @@ debug_tx.sh xxxxx
 ## test
 
 docker-compose run wallet-test
+
+## note
+
+### When using node.js 18 or higher
+
+In node.js 18 or higher, emscripten for cfd-js-wasm does not work properly.
+Therefore, it is necessary to run with the '--no-experimental-fetch' option.

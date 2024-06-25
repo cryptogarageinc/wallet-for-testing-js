@@ -40,3 +40,16 @@ docker-compose run wallet-test
 
 In node.js 18 or higher, emscripten for cfd-js-wasm does not work properly.
 Therefore, it is necessary to run with the '--no-experimental-fetch' option.
+
+```sh
+# shell
+NODE_OPTIONS="--no-experimental-fetch" npm run test
+
+# power shell
+$env:NODE_OPTIONS="--no-experimental-fetch"
+npm run test
+
+# command prompt
+set NODE_OPTIONS="--no-experimental-fetch"
+npm run test
+```

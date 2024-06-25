@@ -6,8 +6,10 @@ const fs = require('fs');
 const readline = require('readline-sync');
 const zlib = require('zlib');
 const needle = require('needle');
-const cfdjs = require('cfd-js');
+const cfdjs = require('cfd-js-wasm');
 const RpcClient = require('node-json-rpc2').Client;
+
+let cfdjsObj;
 
 // -----------------------------------------------------------------------------
 
@@ -226,10 +228,12 @@ const callPost = async function(url, formData) {
   }
 };
 
-const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
+const createSplitTx = async function(utxoTxHex, targetVout, ctAddrList,
     addrInfo, feeAmount, feeSplitNum, feeRate, isRegtest) {
   const minimumBits = 36;
-  const decUtxoTx = cfdjs.ElementsDecodeRawTransaction({hex: utxoTxHex});
+  const decUtxoTx = await cfdjsObj.ElementsDecodeRawTransaction({
+    hex: utxoTxHex,
+  });
   const utxoTxid = decUtxoTx.txid;
   const utxoVout = targetVout;
 
@@ -249,7 +253,7 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
       assetBlindFactor: emptyByte,
     };
   } else {
-    const unblindData = cfdjs.UnblindRawTransaction({
+    const unblindData = await cfdjsObj.UnblindRawTransaction({
       tx: utxoTxHex,
       txouts: [{
         index: utxoVout,
@@ -270,7 +274,7 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
     privkey: addrInfo.privkey,
   };
   const addr = decUtxoTx.vout[utxoVout].scriptPubKey.addresses[0];
-  const inputAddrInfo = cfdjs.GetAddressInfo({
+  const inputAddrInfo = await cfdjsObj.GetAddressInfo({
     address: addr,
     isElements: true,
   });
@@ -309,7 +313,7 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
     }
   }
 
-  const feeTxData = cfdjs.ElementsCreateRawTransaction({
+  const feeTxData = await cfdjsObj.ElementsCreateRawTransaction({
     version: 2,
     locktime: 0,
     txins: [{
@@ -324,10 +328,10 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
     },
   });
 
-  const pubkeyInfo = cfdjs.GetPubkeyFromPrivkey({
+  const pubkeyInfo = await cfdjsObj.GetPubkeyFromPrivkey({
     privkey: addrInfo.privkey,
   });
-  const estimateFeeResult = cfdjs.EstimateFee({
+  const estimateFeeResult = await cfdjsObj.EstimateFee({
     selectUtxos: [{
       txid: feeUtxo.txid,
       vout: feeUtxo.vout,
@@ -351,7 +355,7 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
     throw new Error(`changeAmount is low. changeAmount=${changeAmount}`);
   }
 
-  const updatedTx = cfdjs.UpdateTxOutAmount({
+  const updatedTx = await cfdjsObj.UpdateTxOutAmount({
     tx: feeTxData.hex,
     isElements: true,
     txouts: [{
@@ -365,12 +369,12 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
   let blindTxHex = updatedTx.hex;
 
   if (isBlind) {
-    const baseTx = cfdjs.ElementsDecodeRawTransaction({
+    const baseTx = await cfdjsObj.ElementsDecodeRawTransaction({
       hex: blindTxHex,
       network: (isRegtest) ? 'regtest' : 'liquidv1',
     });
     console.log(JSON.stringify(baseTx, null, 2));
-    const feeBlindTx = cfdjs.BlindRawTransaction({
+    const feeBlindTx = await cfdjsObj.BlindRawTransaction({
       tx: blindTxHex,
       txins: [{
         txid: feeUtxo.txid,
@@ -389,7 +393,7 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
   let feeSignTx;
   if (feeUtxo.blindFactor == emptyByte) {
     // privkey sign (calc sighash + get ecSig + add Signature)
-    feeSignTx = cfdjs.SignWithPrivkey({
+    feeSignTx = await cfdjsObj.SignWithPrivkey({
       tx: blindTxHex,
       isElements: true,
       txin: {
@@ -402,7 +406,7 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
       },
     });
   } else {
-    const commitment = cfdjs.GetCommitment({
+    const commitment = await cfdjsObj.GetCommitment({
       amount: feeUtxo.amount,
       asset: feeUtxo.asset,
       assetBlindFactor: feeUtxo.assetBlindFactor,
@@ -410,7 +414,7 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
     });
 
     // privkey sign (calc sighash + get ecSig + add Signature)
-    feeSignTx = cfdjs.SignWithPrivkey({
+    feeSignTx = await cfdjsObj.SignWithPrivkey({
       tx: blindTxHex,
       isElements: true,
       txin: {
@@ -426,7 +430,9 @@ const createSplitTx = function(utxoTxHex, targetVout, ctAddrList,
 
   // console.log(feeSignTx.hex);
   console.log(`Amount:${feeAmount}, changeAmount:${changeAmount}`);
-  const decodeTx = cfdjs.ElementsDecodeRawTransaction({hex: feeSignTx.hex});
+  const decodeTx = await cfdjsObj.ElementsDecodeRawTransaction({
+    hex: feeSignTx.hex,
+  });
   console.log(`vsize:`, decodeTx.vsize);
   // console.log(`decode:`, decodeTx);
   return feeSignTx.hex;
@@ -496,10 +502,11 @@ const sendSplitTx = async function(rpcInfo, utxoTxid, utxoVout,
     feeRate = await getFeeRate(rpcInfo);
   }
 
-  const txHex = createSplitTx(utxoTxHex, utxoVout, sendAddrList,
+  const txHex = await createSplitTx(utxoTxHex, utxoVout, sendAddrList,
       addrInfo, splitAmount, splitNum, feeRate, !rpcInfo);
   if (ignoreSend) {
     console.log('set ignoreSend=true');
+    console.log(txHex);
   } else {
     const txid = await sendTransaction(rpcInfo, txHex);
     console.log('sending txid:', txid);
@@ -510,6 +517,7 @@ const sendSplitTx = async function(rpcInfo, utxoTxid, utxoVout,
 
 const main = async () =>{
   try {
+    cfdjsObj = cfdjs.getCfd();
     if (process.argv.length <= 2) {
       for (let i = 0; i < process.argv.length; i++) {
         console.log('argv[' + i + '] = ' + process.argv[i]);
@@ -570,5 +578,5 @@ const main = async () =>{
   }
   return 0;
 };
-main();
+cfdjs.addInitializedListener(main);
 

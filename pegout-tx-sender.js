@@ -396,7 +396,7 @@ const createPegoutTx = async function(keyList, utxoTxHexes, utxoList,
   if (isBlind) {
     const baseTx = await cfdjsObj.ElementsDecodeRawTransaction({
       hex: blindTxHex,
-      network: (configData.network == 'liquidv1') ? 'mainnet' : 'regtest',
+      network: (configData.network == 'elementsregtest') ? 'regtest' : configData.network,
       mainchainNetwork: configData.mainchainNetwork,
     });
     console.log(JSON.stringify(baseTx, null, 2));
@@ -455,7 +455,7 @@ const createPegoutTx = async function(keyList, utxoTxHexes, utxoList,
   console.log(`UTXO Amount:${utxoTotalAmount}, txFeeAmount:${txFeeAmount}`);
   const decodeTx = await cfdjsObj.ElementsDecodeRawTransaction({
     hex: signTx.hex,
-    network: (configData.network == 'liquidv1') ? 'mainnet' : 'regtest',
+    network: (configData.network == 'elementsregtest') ? 'regtest' : configData.network,
     mainchainNetwork: configData.mainchainNetwork,
   });
   console.log(`vsize:`, decodeTx.vsize);
@@ -657,8 +657,14 @@ const main = async () =>{
       }
       const utxos = readLineData(4, 'utxos');
       const configJsonFile = readLineData(5, 'configJsonPath');
-      const ignoreSend = readLineData(6, 'ignoreSend');
-      const quickly = readLineData(7, 'quickly');
+      let ignoreSend = readLineData(6, 'ignoreSend', true);
+      if (ignoreSend == undefined) {
+        ignoreSend = false;
+      }
+      let quickly = readLineData(7, 'quickly', true);
+      if (quickly == undefined) {
+        quickly = true;
+      }
       const rpcInfoStr = readLineData(8, 'rpcConnectInfo', true);
       const rpcInfo = (!rpcInfoStr) ? undefined : JSON.parse(rpcInfoStr);
 

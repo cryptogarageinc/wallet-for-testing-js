@@ -663,7 +663,7 @@ const main = async () =>{
       }
       let quickly = readLineData(7, 'quickly', true);
       if (quickly == undefined) {
-        quickly = true;
+        quickly = false;
       }
       const rpcInfoStr = readLineData(8, 'rpcConnectInfo', true);
       const rpcInfo = (!rpcInfoStr) ? undefined : JSON.parse(rpcInfoStr);
